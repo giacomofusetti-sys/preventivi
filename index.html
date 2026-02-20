@@ -102,10 +102,10 @@
 
     <!-- disabled = attributo HTML nativo che disabilita il bottone:
          non può essere cliccato, appare grigio (via CSS) -->
-    <button class="product-btn disabled" disabled>
-      <div class="product-icon">○</div>
+    <button class="product-btn" data-product="tiranti_occhio">
+      <div class="product-icon">◎</div>
       <div class="product-name">Tiranti a Occhio</div>
-      <div class="product-desc">In sviluppo</div>
+      <div class="product-desc">UNI 6058 / libero<br>con fresatura o stampaggio</div>
     </button>
 
     <button class="product-btn disabled" disabled>
@@ -467,6 +467,39 @@
         <input type="number" id="parte_liscia" value="0" min="0" step="0.1">
       </div>
 
+      <!-- TIPO TIRANTE A OCCHIO
+           6058 = UNI 6058 (testa standard = dian×2)
+           libero = testa e foro personalizzati -->
+      <div id="row-tipo-occhio" class="form-group" style="display:none">
+        <label>Tipo tirante a occhio</label>
+        <div class="toggle-group">
+          <button class="toggle-btn active" data-group="tipo_occhio" data-val="6058">UNI 6058</button>
+          <button class="toggle-btn"        data-group="tipo_occhio" data-val="libero">Libero</button>
+        </div>
+      </div>
+      <!-- Diametri testa e foro personalizzati (solo se tipo = libero, e opzionali) -->
+      <div id="occhio-testa-foro-group" style="display:none">
+        <div class="form-row">
+          <div class="form-group">
+            <label>Ø testa (mm) <span class="label-hint">(0 = dian×2)</span></label>
+            <input type="number" id="dia_testa_custom" value="0" min="0" step="1">
+          </div>
+          <div class="form-group">
+            <label>Ø foro (mm) <span class="label-hint">(0 = tabella)</span></label>
+            <input type="number" id="dia_foro_custom" value="0" min="0" step="1">
+          </div>
+        </div>
+      </div>
+
+      <!-- STAMPAGGIO TIRANTE A OCCHIO (solo occhio) -->
+      <div id="row-stampaggio-occhio" class="form-group" style="display:none">
+        <label>Lavorazione testa</label>
+        <div class="toggle-group">
+          <button class="toggle-btn active" data-group="stampaggio_occhio" data-val="OFF">Fresatura</button>
+          <button class="toggle-btn"        data-group="stampaggio_occhio" data-val="ON">Stampaggio</button>
+        </div>
+      </div>
+
       <!-- DIAMETRO BARRA GREZZA DADI (solo dadi)
            Campo separato da quello dei torniti perché ha
            validazione diversa:
@@ -583,6 +616,8 @@ import { calcolaTiranti }        from './moduli/tiranti.js';
 import { calcolaTirantiTorniti } from './moduli/tiranti_torniti.js';
 import { calcolaDadi }           from './moduli/dadi.js';
 import { calcolaPrigionieri }    from './moduli/prigionieri.js';
+// tiranti_occhio.js viene importato dinamicamente in calcola()
+// per evitare che un file mancante blocchi l'intera applicazione
 
 
 // ─── CARICAMENTO TABELLE JSON ─────────────────────────────────
@@ -650,19 +685,22 @@ function mostraCalcolatore(prodotto) {
   const isDadi        = prodotto === 'dadi';
   const isTiranti     = prodotto === 'tiranti';
   const isPrigionieri = prodotto === 'prigionieri';
+  const isOcchio      = prodotto === 'tiranti_occhio';
 
   // Aggiorna testi header
   const titoli = {
     tiranti:          'Tiranti',
     tiranti_torniti:  'Tiranti Torniti',
     dadi:             'Dadi',
-    prigionieri:      'Prigionieri'
+    prigionieri:      'Prigionieri',
+    tiranti_occhio:   'Tiranti a Occhio',
   };
   const subs = {
     tiranti:          'Da barra a diametro medio',
     tiranti_torniti:  'Da barra grezza con tornitura',
     dadi:             'UNI 5587 / 5588 / 5589',
-    prigionieri:      'UNI 5909 / 5911 / libero'
+    prigionieri:      'UNI 5909 / 5911 / libero',
+    tiranti_occhio:   'UNI 6058 / libero',
   };
   document.getElementById('header-title').textContent = titoli[prodotto] || prodotto;
   document.getElementById('header-sub').textContent   = subs[prodotto]   || '';
@@ -678,12 +716,14 @@ function mostraCalcolatore(prodotto) {
   // Leggi come: "mostra lungh se NON sono i dadi", ecc.
   show('row-lungh',        !isDadi);                    // lunghezza: tutti tranne dadi
   show('row-altez',         isDadi);                    // altezza auto: solo dadi
-  show('row-dia-disp',      isTornito || isPrigionieri);// barra grezza: torniti e prigionieri
+  show('row-dia-disp',      isTornito || isPrigionieri || isOcchio); // barra grezza: torniti, prigionieri, occhio
   show('row-prigioniero',   isTiranti);                 // opzione prigioniero: solo tiranti
   show('row-fantina',       isTornito || isPrigionieri);// fantina: torniti e prigionieri
   show('row-barra-giusta',  isTornito || isPrigionieri);// barra giusta: torniti e prigionieri
   show('row-tipo-prig',     isPrigionieri);             // tipo UNI: solo prigionieri
   show('row-parte-liscia',  isPrigionieri);             // gambo alleggerito: solo prigionieri
+  show('row-tipo-occhio',   isOcchio);                  // tipo 6058/libero: solo occhio
+  show('row-stampaggio-occhio', isOcchio);              // fresatura/stampaggio testa: solo occhio
   show('row-uni',           isDadi);                    // tipo UNI dado: solo dadi
   show('row-chiave-tipo',   isDadi);                    // serie chiave: solo dadi
   show('row-dia-disp-dadi', isDadi);                    // barra grezza dadi: solo dadi
@@ -745,6 +785,11 @@ document.querySelectorAll('.toggle-btn').forEach(btn => {
     if (group === 'trattamento') {
       document.getElementById('trattamento-group').style.display =
         btn.dataset.val === 'ON' ? 'block' : 'none';
+    }
+    // tipo_occhio = libero → mostra campi testa e foro
+    if (group === 'tipo_occhio') {
+      document.getElementById('occhio-testa-foro-group').style.display =
+        btn.dataset.val === 'libero' ? 'block' : 'none';
     }
     // tipo_prig = libero → mostra campi m1/b1 manuali
     if (group === 'tipo_prig') {
@@ -892,7 +937,7 @@ function getToggle(group) {
 // 6. Passa R a renderResults()
 // In caso di errore: mostra il messaggio nel pannello risultati
 // invece di far crashare silenziosamente.
-window.calcola = function() {
+window.calcola = async function() {
   if (!T || !TD || !TP) {
     alert('Tabelle non ancora caricate, riprova tra un secondo.');
     return;
@@ -1017,6 +1062,25 @@ window.calcola = function() {
         prezzo_kg:           getNum('prezzo_kg', 1.2),
         forfait:             getNum('forfait', 400),
       }, T, TD);
+    } else if (prodottoCorrente === 'tiranti_occhio') {
+      // ── Tiranti a Occhio — import dinamico ───────────────
+      const { calcolaTirantiOcchio } = await import('./moduli/tiranti_occhio.js');
+      R = calcolaTirantiOcchio({
+        tipo:               getToggleVal('tipo_occhio'),
+        dia_raw:            getStr('dia'),
+        passo:              getStr('passo'),
+        lungh_raw:          getNum('lungh', 100),
+        qta_raw:            getStr('qta'),
+        qta_x:              getNum('qta_x', 0),
+        mat:                getStr('mat'),
+        materiale_speciale: getStr('materiale_speciale'),
+        dens_altro:         getNum('dens_altro', 7.916),
+        costo_mat_override: getNum('costo_mat_override', 0),
+        dia_testa_custom:   getNum('dia_testa_custom', 0),
+        dia_foro_custom:    getNum('dia_foro_custom', 0),
+        dia_disp:           getNum('dia_disp', 50),
+        STAMPAGGIO:         getToggle('stampaggio_occhio'),
+      }, T);
     }
 
     renderResults(R);
@@ -1059,6 +1123,7 @@ function renderResults(R) {
   const isTornito = prodottoCorrente === 'tiranti_torniti';
   const isDadi    = prodottoCorrente === 'dadi';
   const isPrig    = prodottoCorrente === 'prigionieri';
+  const isOcchio  = prodottoCorrente === 'tiranti_occhio';
 
   // ── Funzione bar(): riga del grafico a barre ──────────────
   // pct: percentuale rispetto al costo totale
@@ -1115,6 +1180,18 @@ function renderResults(R) {
       { label: '⟳ Rullatura',    val: R.rulla_fin,   sub: `setup: €${r(R.setup_rull)}` },
       { label: '🏷 Marcatura',    val: R.marc_fin,    sub: '' },
     ];
+  } else if (isOcchio) {
+    righe = [
+      { label: '🟢 Materiale',   val: R.mat_cost,   sub: `peso: ${r(R.peso, 3)} kg` },
+      ...(R.bonifica > 0 ? [{ label: '🔥 Bonifica',     val: R.bonifica, sub: '' }] : []),
+      ...(R.attrez   > 0 ? [{ label: '🔧 Attrezzatura', val: R.attrez,   sub: '' }] : []),
+      { label: '✂ Taglio',       val: R.ta_costo,   sub: `setup: €${r(R.setup_taglio)}` },
+      ...(R.STAMPAGGIO ? [{ label: '⬡ Stampaggio', val: R.st_costo, sub: `setup: €${r(R.setup_stamp)}` }] : []),
+      { label: '◎ Tornitura',    val: R.to_costo,   sub: `setup: €${r(R.setup_torn)}` },
+      { label: '⟋ Fresatura',    val: R.fr_costo,   sub: `setup: €${r(R.setup_fres)}` },
+      { label: '⟳ Rullatura',    val: R.ru_costo,   sub: `setup: €${r(R.setup_rull)}` },
+      { label: '🏷 Marcatura',    val: R.marc_fin,   sub: '' },
+    ];
   } else {
     // Tiranti semplici
     righe = [
@@ -1159,6 +1236,18 @@ function renderResults(R) {
         <div class="cost-row"><div class="cost-row-label">Lungh. filettata</div><div class="cost-row-value">${r(R.lungh_fil, 1)} mm</div></div>
         <div class="cost-row"><div class="cost-row-label">Lungh. liscia</div><div class="cost-row-value">${r(R.lungh_liscia, 1)} mm</div></div>
         <div class="cost-row"><div class="cost-row-label">Ø parte liscia</div><div class="cost-row-value">${r(R.dian_liscia, 2)} mm</div></div>
+        <div class="cost-row"><div class="cost-row-label">Peso finito</div><div class="cost-row-value">${r(R.peso_fin, 3)} kg</div></div>
+      </div>
+    </div>` : '';
+
+  // ── Card geometria tirante a occhio ──────────────────────
+  const occhioInfoHTML = isOcchio ? `
+    <div class="result-card">
+      <div class="breakdown-title">▎ Geometria tirante a occhio</div>
+      <div class="cost-grid" style="margin-top:0">
+        <div class="cost-row"><div class="cost-row-label">Ø testa</div><div class="cost-row-value">${r(R.testa, 1)} mm</div></div>
+        <div class="cost-row"><div class="cost-row-label">Ø foro</div><div class="cost-row-value">${r(R.foro, 1)} mm</div></div>
+        <div class="cost-row"><div class="cost-row-label">Lungh. gambo rullato</div><div class="cost-row-value">${r(R.lungh_g, 1)} mm</div></div>
         <div class="cost-row"><div class="cost-row-label">Peso finito</div><div class="cost-row-value">${r(R.peso_fin, 3)} kg</div></div>
       </div>
     </div>` : '';
@@ -1223,8 +1312,27 @@ function renderResults(R) {
       <div class="tempo-cell"><div class="tc-label">A.Taglio</div><div class="tc-val">300<span class="tc-unit"> s</span></div></div>
       <div class="tempo-cell"><div class="tc-label">A.Torn1</div><div class="tc-val">3600<span class="tc-unit"> s</span></div></div>
       <div class="tempo-cell"><div class="tc-label">A.Rullatura</div><div class="tc-val">1800<span class="tc-unit"> s</span></div></div>`;
+  } else if (isOcchio) {
+    tempiGridHTML = R.STAMPAGGIO ? `
+      <div class="tempo-cell"><div class="tc-label">Taglio</div><div class="tc-val">${Math.round(R.ta_tempo)}<span class="tc-unit"> s</span></div></div>
+      <div class="tempo-cell"><div class="tc-label">Stampaggio</div><div class="tc-val">${Math.round(R.tempo_stamp)}<span class="tc-unit"> s</span></div></div>
+      <div class="tempo-cell"><div class="tc-label">Tornitura</div><div class="tc-val">${Math.round(R.tempo_torn)}<span class="tc-unit"> s</span></div></div>
+      <div class="tempo-cell"><div class="tc-label">Fresatura</div><div class="tc-val">${Math.round(R.tempo_fres)}<span class="tc-unit"> s</span></div></div>
+      <div class="tempo-cell"><div class="tc-label">Rullatura</div><div class="tc-val">${Math.round(R.t_rull)}<span class="tc-unit"> s</span></div></div>
+      <div class="tempo-cell"><div class="tc-label">A.Taglio</div><div class="tc-val">300<span class="tc-unit"> s</span></div></div>
+      <div class="tempo-cell"><div class="tc-label">A.Stamp.</div><div class="tc-val">3600<span class="tc-unit"> s</span></div></div>
+      <div class="tempo-cell"><div class="tc-label">A.Torn1</div><div class="tc-val">3600<span class="tc-unit"> s</span></div></div>
+      <div class="tempo-cell"><div class="tc-label">A.Fresa</div><div class="tc-val">3600<span class="tc-unit"> s</span></div></div>
+      <div class="tempo-cell"><div class="tc-label">A.Rullatura</div><div class="tc-val">1800<span class="tc-unit"> s</span></div></div>` : `
+      <div class="tempo-cell"><div class="tc-label">Taglio</div><div class="tc-val">${Math.round(R.ta_tempo)}<span class="tc-unit"> s</span></div></div>
+      <div class="tempo-cell"><div class="tc-label">Tornitura</div><div class="tc-val">${Math.round(R.tempo_torn)}<span class="tc-unit"> s</span></div></div>
+      <div class="tempo-cell"><div class="tc-label">Fresatura</div><div class="tc-val">${Math.round(R.tempo_fres)}<span class="tc-unit"> s</span></div></div>
+      <div class="tempo-cell"><div class="tc-label">Rullatura</div><div class="tc-val">${Math.round(R.t_rull)}<span class="tc-unit"> s</span></div></div>
+      <div class="tempo-cell"><div class="tc-label">A.Taglio</div><div class="tc-val">300<span class="tc-unit"> s</span></div></div>
+      <div class="tempo-cell"><div class="tc-label">A.Torn1</div><div class="tc-val">3600<span class="tc-unit"> s</span></div></div>
+      <div class="tempo-cell"><div class="tc-label">A.Fresa</div><div class="tc-val">3600<span class="tc-unit"> s</span></div></div>
+      <div class="tempo-cell"><div class="tc-label">A.Rullatura</div><div class="tc-val">1800<span class="tc-unit"> s</span></div></div>`;
   } else {
-    // Tiranti semplici
     tempiGridHTML = `
       <div class="tempo-cell"><div class="tc-label">Taglio</div><div class="tc-val">${Math.round(R.tempo_ta)}<span class="tc-unit"> s</span></div></div>
       <div class="tempo-cell"><div class="tc-label">Smusso</div><div class="tc-val">${Math.round(R.smusso_t)}<span class="tc-unit"> s</span></div></div>
@@ -1264,18 +1372,23 @@ function renderResults(R) {
       ${isDadi  ? bar('Tornitura', R.to + R.setup_to, 'torn') : ''}
       ${isPrig  ? bar('Tornitura', R.to_costo + R.setup_torn, 'torn') : ''}
       ${isPrig  ? bar('Rullatura', R.ru_costo + R.setup_rull, 'rull') : ''}
-      ${!isDadi && !isPrig &&  isTornito ? bar('Tornitura', R.torni_fin + R.setup_torn, 'torn') : ''}
-      ${!isDadi && !isPrig && !isTornito ? bar('Taglio',    R.taglio_fin + R.setup_taglio, 'taglio') : ''}
-      ${!isDadi && !isPrig && !isTornito ? bar('Smusso',    R.smusso_fin + R.setup_smusso, 'smusso') : ''}
-      ${!isDadi && !isPrig ? bar('Rullatura', R.rulla_fin + R.setup_rull, 'rull') : ''}
+      ${isOcchio && R.STAMPAGGIO ? bar('Stampaggio', R.st_costo + R.setup_stamp, 'torn') : ''}
+      ${isOcchio ? bar('Tornitura', R.to_costo + R.setup_torn, 'torn') : ''}
+      ${isOcchio ? bar('Fresatura', R.fr_costo + R.setup_fres, 'smusso') : ''}
+      ${isOcchio ? bar('Rullatura', R.ru_costo + R.setup_rull, 'rull') : ''}
+      ${!isDadi && !isPrig && !isOcchio &&  isTornito ? bar('Tornitura', R.torni_fin + R.setup_torn, 'torn') : ''}
+      ${!isDadi && !isPrig && !isOcchio && !isTornito ? bar('Taglio',    R.taglio_fin + R.setup_taglio, 'taglio') : ''}
+      ${!isDadi && !isPrig && !isOcchio && !isTornito ? bar('Smusso',    R.smusso_fin + R.setup_smusso, 'smusso') : ''}
+      ${!isDadi && !isPrig && !isOcchio ? bar('Rullatura', R.rulla_fin + R.setup_rull, 'rull') : ''}
       ${bar('Marcatura', R.marc_fin, 'marc')}
       ${R.bonifica > 0 ? bar('Bonifica',    R.bonifica, 'bonif') : ''}
       ${R.tratta   > 0 ? bar('Trattamento', R.tratta,   'bonif') : ''}
     </div>
 
-    <!-- 4. Geometria (solo dadi / prigionieri) -->
+    <!-- 4. Geometria (solo dadi / prigionieri / occhio) -->
     ${dadiInfoHTML}
     ${prigInfoHTML}
+    ${occhioInfoHTML}
 
     <!-- 5. Barre (solo con BARRA_GIUSTA) -->
     ${barreHTML}
@@ -1302,8 +1415,8 @@ function renderResults(R) {
     <div class="result-card">
       <div class="breakdown-title">▎ Peso e lotto</div>
       <div class="cost-grid" style="margin-top:0">
-        <!-- diametro medio: non applicabile per i dadi (hanno chiave, non diam. medio) -->
-        ${!isDadi ? `<div class="cost-row"><div class="cost-row-label">Diametro medio</div><div class="cost-row-value">${r(R.diam, 1)} mm</div></div>` : ''}
+        <!-- diametro medio: non applicabile per dadi e occhio -->
+        ${(!isDadi && !isOcchio) ? `<div class="cost-row"><div class="cost-row-label">Diametro medio</div><div class="cost-row-value">${r(R.diam, 1)} mm</div></div>` : ''}
         <div class="cost-row"><div class="cost-row-label">Peso singolo</div><div class="cost-row-value">${r(R.peso, 3)} kg</div></div>
         <div class="cost-row">
           <!-- etichetta dinamica: "sottocommessa" se qta_x > 0, altrimenti "lotto" -->
