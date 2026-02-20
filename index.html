@@ -36,10 +36,10 @@
       <div class="product-name">Prigionieri</div>
       <div class="product-desc">In sviluppo</div>
     </button>
-    <button class="product-btn disabled" disabled>
-      <div class="product-icon">○</div>
+    <button class="product-btn" data-product="dadi">
+      <div class="product-icon">⬡</div>
       <div class="product-name">Dadi</div>
-      <div class="product-desc">In sviluppo</div>
+      <div class="product-desc">UNI 5587 / 5588 / 5589<br>con fresatura o stampaggio</div>
     </button>
     <button class="product-btn disabled" disabled>
       <div class="product-icon">○</div>
@@ -63,6 +63,24 @@
 
       <div class="back-btn-wrap">
         <button class="back-btn" onclick="tornaAlSelettore()">← Cambia prodotto</button>
+      </div>
+
+      <!-- Tipo dado e chiave — solo dadi, in cima -->
+      <div id="row-uni" class="form-group" style="display:none">
+        <label>Tipo dado (UNI)</label>
+        <div class="toggle-group">
+          <button class="toggle-btn active" data-group="uni" data-val="5587">5587 Alto</button>
+          <button class="toggle-btn" data-group="uni" data-val="5588">5588 Medio</button>
+          <button class="toggle-btn" data-group="uni" data-val="5589">5589 Basso</button>
+        </div>
+      </div>
+
+      <div id="row-chiave-tipo" class="form-group" style="display:none">
+        <label>Tipo chiave <span class="label-hint">(solo per pollici)</span></label>
+        <div class="toggle-group">
+          <button class="toggle-btn active" data-group="chiave_tipo" data-val="p">P — pesante</button>
+          <button class="toggle-btn" data-group="chiave_tipo" data-val="l">L — leggera</button>
+        </div>
       </div>
 
       <!-- GEOMETRIA -->
@@ -132,9 +150,13 @@
       </div>
 
       <div class="form-row">
-        <div class="form-group">
+        <div id="row-lungh" class="form-group">
           <label>Lunghezza (mm)</label>
           <input type="number" id="lungh" value="100" min="1">
+        </div>
+        <div id="row-altez" class="form-group" style="display:none">
+          <label>Altezza (mm) <span class="label-hint" id="altez-hint">da tabella</span></label>
+          <input type="number" id="altez_override" value="" step="0.5" placeholder="auto">
         </div>
         <div class="form-group qta-highlight">
           <label>Qtà totale</label>
@@ -242,6 +264,40 @@
         </div>
       </div>
 
+      <!-- Campi specifici DADI -->
+      <div id="row-dia-disp-dadi" class="form-group" style="display:none">
+        <label>Diametro barra grezza (mm)</label>
+        <input type="number" id="dia_disp_dadi" value="60" min="1" step="1">
+      </div>
+
+      <div id="row-stampaggio" class="form-group" style="display:none">
+        <label>Lavorazione</label>
+        <div class="toggle-group">
+          <button class="toggle-btn active" data-group="stampaggio" data-val="OFF">Fresatura</button>
+          <button class="toggle-btn" data-group="stampaggio" data-val="ON">Stampaggio</button>
+        </div>
+      </div>
+
+      <div id="row-trattamento" class="form-group" style="display:none">
+        <label>Trattamento termico</label>
+        <div class="toggle-group">
+          <button class="toggle-btn active" data-group="trattamento" data-val="OFF">OFF</button>
+          <button class="toggle-btn" data-group="trattamento" data-val="ON">ON</button>
+        </div>
+      </div>
+      <div id="trattamento-group" style="display:none">
+        <div class="form-row">
+          <div class="form-group">
+            <label>Prezzo €/kg</label>
+            <input type="number" id="prezzo_kg" value="1.2" step="0.1">
+          </div>
+          <div class="form-group">
+            <label>Forfait minimo (€)</label>
+            <input type="number" id="forfait" value="400" step="10">
+          </div>
+        </div>
+      </div>
+
       <!-- COSTI BASE -->
       <div class="section-divider"></div>
       <div class="section-label">Costi base (€/s)</div>
@@ -273,13 +329,19 @@
 <script type="module">
 import { calcolaTiranti }        from './moduli/tiranti.js';
 import { calcolaTirantiTorniti } from './moduli/tiranti_torniti.js';
+import { calcolaDadi }           from './moduli/dadi.js';
 
 // ─── Carica tabelle JSON ──────────────────────────────────
-let T = null;
-fetch('./tabelle/comune.json')
-  .then(r => r.json())
-  .then(data => { T = data; })
-  .catch(() => { alert('Errore: impossibile caricare comune.json'); });
+let T = null;   // comune.json
+let TD = null;  // dadi.json
+
+Promise.all([
+  fetch('./tabelle/comune.json').then(r => r.json()),
+  fetch('./tabelle/dadi.json').then(r => r.json()),
+]).then(([comune, dadi]) => {
+  T = comune;
+  TD = dadi;
+}).catch(() => { alert('Errore: impossibile caricare le tabelle JSON'); });
 
 // ─── Stato prodotto corrente ──────────────────────────────
 let prodottoCorrente = null;
@@ -297,18 +359,38 @@ function mostraCalcolatore(prodotto) {
   document.getElementById('calculator').style.display = 'block';
 
   const isTornito = prodotto === 'tiranti_torniti';
+  const isDadi    = prodotto === 'dadi';
+  const isTiranti = prodotto === 'tiranti';
 
   // Header
-  document.getElementById('header-title').textContent =
-    isTornito ? 'Tiranti Torniti' : 'Tiranti';
-  document.getElementById('header-sub').textContent =
-    isTornito ? 'Da barra grezza con tornitura' : 'Da barra a diametro medio';
+  const titoli = { tiranti: 'Tiranti', tiranti_torniti: 'Tiranti Torniti', dadi: 'Dadi' };
+  const subs   = { tiranti: 'Da barra a diametro medio', tiranti_torniti: 'Da barra grezza con tornitura', dadi: 'UNI 5587 / 5588 / 5589' };
+  document.getElementById('header-title').textContent = titoli[prodotto] || prodotto;
+  document.getElementById('header-sub').textContent   = subs[prodotto] || '';
 
-  // Campi specifici per prodotto
-  document.getElementById('row-dia-disp').style.display    = isTornito ? 'block' : 'none';
-  document.getElementById('row-prigioniero').style.display = isTornito ? 'none'  : 'block';
-  document.getElementById('row-fantina').style.display     = isTornito ? 'block' : 'none';
-  document.getElementById('row-barra-giusta').style.display= isTornito ? 'block' : 'none';
+  // Lunghezza — nascosta per i dadi (l'altezza è automatica da tabella)
+  document.querySelector('label[for="lungh"]')?.parentElement &&
+    (document.getElementById('lungh').closest('.form-group').style.display = isDadi ? 'none' : 'block');
+
+  // Campi specifici
+  const show = (id, visible) => {
+    const el = document.getElementById(id);
+    if (el) el.style.display = visible ? 'block' : 'none';
+  };
+
+  show('row-lungh',         !isDadi);
+  show('row-altez',          isDadi);
+  show('row-dia-disp',       isTornito);
+  show('row-prigioniero',    isTiranti);
+  show('row-fantina',        isTornito);
+  show('row-barra-giusta',   isTornito);
+  show('row-uni',            isDadi);
+  show('row-chiave-tipo',    isDadi);
+  show('row-dia-disp-dadi',  isDadi);
+  show('row-stampaggio',     isDadi);
+  show('row-trattamento',    isDadi);
+
+  if (isDadi) aggiornaAltezzaDado();
 
   // Reset risultati
   document.getElementById('results').innerHTML = `
@@ -342,6 +424,10 @@ document.querySelectorAll('.toggle-btn').forEach(btn => {
       document.getElementById('lungh-barra-group').style.display =
         btn.dataset.val === 'ON' ? 'block' : 'none';
     }
+    if (group === 'trattamento') {
+      document.getElementById('trattamento-group').style.display =
+        btn.dataset.val === 'ON' ? 'block' : 'none';
+    }
   });
 });
 
@@ -363,7 +449,35 @@ document.getElementById('mat').addEventListener('change', function() {
   document.getElementById('altro-group').style.display = v === 'altro' ? 'block' : 'none';
 });
 
-// ─── Qtà live preview ────────────────────────────────────
+// ─── Auto-fill altezza dado ───────────────────────────────
+function aggiornaAltezzaDado() {
+  if (prodottoCorrente !== 'dadi' || !TD) return;
+  const dia = getStr('dia');
+  const uni = getToggleVal('uni');
+
+  // Diametro nominale: per metrici coincide col numero, per pollici leggiamo dalla tabella comune
+  const dian = T?.diametri_nominali_pollici?.[dia] ?? parseFloat(dia);
+
+  let altez = null;
+  if (uni === '5587') altez = dian;
+  else if (uni === '5588') altez = TD.altezze_5588[String(dia)] ?? null;
+  else if (uni === '5589') altez = TD.altezze_5589[String(dia)] ?? null;
+
+  const input = document.getElementById('altez_override');
+  const hint  = document.getElementById('altez-hint');
+  if (altez !== null) {
+    input.value = altez;
+    hint.textContent = 'da tabella';
+  } else {
+    input.value = '';
+    hint.textContent = '⚠ inserire manualmente';
+  }
+}
+
+document.getElementById('dia').addEventListener('change', aggiornaAltezzaDado);
+document.querySelectorAll('.toggle-btn[data-group="uni"]').forEach(btn => {
+  btn.addEventListener('click', () => setTimeout(aggiornaAltezzaDado, 0));
+});
 function parseQtaUI(raw) {
   const s = String(raw).trim();
   if (!/^[\d\s+]+$/.test(s)) return NaN;
@@ -396,12 +510,15 @@ function getToggle(group) {
   return document.querySelector(`.toggle-btn.active[data-group="${group}"]`)
     ?.dataset.val === 'ON';
 }
+function getToggleVal(group) {
+  return document.querySelector(`.toggle-btn.active[data-group="${group}"]`)
+    ?.dataset.val || '';
+}
 
 // ─── CALCOLA ──────────────────────────────────────────────
 window.calcola = function() {
-  if (!T) { alert('Tabelle non ancora caricate, riprova tra un secondo.'); return; }
+  if (!T || !TD) { alert('Tabelle non ancora caricate, riprova tra un secondo.'); return; }
   try {
-    // Leggi costi base dall'interfaccia (sovrascrivono il JSON)
     T.costi_base.co1 = getNum('co1', 0.018);
     T.costi_base.co2 = getNum('co2', 0.022);
 
@@ -421,7 +538,7 @@ window.calcola = function() {
         fil_a:              getNum('fil_a', 25),
         fil_b:              getNum('fil_b', 25),
       }, T);
-    } else {
+    } else if (prodottoCorrente === 'tiranti_torniti') {
       R = calcolaTirantiTorniti({
         dia_raw:            getStr('dia'),
         passo:              getStr('passo'),
@@ -437,6 +554,44 @@ window.calcola = function() {
         BARRA_GIUSTA:       getToggle('barra_giusta'),
         lungh_barra:        getNum('lungh_barra', 3000),
       }, T);
+    } else if (prodottoCorrente === 'dadi') {
+      // Validazione diametro di partenza
+      const _diaDisp  = getNum('dia_disp_dadi', 60);
+      const _dia      = getStr('dia');
+      const _chiaveT  = getToggleVal('chiave_tipo');
+      const _chiave   = TD.chiavi_metriche[_dia]
+                     ?? TD.chiavi_pollici_p[_dia]
+                     ?? TD.chiavi_pollici_l[_dia];
+      if (_chiave) {
+        const _spigolo = _chiave * 1.154;
+        const _stamp   = getToggle('stampaggio');
+        if (!_stamp && _diaDisp < _spigolo) {
+          alert(`⚠ Diametro barra (${_diaDisp} mm) inferiore allo spigolo esagono (${_spigolo.toFixed(1)} mm).\nPer fresare devi partire da un tondo più grosso.`);
+          return;
+        }
+        if (_stamp && _diaDisp >= _chiave) {
+          alert(`⚠ Diametro barra (${_diaDisp} mm) superiore o uguale alla chiave (${_chiave} mm).\nPer stampare devi partire da un tondo più piccolo della chiave.`);
+          return;
+        }
+      }
+      R = calcolaDadi({
+        UNI:                getToggleVal('uni'),
+        dia_raw:            getStr('dia'),
+        passo:              getStr('passo'),
+        chiave_tipo:        getToggleVal('chiave_tipo'),
+        altez_override:     getNum('altez_override', 0),
+        qta_raw:            getStr('qta'),
+        qta_x:              getNum('qta_x', 0),
+        mat:                getStr('mat'),
+        materiale_speciale: getStr('materiale_speciale'),
+        dens_altro:         getNum('dens_altro', 7.916),
+        costo_mat_override: getNum('costo_mat_override', 0),
+        dia_disp:           getNum('dia_disp_dadi', 60),
+        STAMPAGGIO:         getToggle('stampaggio'),
+        TRATTAMENTO_TERMICO: getToggle('trattamento'),
+        prezzo_kg:          getNum('prezzo_kg', 1.2),
+        forfait:            getNum('forfait', 400),
+      }, T, TD);
     }
 
     renderResults(R);
@@ -446,16 +601,15 @@ window.calcola = function() {
   }
 };
 
-// ─── RENDER RISULTATI ─────────────────────────────────────
 function r(n, d=2) { return (typeof n === 'number' && !isNaN(n)) ? n.toFixed(d) : '—'; }
 
 function renderResults(R) {
   const panel = document.getElementById('results');
   const isTornito = prodottoCorrente === 'tiranti_torniti';
+  const isDadi    = prodottoCorrente === 'dadi';
 
-  const total = R.costo_tot;
   function bar(label, val, cls) {
-    const pct = total > 0 ? Math.max(2, (val / total) * 100) : 0;
+    const pct = R.costo_tot > 0 ? Math.max(2, (val / R.costo_tot) * 100) : 0;
     return `<div class="bar-row">
       <div class="bar-label">${label}</div>
       <div class="bar-track"><div class="bar-fill ${cls}" style="width:${pct}%"></div></div>
@@ -463,105 +617,148 @@ function renderResults(R) {
     </div>`;
   }
 
-  // Card costi lavorazione
-  const righe_costi = [
-    { label: '🟢 Materiale',  val: R.mat_cost,   sub: `peso: ${r(R.peso,3)} kg` },
-    ...(R.bonifica > 0 ? [{ label: '🔥 Bonifica', val: R.bonifica, sub: '' }] : []),
-    ...(R.attrez > 0   ? [{ label: '🔧 Attrezzatura', val: R.attrez, sub: '' }] : []),
-    ...(!isTornito ? [{ label: '✂ Taglio',   val: R.taglio_fin, sub: `setup: €${r(R.setup_taglio)}` }] : []),
-    ...(!isTornito ? [{ label: '⟋ Smusso',   val: R.smusso_fin, sub: `setup: €${r(R.setup_smusso)}` }] : []),
-    ...(isTornito && !R.FANTINA && R.tempo_ta !== null
-      ? [{ label: '✂ Taglio', val: R.taglio_fin, sub: `setup: €${r(R.setup_taglio)}` }] : []),
-    ...(isTornito
-      ? [{ label: '◎ Tornitura', val: R.torni_fin, sub: `setup: €${r(R.setup_torn)}` }] : []),
-    { label: '⟳ Rullatura', val: R.rulla_fin,  sub: `setup: €${r(R.setup_rull)}` },
-    { label: '🏷 Marcatura', val: R.marc_fin,   sub: '' },
-  ];
+  // ── Righe costi ──
+  let righe = [];
+  if (isDadi) {
+    righe = [
+      { label: '🟢 Materiale',   val: R.mat_cost,  sub: `peso: ${r(R.peso,3)} kg` },
+      ...(R.tratta > 0  ? [{ label: '🌡 Trattamento', val: R.tratta,   sub: '' }] : []),
+      ...(R.placc > 0   ? [{ label: '🔧 Placchette',  val: R.placc,    sub: '' }] : []),
+      { label: '✂ Taglio',      val: R.ta,        sub: `setup: €${r(R.setup_ta)}` },
+      ...(R.pt_serve ? [{ label: '◎ Prima torn.', val: R.pt_costo, sub: `setup: €${r(R.setup_pt)}` }] : []),
+      ...(R.STAMPAGGIO
+        ? [{ label: '⬡ Stampaggio', val: R.st, sub: `setup: €${r(R.setup_st)}` }]
+        : [{ label: '⟋ Fresatura',  val: R.fr, sub: `setup: €${r(R.setup_fr)}` }]),
+      { label: '◎ Tornitura',   val: R.to,        sub: `setup: €${r(R.setup_to)}` },
+      { label: '🏷 Marcatura',   val: R.marc_fin,  sub: '' },
+    ];
+  } else if (isTornito) {
+    righe = [
+      { label: '🟢 Materiale',  val: R.mat_cost,   sub: `peso: ${r(R.peso,3)} kg` },
+      ...(R.bonifica > 0 ? [{ label: '🔥 Bonifica', val: R.bonifica, sub: '' }] : []),
+      ...(R.attrez > 0   ? [{ label: '🔧 Attrezzatura', val: R.attrez, sub: '' }] : []),
+      ...(!R.FANTINA && R.tempo_ta !== null
+        ? [{ label: '✂ Taglio', val: R.taglio_fin, sub: `setup: €${r(R.setup_taglio)}` }] : []),
+      { label: '◎ Tornitura',  val: R.torni_fin,  sub: `setup: €${r(R.setup_torn)}` },
+      { label: '⟳ Rullatura',  val: R.rulla_fin,  sub: `setup: €${r(R.setup_rull)}` },
+      { label: '🏷 Marcatura',  val: R.marc_fin,   sub: '' },
+    ];
+  } else {
+    righe = [
+      { label: '🟢 Materiale',  val: R.mat_cost,   sub: `peso: ${r(R.peso,3)} kg` },
+      ...(R.bonifica > 0 ? [{ label: '🔥 Bonifica', val: R.bonifica, sub: '' }] : []),
+      { label: '✂ Taglio',     val: R.taglio_fin,  sub: `setup: €${r(R.setup_taglio)}` },
+      { label: '⟋ Smusso',     val: R.smusso_fin,  sub: `setup: €${r(R.setup_smusso)}` },
+      { label: '⟳ Rullatura',  val: R.rulla_fin,   sub: `setup: €${r(R.setup_rull)}` },
+      { label: '🏷 Marcatura',  val: R.marc_fin,    sub: '' },
+    ];
+  }
 
-  const gridHTML = righe_costi.map(row => `
+  const gridHTML = righe.map(row => `
     <div class="cost-row">
       <div class="cost-row-label">${row.label}</div>
       <div class="cost-row-value">€${r(row.val)}</div>
       ${row.sub ? `<div class="cost-row-sub">${row.sub}</div>` : ''}
     </div>`).join('');
 
-  // Breakdown barre (solo BARRA_GIUSTA)
+  // ── Breakdown barre ──
   const barreHTML = (isTornito && R.BARRA_GIUSTA) ? `
     <div class="result-card">
       <div class="breakdown-title">▎ Barre utilizzate</div>
       <div class="cost-grid" style="margin-top:0">
-        <div class="cost-row">
-          <div class="cost-row-label">N° barre</div>
-          <div class="cost-row-value">${R.num_barre}</div>
-        </div>
-        <div class="cost-row">
-          <div class="cost-row-label">Peso barre</div>
-          <div class="cost-row-value">${r(R.peso_barre,2)} kg</div>
-        </div>
+        <div class="cost-row"><div class="cost-row-label">N° barre</div><div class="cost-row-value">${R.num_barre}</div></div>
+        <div class="cost-row"><div class="cost-row-label">Peso barre</div><div class="cost-row-value">${r(R.peso_barre,2)} kg</div></div>
       </div>
     </div>` : '';
 
-  // Tempi
+  // ── Info geometria dadi ──
+  const dadiInfoHTML = isDadi ? `
+    <div class="result-card">
+      <div class="breakdown-title">▎ Geometria dado</div>
+      <div class="cost-grid" style="margin-top:0">
+        <div class="cost-row"><div class="cost-row-label">Chiave</div><div class="cost-row-value">${r(R.chiave,1)} mm</div></div>
+        <div class="cost-row"><div class="cost-row-label">Spigolo</div><div class="cost-row-value">${r(R.spigolo,1)} mm</div></div>
+        <div class="cost-row"><div class="cost-row-label">Altezza</div><div class="cost-row-value">${r(R.altez,1)} mm</div></div>
+        <div class="cost-row"><div class="cost-row-label">Peso finito</div><div class="cost-row-value">${r(R.peso_fin,3)} kg</div></div>
+      </div>
+    </div>` : '';
+
+  // ── Tempi grid ──
   let tempiGridHTML = '';
-  if (isTornito) {
-    if (R.FANTINA) {
-      tempiGridHTML = `
-        <div class="tempo-cell"><div class="tc-label">Tornitura (fantina)</div><div class="tc-val">${Math.round(R.tempo_torn_fantina)}<span class="tc-unit"> s</span></div></div>
-        <div class="tempo-cell"><div class="tc-label">Rullatura</div><div class="tc-val">${Math.round(R.t_rull)}<span class="tc-unit"> s</span></div></div>
-        <div class="tempo-cell"><div class="tc-label">A.Torn2 (fisso)</div><div class="tc-val">7200<span class="tc-unit"> s</span></div></div>
-        <div class="tempo-cell"><div class="tc-label">A.Rullatura (fisso)</div><div class="tc-val">1800<span class="tc-unit"> s</span></div></div>`;
-    } else {
+  if (isDadi) {
+    if (R.STAMPAGGIO) {
       tempiGridHTML = `
         <div class="tempo-cell"><div class="tc-label">Taglio</div><div class="tc-val">${Math.round(R.tempo_ta)}<span class="tc-unit"> s</span></div></div>
-        <div class="tempo-cell"><div class="tc-label">Tornitura</div><div class="tc-val">${Math.round(R.tempo_torn_def)}<span class="tc-unit"> s</span></div></div>
-        <div class="tempo-cell"><div class="tc-label">Rullatura</div><div class="tc-val">${Math.round(R.t_rull)}<span class="tc-unit"> s</span></div></div>
-        <div class="tempo-cell"><div class="tc-label">A.Taglio (fisso)</div><div class="tc-val">300<span class="tc-unit"> s</span></div></div>
-        <div class="tempo-cell"><div class="tc-label">A.Torn1 (fisso)</div><div class="tc-val">3600<span class="tc-unit"> s</span></div></div>
-        <div class="tempo-cell"><div class="tc-label">A.Rullatura (fisso)</div><div class="tc-val">1800<span class="tc-unit"> s</span></div></div>`;
+        <div class="tempo-cell"><div class="tc-label">Stampaggio</div><div class="tc-val">${Math.round(R.tempo_st)}<span class="tc-unit"> s</span></div></div>
+        <div class="tempo-cell"><div class="tc-label">Tornitura</div><div class="tc-val">${Math.round(R.tempo_to)}<span class="tc-unit"> s</span></div></div>
+        <div class="tempo-cell"><div class="tc-label">A.Taglio</div><div class="tc-val">300<span class="tc-unit"> s</span></div></div>
+        <div class="tempo-cell"><div class="tc-label">A.Stamp.</div><div class="tc-val">3600<span class="tc-unit"> s</span></div></div>
+        <div class="tempo-cell"><div class="tc-label">A.Torn.</div><div class="tc-val">3600<span class="tc-unit"> s</span></div></div>`;
+    } else {
+      tempiGridHTML = `
+        ${R.pt_serve ? `<div class="tempo-cell"><div class="tc-label">Prima torn.</div><div class="tc-val">${Math.round(R.pt_tempo)}<span class="tc-unit"> s</span></div></div>` : ''}
+        <div class="tempo-cell"><div class="tc-label">Taglio</div><div class="tc-val">${Math.round(R.tempo_ta)}<span class="tc-unit"> s</span></div></div>
+        <div class="tempo-cell"><div class="tc-label">Tornitura</div><div class="tc-val">${Math.round(R.tempo_to)}<span class="tc-unit"> s</span></div></div>
+        <div class="tempo-cell"><div class="tc-label">Fresatura</div><div class="tc-val">${Math.round(R.tempo_fr)}<span class="tc-unit"> s</span></div></div>
+        ${R.pt_serve ? `<div class="tempo-cell"><div class="tc-label">A.Prima torn.</div><div class="tc-val">3600<span class="tc-unit"> s</span></div></div>` : ''}
+        <div class="tempo-cell"><div class="tc-label">A.Taglio</div><div class="tc-val">300<span class="tc-unit"> s</span></div></div>
+        <div class="tempo-cell"><div class="tc-label">A.Torn.</div><div class="tc-val">3600<span class="tc-unit"> s</span></div></div>
+        <div class="tempo-cell"><div class="tc-label">A.Fresa</div><div class="tc-val">3600<span class="tc-unit"> s</span></div></div>`;
     }
+  } else if (isTornito) {
+    tempiGridHTML = R.FANTINA ? `
+      <div class="tempo-cell"><div class="tc-label">Tornitura (fantina)</div><div class="tc-val">${Math.round(R.tempo_torn_fantina)}<span class="tc-unit"> s</span></div></div>
+      <div class="tempo-cell"><div class="tc-label">Rullatura</div><div class="tc-val">${Math.round(R.t_rull)}<span class="tc-unit"> s</span></div></div>
+      <div class="tempo-cell"><div class="tc-label">A.Torn2</div><div class="tc-val">7200<span class="tc-unit"> s</span></div></div>
+      <div class="tempo-cell"><div class="tc-label">A.Rullatura</div><div class="tc-val">1800<span class="tc-unit"> s</span></div></div>` : `
+      <div class="tempo-cell"><div class="tc-label">Taglio</div><div class="tc-val">${Math.round(R.tempo_ta)}<span class="tc-unit"> s</span></div></div>
+      <div class="tempo-cell"><div class="tc-label">Tornitura</div><div class="tc-val">${Math.round(R.tempo_torn_def)}<span class="tc-unit"> s</span></div></div>
+      <div class="tempo-cell"><div class="tc-label">Rullatura</div><div class="tc-val">${Math.round(R.t_rull)}<span class="tc-unit"> s</span></div></div>
+      <div class="tempo-cell"><div class="tc-label">A.Taglio</div><div class="tc-val">300<span class="tc-unit"> s</span></div></div>
+      <div class="tempo-cell"><div class="tc-label">A.Torn1</div><div class="tc-val">3600<span class="tc-unit"> s</span></div></div>
+      <div class="tempo-cell"><div class="tc-label">A.Rullatura</div><div class="tc-val">1800<span class="tc-unit"> s</span></div></div>`;
   } else {
     tempiGridHTML = `
       <div class="tempo-cell"><div class="tc-label">Taglio</div><div class="tc-val">${Math.round(R.tempo_ta)}<span class="tc-unit"> s</span></div></div>
       <div class="tempo-cell"><div class="tc-label">Smusso</div><div class="tc-val">${Math.round(R.smusso_t)}<span class="tc-unit"> s</span></div></div>
       <div class="tempo-cell"><div class="tc-label">Rullatura</div><div class="tc-val">${Math.round(R.t_rull)}<span class="tc-unit"> s</span></div></div>
-      <div class="tempo-cell"><div class="tc-label">A.Taglio (fisso)</div><div class="tc-val">300<span class="tc-unit"> s</span></div></div>
-      <div class="tempo-cell"><div class="tc-label">A.Smusso (fisso)</div><div class="tc-val">1800<span class="tc-unit"> s</span></div></div>
-      <div class="tempo-cell"><div class="tc-label">A.Rullatura (fisso)</div><div class="tc-val">1800<span class="tc-unit"> s</span></div></div>`;
+      <div class="tempo-cell"><div class="tc-label">A.Taglio</div><div class="tc-val">300<span class="tc-unit"> s</span></div></div>
+      <div class="tempo-cell"><div class="tc-label">A.Smusso</div><div class="tc-val">1800<span class="tc-unit"> s</span></div></div>
+      <div class="tempo-cell"><div class="tc-label">A.Rullatura</div><div class="tc-val">1800<span class="tc-unit"> s</span></div></div>`;
   }
 
   panel.innerHTML = `
-    <!-- Costo Totale -->
     <div class="result-card primary">
       <div class="cost-header">● COSTO TOTALE UNITARIO</div>
       <div class="cost-value"><span class="currency">€</span>${r(R.costo_tot)}<span class="unit">/ pz</span></div>
       <div class="cost-summary">
         Lavorazione: <strong>€${r(R.costo_lav)}</strong>&nbsp;&nbsp;|&nbsp;&nbsp;
         Materiale: <strong>€${r(R.mat_cost)}</strong>
-        ${R.bonifica > 0 ? `&nbsp;&nbsp;|&nbsp;&nbsp;Bonifica: <strong>€${r(R.bonifica)}</strong>` : ''}
+        ${(R.bonifica > 0) ? `&nbsp;&nbsp;|&nbsp;&nbsp;Bonifica: <strong>€${r(R.bonifica)}</strong>` : ''}
+        ${(R.tratta > 0)   ? `&nbsp;&nbsp;|&nbsp;&nbsp;Trattamento: <strong>€${r(R.tratta)}</strong>` : ''}
       </div>
     </div>
 
-    <!-- Grid costi -->
     <div class="cost-grid">${gridHTML}</div>
 
-    <!-- Breakdown visuale -->
     <div class="result-card">
       <div class="breakdown-title">▎ Composizione costo unitario</div>
-      ${bar('Materiale',  R.mat_cost, 'mat')}
-      ${isTornito
-        ? bar('Tornitura', R.torni_fin + R.setup_torn, 'torn')
-        : bar('Taglio',    R.taglio_fin + R.setup_taglio, 'taglio')}
-      ${!isTornito ? bar('Smusso', R.smusso_fin + R.setup_smusso, 'smusso') : ''}
-      ${isTornito && !R.FANTINA && R.taglio_fin > 0
-        ? bar('Taglio', R.taglio_fin + R.setup_taglio, 'taglio') : ''}
-      ${bar('Rullatura', R.rulla_fin + R.setup_rull, 'rull')}
+      ${bar('Materiale', R.mat_cost, 'mat')}
+      ${isDadi && R.STAMPAGGIO  ? bar('Stampaggio', R.st + R.setup_st, 'torn') : ''}
+      ${isDadi && !R.STAMPAGGIO ? bar('Fresatura',  R.fr + R.setup_fr, 'smusso') : ''}
+      ${isDadi ? bar('Tornitura', R.to + R.setup_to, 'torn') : ''}
+      ${!isDadi && isTornito    ? bar('Tornitura', R.torni_fin + R.setup_torn, 'torn') : ''}
+      ${!isDadi && !isTornito   ? bar('Taglio',    R.taglio_fin + R.setup_taglio, 'taglio') : ''}
+      ${!isDadi && !isTornito   ? bar('Smusso',    R.smusso_fin + R.setup_smusso, 'smusso') : ''}
+      ${!isDadi ? bar('Rullatura', R.rulla_fin + R.setup_rull, 'rull') : ''}
       ${bar('Marcatura', R.marc_fin, 'marc')}
-      ${R.bonifica > 0 ? bar('Bonifica', R.bonifica, 'bonif') : ''}
+      ${(R.bonifica > 0) ? bar('Bonifica', R.bonifica, 'bonif') : ''}
+      ${(R.tratta > 0)   ? bar('Trattamento', R.tratta, 'bonif') : ''}
     </div>
 
+    ${dadiInfoHTML}
     ${barreHTML}
 
-    <!-- Tempi -->
     <div class="result-card">
       <div class="breakdown-title">▎ Tempi (secondi per pezzo)</div>
       <div class="tempi-grid">${tempiGridHTML}</div>
@@ -575,18 +772,11 @@ function renderResults(R) {
       </div>
     </div>
 
-    <!-- Peso -->
     <div class="result-card">
       <div class="breakdown-title">▎ Peso e lotto</div>
       <div class="cost-grid" style="margin-top:0">
-        <div class="cost-row">
-          <div class="cost-row-label">Diametro medio</div>
-          <div class="cost-row-value">${r(R.diam,1)} mm</div>
-        </div>
-        <div class="cost-row">
-          <div class="cost-row-label">Peso singolo</div>
-          <div class="cost-row-value">${r(R.peso,3)} kg</div>
-        </div>
+        ${!isDadi ? `<div class="cost-row"><div class="cost-row-label">Diametro medio</div><div class="cost-row-value">${r(R.diam,1)} mm</div></div>` : ''}
+        <div class="cost-row"><div class="cost-row-label">Peso singolo</div><div class="cost-row-value">${r(R.peso,3)} kg</div></div>
         <div class="cost-row">
           <div class="cost-row-label">${R.qta_x > 0 ? `⭐ Peso sottocommessa (×${R.qta_x})` : `⭐ Peso lotto (×${R.qta})`}</div>
           <div class="cost-row-value accent">${r(R.peso_principale,2)} kg</div>
@@ -606,11 +796,9 @@ function renderResults(R) {
     </div>
 
     ${R.messages && R.messages.length > 0
-      ? R.messages.map(m => `<div class="info-box">${m}</div>`).join('')
-      : ''}
+      ? R.messages.map(m => `<div class="info-box">${m}</div>`).join('') : ''}
   `;
 
-  // Copia gestionale
   panel.querySelector('.copia-btn')?.addEventListener('click', function() {
     const text = (this.dataset.tempi || '').replace(/\\n/g, '\n');
     navigator.clipboard.writeText(text).catch(() => {
