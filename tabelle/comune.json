@@ -1,0 +1,219 @@
+{
+  "costi_base": {
+    "co1": 0.018,
+    "co2": 0.022
+  },
+
+  "costi_materiali": {
+    "B7":    1.87,
+    "L7":    2.09,
+    "B7M":   1.98,
+    "42CD4": 1.815,
+    "inox":  0,
+    "altro": 0
+  },
+
+  "densita": {
+    "B7":    7.85,
+    "L7":    7.85,
+    "B7M":   7.85,
+    "42CD4": 7.85,
+    "inox":  8.00,
+    "altro": null
+  },
+
+  "diametri_medi_metrici": {
+    "8":  { "F": 7.15, "G": 7.15 },
+    "10": { "F": 8.90, "G": 8.90 },
+    "12": { "F": 11.10, "G": 10.8 },
+    "14": { "F": 12.9,  "G": 12.6 },
+    "16": { "F": 14.9,  "G": 14.6 },
+    "18": { "F": 16.9,  "G": 16.3 },
+    "20": { "F": 18.9,  "G": 18.2 },
+    "22": { "F": 20.9,  "G": 20.3 },
+    "24": { "F": 22.8,  "G": 21.9 },
+    "27": { "F": 25.5,  "G": 24.9 },
+    "30": { "F": 28.6,  "G": 27.6 },
+    "33": { "F": 31.6,  "G": 30.6 },
+    "36": { "F": 33.9,  "G": 33.2 },
+    "39": { "F": 36.9,  "G": 36.2 },
+    "42": { "F": 39.9,  "G": 38.9 },
+    "45": { "F": 42.9,  "G": 41.9 },
+    "48": { "F": 45.9,  "G": 44.5 },
+    "52": { "F": 49.9,  "G": 48.6 },
+    "56": { "F": 53.9,  "G": 52.2 },
+    "60": { "F": 57.2,  "G": 56.6 },
+    "64": { "F": 61.2,  "G": 59.9 }
+  },
+
+  "diametri_medi_pollici": {
+    "5/16": { "UNC": 6.90,  "UNF": 7.20 },
+    "3/8":  { "UNC": 8.50,  "UNF": 8.80 },
+    "7/16": { "UNC": 9.80,  "UNF": 10.20 },
+    "1/2":  { "UNC": 11.35, "UNF": 11.80 },
+    "9/16": { "UNC": 12.80, "UNF": 13.30 },
+    "5/8":  { "UNC": 14.30, "UNF": 14.90 },
+    "3/4":  { "UNC": 17.30, "UNF": 17.90 },
+    "7/8":  { "UNC": 20.30, "UNF": 20.90 },
+    "1000": { "UNC": 23.20, "UNF": 23.90, "8UN": 23.20 },
+    "1108": { "UNC": 26.10, "UNF": 27.10, "8UN": 26.40 },
+    "1104": { "UNC": 29.20, "UNF": 30.20, "8UN": 29.60 },
+    "1308": { "UNC": 32.00, "UNF": 33.40, "8UN": 32.70 },
+    "1102": { "UNC": 35.10, "UNF": 36.60, "8UN": 35.90 },
+    "1508": { "8UN": 39.05 },
+    "1304": { "8UN": 42.20 },
+    "1708": { "8UN": 45.40 },
+    "2000": { "8UN": 48.70 },
+    "2104": { "8UN": 54.95 },
+    "2102": { "8UN": 61.25 },
+    "2304": { "8UN": 67.65 },
+    "3000": { "8UN": 73.95 }
+  },
+
+  "diametri_nominali_pollici": {
+    "5/16": 7.94,
+    "3/8":  9.53,
+    "7/16": 11.12,
+    "1/2":  12.70,
+    "9/16": 14.29,
+    "5/8":  15.88,
+    "3/4":  19.05,
+    "7/8":  22.23,
+    "1000": 25.40,
+    "1108": 28.58,
+    "1104": 29.55,
+    "1308": 31.75,
+    "1102": 38.10,
+    "1508": 41.28,
+    "1304": 44.45,
+    "1708": 47.63,
+    "2000": 50.80,
+    "2104": 57.15,
+    "2102": 63.50,
+    "2304": 69.85,
+    "3000": 76.20,
+    "3104": 82.55
+  },
+
+  "marcatura": [
+    { "fino_a": 20.00,  "costo": 0.20 },
+    { "fino_a": 36.00,  "costo": 0.30 },
+    { "fino_a": 54.95,  "costo": 0.40 },
+    { "fino_a": 67.65,  "costo": 0.50 },
+    { "fino_a": 85.00,  "costo": 0.80 }
+  ],
+
+  "rullatura": {
+    "standard": [
+      { "fino_a": 21.99,  "divisore": 12 },
+      { "fino_a": 25.99,  "divisore": 10 },
+      { "fino_a": 32.99,  "divisore": 8  },
+      { "fino_a": 42.99,  "divisore": 7  },
+      { "fino_a": 50.99,  "divisore": 6  },
+      { "fino_a": 60.99,  "divisore": 4  },
+      { "fino_a": 70.99,  "divisore": 3  },
+      { "fino_a": 100.99, "divisore": 2  }
+    ],
+    "inox_altro": [
+      { "fino_a": 21.99,  "divisore": 10  },
+      { "fino_a": 25.99,  "divisore": 18  },
+      { "fino_a": 32.99,  "divisore": 6   },
+      { "fino_a": 42.99,  "divisore": 5   },
+      { "fino_a": 50.99,  "divisore": 4   },
+      { "fino_a": 60.99,  "divisore": 2   },
+      { "fino_a": 70.99,  "divisore": 1.5 },
+      { "fino_a": 100.99, "divisore": 1   }
+    ],
+    "minimi": [
+      { "dian_da": 0,  "dian_a": 20, "minimo": 10 },
+      { "dian_da": 20, "dian_a": 30, "minimo": 15 },
+      { "dian_da": 30, "dian_a": 40, "minimo": 18 },
+      { "dian_da": 40, "dian_a": 50, "minimo": 22 },
+      { "dian_da": 50, "dian_a": 65, "minimo": 28 },
+      { "dian_da": 65, "dian_a": 999,"minimo": 35 }
+    ]
+  },
+
+  "taglio": {
+    "standard": [
+      { "fino_a": 20,    "costo": 0.20 },
+      { "fino_a": 33,    "costo": 0.30 },
+      { "fino_a": 52,    "costo": 0.40 },
+      { "fino_a": 56,    "costo": 0.50 },
+      { "fino_a": 63,    "costo": 0.60 },
+      { "fino_a": 85,    "costo": 1.00 }
+    ],
+    "inox_altro": [
+      { "fino_a": 20,    "costo": 0.30 },
+      { "fino_a": 33,    "costo": 0.40 },
+      { "fino_a": 52,    "costo": 0.50 },
+      { "fino_a": 56,    "costo": 0.70 },
+      { "fino_a": 63,    "costo": 0.80 }
+    ]
+  },
+
+  "smusso": {
+    "standard": [
+      { "fino_a": 22.00,  "secondi": 20  },
+      { "fino_a": 42.20,  "secondi": 30  },
+      { "fino_a": 52.00,  "secondi": 60  },
+      { "fino_a": 56.00,  "secondi": 120 },
+      { "fino_a": 63.00,  "secondi": 140 },
+      { "fino_a": 85.00,  "secondi": 200 }
+    ],
+    "inox_altro": [
+      { "fino_a": 22.00,  "secondi": 30  },
+      { "fino_a": 42.20,  "secondi": 40  },
+      { "fino_a": 52.00,  "secondi": 70  },
+      { "fino_a": 56.00,  "secondi": 130 },
+      { "fino_a": 63.00,  "secondi": 150 }
+    ],
+    "moltiplicatori_lunghezza": [
+      { "da": 500,  "a": 600,  "mult": 1.5 },
+      { "da": 600,  "a": 700,  "mult": 2.0 },
+      { "da": 700,  "a": 800,  "mult": 2.5 },
+      { "da": 800,  "a": 900,  "mult": 3.0 },
+      { "da": 900,  "a": 1000, "mult": 3.5 },
+      { "da": 1000, "a": 1200, "mult": 4.0 },
+      { "da": 1200, "a": 1400, "mult": 4.5 },
+      { "da": 1400, "a": 1600, "mult": 5.0 },
+      { "da": 1600, "a": 1800, "mult": 5.5 },
+      { "da": 1800, "a": 2000, "mult": 6.0 },
+      { "da": 2000, "a": 2300, "mult": 6.5 }
+    ]
+  },
+
+  "bonifica_42CD4": {
+    "piccolo_corto":  { "moltiplicatore": 1.20, "minimo_lotto": 400 },
+    "piccolo_lungo":  { "moltiplicatore": 1.45, "minimo_lotto": 420 },
+    "grande_corto":   { "moltiplicatore": 1.50, "minimo_lotto": 400 },
+    "grande_lungo":   { "moltiplicatore": 1.60, "minimo_lotto": 420 }
+  },
+
+  "modificatore_peso": [
+    { "totale_da": 900, "coefficiente": 1.005 },
+    { "totale_da": 800, "coefficiente": 1.010 },
+    { "totale_da": 700, "coefficiente": 1.020 },
+    { "totale_da": 600, "coefficiente": 1.030 },
+    { "totale_da": 500, "coefficiente": 1.040 },
+    { "totale_da": 400, "coefficiente": 1.050 },
+    { "totale_da": 300, "coefficiente": 1.060 },
+    { "totale_da": 200, "coefficiente": 1.070 },
+    { "totale_da": 100, "coefficiente": 1.080 },
+    { "totale_da": 0,   "coefficiente": 1.090 }
+  ],
+
+  "setup_secondi": {
+    "taglio":              300,
+    "smusso":             1800,
+    "rullatura":          1800,
+    "tornitura_normale":  3600,
+    "tornitura_fantina":  7200
+  },
+
+  "materiali_speciali_k": {
+    "F53": 2.50,
+    "660": 3.42,
+    "718": 3.42
+  }
+}
