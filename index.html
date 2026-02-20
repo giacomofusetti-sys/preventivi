@@ -1,13 +1,57 @@
 <!DOCTYPE html>
+<!--
+  ╔══════════════════════════════════════════════════════════════╗
+  ║  PREVENTIVI — Calcolo Costi di Produzione                    ║
+  ║  index.html — Interfaccia principale                         ║
+  ╠══════════════════════════════════════════════════════════════╣
+  ║  STRUTTURA DEL PROGETTO:                                     ║
+  ║                                                              ║
+  ║  index.html           ← questo file: UI + logica             ║
+  ║  stile.css            ← design (colori, layout, font...)     ║
+  ║                                                              ║
+  ║  tabelle/             ← dati in JSON: modificabili senza     ║
+  ║    comune.json          toccare il codice                    ║
+  ║    dadi.json                                                 ║
+  ║    prigionieri.json                                          ║
+  ║                                                              ║
+  ║  lib/                                                        ║
+  ║    calcolo_comune.js  ← funzioni condivise tra tutti i       ║
+  ║                         moduli (peso, materiale, ecc.)       ║
+  ║                                                              ║
+  ║  moduli/              ← un file .js per ogni prodotto        ║
+  ║    tiranti.js                                                ║
+  ║    tiranti_torniti.js                                        ║
+  ║    dadi.js                                                   ║
+  ║    prigionieri.js                                            ║
+  ╠══════════════════════════════════════════════════════════════╣
+  ║  FLUSSO DI ESECUZIONE:                                       ║
+  ║  1. L'utente sceglie il prodotto                             ║
+  ║  2. mostraCalcolatore() mostra i campi giusti                ║
+  ║  3. L'utente compila e preme CALCOLA                         ║
+  ║  4. calcola() legge i valori e chiama il modulo giusto       ║
+  ║  5. Il modulo restituisce un oggetto R con tutti i risultati ║
+  ║  6. renderResults(R) costruisce e mostra i risultati         ║
+  ╚══════════════════════════════════════════════════════════════╝
+-->
 <html lang="it">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Preventivi — Calcolo Costi</title>
-<link rel="stylesheet" href="stile.css">
+  <meta charset="UTF-8">
+  <!-- viewport: necessario perché la pagina si ridimensioni correttamente
+       su schermi piccoli. initial-scale=1 = nessuno zoom iniziale. -->
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Preventivi — Calcolo Costi</title>
+  <!-- foglio stile esterno: tutto il CSS è in stile.css, non qui dentro -->
+  <link rel="stylesheet" href="stile.css">
 </head>
 <body>
 
+
+<!-- ═══════════════════════════════════════════════════════════
+     HEADER
+     Barra superiore sempre visibile. I due elementi con id
+     vengono aggiornati dal JS quando si sceglie un prodotto
+     (es: "Tiranti Torniti" / "Da barra grezza con tornitura").
+     ═══════════════════════════════════════════════════════════ -->
 <header>
   <div class="logo-mark">⬡</div>
   <div>
@@ -17,55 +61,100 @@
   <div class="header-right" id="header-right">v1.0</div>
 </header>
 
-<!-- SELETTORE PRODOTTO -->
+
+<!-- ═══════════════════════════════════════════════════════════
+     SELETTORE PRODOTTO
+     Visibile all'avvio. Quando l'utente clicca un bottone,
+     questa sezione viene nascosta e appare il calcolatore.
+
+     data-product="..." è un "data attribute" (attributo custom):
+     non ha effetto visivo, serve solo al JS per sapere quale
+     prodotto è stato scelto — si legge con btn.dataset.product.
+
+     I bottoni con classe "disabled" sono moduli in sviluppo.
+     ═══════════════════════════════════════════════════════════ -->
 <div id="product-selector">
   <div class="selector-grid">
+
     <button class="product-btn" data-product="tiranti">
       <div class="product-icon">⬡</div>
       <div class="product-name">Tiranti</div>
       <div class="product-desc">Da barra a diametro medio<br>senza tornitura</div>
     </button>
+
     <button class="product-btn" data-product="tiranti_torniti">
       <div class="product-icon">◎</div>
       <div class="product-name">Tiranti Torniti</div>
       <div class="product-desc">Da barra grezza<br>con tornitura</div>
     </button>
-    <!-- Futuri moduli -->
-    <button class="product-btn disabled" disabled>
-      <div class="product-icon">○</div>
+
+    <button class="product-btn" data-product="prigionieri">
+      <div class="product-icon">◉</div>
       <div class="product-name">Prigionieri</div>
-      <div class="product-desc">In sviluppo</div>
+      <div class="product-desc">UNI 5909 / 5911 / libero<br>con tornitura</div>
     </button>
+
     <button class="product-btn" data-product="dadi">
       <div class="product-icon">⬡</div>
       <div class="product-name">Dadi</div>
       <div class="product-desc">UNI 5587 / 5588 / 5589<br>con fresatura o stampaggio</div>
     </button>
+
+    <!-- disabled = attributo HTML nativo che disabilita il bottone:
+         non può essere cliccato, appare grigio (via CSS) -->
     <button class="product-btn disabled" disabled>
       <div class="product-icon">○</div>
       <div class="product-name">Tiranti a Occhio</div>
       <div class="product-desc">In sviluppo</div>
     </button>
+
     <button class="product-btn disabled" disabled>
       <div class="product-icon">○</div>
       <div class="product-name">Viti</div>
       <div class="product-desc">In sviluppo</div>
     </button>
-  </div>
-</div>
 
-<!-- CALCOLATORE (nascosto finché non si sceglie prodotto) -->
+  </div>
+</div><!-- fine #product-selector -->
+
+
+<!-- ═══════════════════════════════════════════════════════════
+     CALCOLATORE
+     Nascosto all'avvio (style="display:none").
+     Appare quando si sceglie un prodotto.
+     Contiene due colonne affiancate (gestite da .main in CSS):
+       .inputs-panel  → form a sinistra con tutti i campi
+       .results-panel → area a destra con i risultati
+     ═══════════════════════════════════════════════════════════ -->
 <div id="calculator" style="display:none">
   <div class="main">
 
-    <!-- ═══ INPUTS ═══ -->
+
+    <!-- ╔══════════════════════════════════╗
+         ║        PANNELLO INPUTS           ║
+         ╚══════════════════════════════════╝ -->
     <div class="inputs-panel">
 
       <div class="back-btn-wrap">
+        <!-- onclick chiama direttamente una funzione JS.
+             Funziona perché la funzione è definita su window
+             (vedi più sotto — i module script non espongono
+             le funzioni globalmente, bisogna metterle su window). -->
         <button class="back-btn" onclick="tornaAlSelettore()">← Cambia prodotto</button>
       </div>
 
-      <!-- Tipo dado e chiave — solo dadi, in cima -->
+
+      <!-- ─────────────────────────────────────────────────────
+           CAMPI ESCLUSIVI DADI — in cima al form
+           Mostrati SOLO per i dadi, sopra la sezione geometria,
+           perché determinano l'altezza (calcolata da tabella).
+           ───────────────────────────────────────────────────── -->
+
+      <!-- Tipo dado UNI:
+           5587 = ALTO   → altezza ≈ diametro nominale
+           5588 = MEDIO  → altezza da tabella (valori intermedi)
+           5589 = BASSO  → altezza da tabella (valori ridotti)
+           La scelta aggiorna automaticamente il campo altezza. -->
       <div id="row-uni" class="form-group" style="display:none">
         <label>Tipo dado (UNI)</label>
         <div class="toggle-group">
@@ -75,6 +164,9 @@
         </div>
       </div>
 
+      <!-- Tipo chiave: per i metrici è unica, per i pollici
+           esistono due serie (P = pesante, L = leggera) con
+           misure di chiave diverse per lo stesso diametro. -->
       <div id="row-chiave-tipo" class="form-group" style="display:none">
         <label>Tipo chiave <span class="label-hint">(solo per pollici)</span></label>
         <div class="toggle-group">
@@ -83,11 +175,22 @@
         </div>
       </div>
 
-      <!-- GEOMETRIA -->
+
+      <!-- ─────────────────────────────────────────────────────
+           SEZIONE GEOMETRIA
+           ───────────────────────────────────────────────────── -->
       <div class="section-label">Geometria</div>
+
       <div class="form-row">
         <div class="form-group">
           <label>Diametro</label>
+          <!-- I valori metrici sono il numero nudo (8, 10, 12...).
+               I pollici usano una codifica:
+               - frazioni normali per i piccoli: "3/8", "1/2"...
+               - da 1" in su: "1000" = 1", "1108" = 1+1/8",
+                 "1104" = 1+1/4", "2000" = 2", "2102" = 2+1/2"...
+               (il codice è l'intero in pollici × 1000 + i centesimi)
+               Questa codifica viene decodificata in calcolo_comune.js. -->
           <select id="dia">
             <optgroup label="Metrico">
               <option value="8">M8</option>
@@ -137,8 +240,12 @@
             </optgroup>
           </select>
         </div>
+
         <div class="form-group">
           <label>Passo</label>
+          <!-- G = grosso (il passo standard, il più usato)
+               F = fine (filettatura più fitta, applicazioni speciali)
+               8UN / UNC / UNF = varianti per filettatura in pollici -->
           <select id="passo">
             <option value="G" selected>G — Grosso</option>
             <option value="F">F — Fine</option>
@@ -150,38 +257,63 @@
       </div>
 
       <div class="form-row">
+        <!-- Lunghezza: visibile per tutti tranne i dadi
+             (i dadi hanno altezza da tabella, non lunghezza) -->
         <div id="row-lungh" class="form-group">
           <label>Lunghezza (mm)</label>
           <input type="number" id="lungh" value="100" min="1">
         </div>
+
+        <!-- Altezza dadi: visibile solo per dadi.
+             Viene pre-compilata da aggiornaAltezzaDado() in base
+             a tipo UNI + diametro. Modificabile a mano per dadi speciali
+             (fuori standard, altezze personalizzate). -->
         <div id="row-altez" class="form-group" style="display:none">
           <label>Altezza (mm) <span class="label-hint" id="altez-hint">da tabella</span></label>
           <input type="number" id="altez_override" value="" step="0.5" placeholder="auto">
         </div>
+
+        <!-- Qtà: accetta espressioni con somme (es. "300+240+850").
+             Utile quando la commessa è fatta di più sottocommesse.
+             Il JS somma i valori e mostra il totale in tempo reale.
+             Classe qta-highlight = bordo giallo/oro per farlo notare. -->
         <div class="form-group qta-highlight">
           <label>Qtà totale</label>
           <input type="text" id="qta" value="30" placeholder="es. 300+240+850">
+          <!-- div vuoto: il JS ci scrive il totale mentre si digita -->
           <div id="qta-preview"></div>
         </div>
       </div>
 
+      <!-- Qtà sottocommessa: se > 0, il peso viene calcolato su questa
+           quantità invece che sulla totale. Serve quando la commessa
+           ha più consegne parziali e serve il peso di una sola tranche.
+           Gli approntamenti (setup) rimangono divisi sulla qtà totale. -->
       <div class="form-group">
         <label>Qtà sottocommessa <span class="label-hint">(0 = usa qtà totale)</span></label>
         <input type="number" id="qta_x" value="0" min="0">
       </div>
 
-      <!-- Diametro disponibile — solo torniti -->
+      <!-- Diametro barra grezza: solo per torniti e prigionieri.
+           È il diametro del tondo grezzo da cui si ricava il pezzo.
+           La differenza tra questo e il diametro medio del filetto
+           determina le passate di tornitura (e quindi il tempo). -->
       <div id="row-dia-disp" class="form-group" style="display:none">
         <label>Diametro barra grezza (mm)</label>
         <input type="number" id="dia_disp" value="50" min="1" step="1">
       </div>
 
-      <!-- MATERIALE -->
+
+      <!-- ─────────────────────────────────────────────────────
+           SEZIONE MATERIALE
+           ───────────────────────────────────────────────────── -->
       <div class="section-divider"></div>
       <div class="section-label">Materiale</div>
 
       <div class="form-group">
         <label>Materiale</label>
+        <!-- Quando cambia la selezione, il JS aggiorna il campo
+             costo_mat_override con il default di tabella. -->
         <select id="mat">
           <option value="B7" selected>B7</option>
           <option value="L7">L7</option>
@@ -192,14 +324,24 @@
         </select>
       </div>
 
+      <!-- Costo materiale modificabile: precompilato con il valore
+           di default ma editabile. Permette di usare il prezzo
+           reale di acquisto invece del listino standard.
+           Il "hint" a destra mostra "default tabella" o "inserire manualmente". -->
       <div class="form-group">
         <label>Costo materiale (€/kg) <span class="label-hint" id="costo-mat-hint"></span></label>
         <input type="number" id="costo_mat_override" value="1.87" step="0.001">
       </div>
 
+      <!-- Gruppo "altro": appare solo se mat = "altro".
+           Materiali speciali (F53, 660, 718 = leghe esotiche):
+           hanno moltiplicatori sul tempo di lavorazione (2x, 3x...).
+           Densità personalizzata: necessaria per il calcolo del peso
+           (ogni materiale ha la sua densità in g/cm³). -->
       <div id="altro-group" style="display:none">
         <div class="form-row">
           <div class="form-group">
+            <!-- "0" = nessun moltiplicatore, usa solo la densità custom -->
             <label>Materiale speciale</label>
             <select id="materiale_speciale">
               <option value="0">— Generico —</option>
@@ -209,24 +351,36 @@
             </select>
           </div>
           <div class="form-group">
+            <!-- 7.916 g/cm³ = densità acciaio inox 316, buon default -->
             <label>Densità (g/cm³)</label>
             <input type="number" id="dens_altro" value="7.916" step="0.001">
           </div>
         </div>
       </div>
 
-      <!-- OPZIONI -->
+
+      <!-- ─────────────────────────────────────────────────────
+           SEZIONE OPZIONI
+           Ogni campo è visibile solo per i prodotti che lo usano.
+           mostraCalcolatore() gestisce show/hide al cambio prodotto.
+           ───────────────────────────────────────────────────── -->
       <div class="section-divider"></div>
       <div class="section-label">Opzioni</div>
 
-      <!-- Prigioniero — solo tiranti normali -->
+      <!-- PRIGIONIERO (solo tiranti semplici)
+           Quando è ON, il tirante ha due lunghezze di filetto diverse
+           sui due lati (fil_a e fil_b). Cambia il calcolo della rullatura. -->
       <div id="row-prigioniero" class="form-group">
         <label>Prigioniero</label>
         <div class="toggle-group">
+          <!-- data-group: identifica il gruppo — un solo bottone per
+               gruppo può essere "active" (attivo) alla volta.
+               data-val: il valore che getToggleVal() restituirà. -->
           <button class="toggle-btn active" data-group="prigioniero" data-val="OFF">OFF</button>
-          <button class="toggle-btn" data-group="prigioniero" data-val="ON">ON</button>
+          <button class="toggle-btn"        data-group="prigioniero" data-val="ON">ON</button>
         </div>
       </div>
+      <!-- Appare solo se prigioniero = ON -->
       <div id="prigioniero-group" style="display:none">
         <div class="form-row">
           <div class="form-group">
@@ -240,23 +394,34 @@
         </div>
       </div>
 
-      <!-- Fantina — solo torniti -->
+      <!-- FANTINA (torniti e prigionieri)
+           La fantina è un dispositivo di bloccaggio pezzo al tornio.
+           Con fantina attiva:
+           - tempo tornitura dimezzato (il pezzo è già centrato)
+           - niente taglio (si parte dal pezzo finito sui lati)
+           - setup più lungo (7200s invece di 3600s) -->
       <div id="row-fantina" class="form-group" style="display:none">
         <label>Fantina</label>
         <div class="toggle-group">
           <button class="toggle-btn active" data-group="fantina" data-val="OFF">OFF</button>
-          <button class="toggle-btn" data-group="fantina" data-val="ON">ON</button>
+          <button class="toggle-btn"        data-group="fantina" data-val="ON">ON</button>
         </div>
       </div>
 
-      <!-- Barra Giusta — solo torniti -->
+      <!-- BARRA GIUSTA (torniti e prigionieri)
+           Normalmente il costo materiale = peso pezzo × €/kg.
+           Con barra giusta si paga l'intera barra perché è una misura
+           speciale non riutilizzabile (es. barra da 1.2 metri per un
+           pezzo da 1.1 metri — gli avanzi non si usano per altro).
+           Il modulo calcola quante barre servono per la quantità totale. -->
       <div id="row-barra-giusta" class="form-group" style="display:none">
         <label>Barra Giusta <span class="label-hint">(paga barra intera)</span></label>
         <div class="toggle-group">
           <button class="toggle-btn active" data-group="barra_giusta" data-val="OFF">OFF</button>
-          <button class="toggle-btn" data-group="barra_giusta" data-val="ON">ON</button>
+          <button class="toggle-btn"        data-group="barra_giusta" data-val="ON">ON</button>
         </div>
       </div>
+      <!-- Appare solo se barra_giusta = ON -->
       <div id="lungh-barra-group" style="display:none">
         <div class="form-group">
           <label>Lunghezza barra (mm)</label>
@@ -264,27 +429,80 @@
         </div>
       </div>
 
-      <!-- Campi specifici DADI -->
+      <!-- TIPO PRIGIONIERO (solo modulo prigionieri)
+           5909 = radice = diametro nominale (il tipo più semplice)
+           5911 = radice più lunga da tabella (più avvitamento nell'impianto)
+           Libero = l'utente inserisce manualmente m1 (radice) e b1 (filetto) -->
+      <div id="row-tipo-prig" class="form-group" style="display:none">
+        <label>Tipo prigioniero</label>
+        <div class="toggle-group">
+          <button class="toggle-btn active" data-group="tipo_prig" data-val="5909">5909</button>
+          <button class="toggle-btn"        data-group="tipo_prig" data-val="5911">5911</button>
+          <button class="toggle-btn"        data-group="tipo_prig" data-val="prig">Libero</button>
+        </div>
+      </div>
+      <!-- Appare solo se tipo = libero (prig) -->
+      <div id="prig-mb-group" style="display:none">
+        <div class="form-row">
+          <div class="form-group">
+            <!-- m1 = radice: il troncone che si avvita nell'impianto -->
+            <label>Radice m1 (mm)</label>
+            <input type="number" id="m1" value="0" min="0">
+          </div>
+          <div class="form-group">
+            <!-- b1 = filetto: il troncone su cui va il dado -->
+            <label>Filetto b1 (mm)</label>
+            <input type="number" id="b1" value="0" min="0">
+          </div>
+        </div>
+      </div>
+
+      <!-- PARTE LISCIA (solo prigionieri)
+           Alcuni prigionieri hanno il gambo "alleggerito": la parte
+           centrale (liscia, senza filetto) è tornita a un diametro
+           inferiore al nominale per ridurre peso o rigidità.
+           0 = gambo normale (diametro = nominale per tutta la lunghezza) -->
+      <div id="row-parte-liscia" class="form-group" style="display:none">
+        <label>Ø parte liscia (mm) <span class="label-hint">(0 = uguale al nominale)</span></label>
+        <input type="number" id="parte_liscia" value="0" min="0" step="0.1">
+      </div>
+
+      <!-- DIAMETRO BARRA GREZZA DADI (solo dadi)
+           Campo separato da quello dei torniti perché ha
+           validazione diversa:
+           - Fresatura: deve essere > spigolo esagono
+           - Stampaggio: deve essere < chiave esagono
+           La validazione avviene in calcola() prima di chiamare il modulo. -->
       <div id="row-dia-disp-dadi" class="form-group" style="display:none">
         <label>Diametro barra grezza (mm)</label>
         <input type="number" id="dia_disp_dadi" value="60" min="1" step="1">
       </div>
 
+      <!-- LAVORAZIONE DADI: fresatura o stampaggio (si escludono)
+           Fresatura  = si parte da un tondo più grande dello spigolo,
+                        si fresa l'esagono (materiale = peso cilindro)
+           Stampaggio = si parte da un tondo più piccolo della chiave,
+                        si stampa l'esagono (formula materiale diversa) -->
       <div id="row-stampaggio" class="form-group" style="display:none">
         <label>Lavorazione</label>
         <div class="toggle-group">
           <button class="toggle-btn active" data-group="stampaggio" data-val="OFF">Fresatura</button>
-          <button class="toggle-btn" data-group="stampaggio" data-val="ON">Stampaggio</button>
+          <button class="toggle-btn"        data-group="stampaggio" data-val="ON">Stampaggio</button>
         </div>
       </div>
 
+      <!-- TRATTAMENTO TERMICO (solo dadi)
+           Costo aggiuntivo: peso_finito × prezzo_kg.
+           Ha un forfait minimo: se il totale della partita è sotto
+           soglia, si usa forfait/qta come costo unitario. -->
       <div id="row-trattamento" class="form-group" style="display:none">
         <label>Trattamento termico</label>
         <div class="toggle-group">
           <button class="toggle-btn active" data-group="trattamento" data-val="OFF">OFF</button>
-          <button class="toggle-btn" data-group="trattamento" data-val="ON">ON</button>
+          <button class="toggle-btn"        data-group="trattamento" data-val="ON">ON</button>
         </div>
       </div>
+      <!-- Appare solo se trattamento = ON -->
       <div id="trattamento-group" style="display:none">
         <div class="form-row">
           <div class="form-group">
@@ -298,7 +516,17 @@
         </div>
       </div>
 
-      <!-- COSTI BASE -->
+
+      <!-- ─────────────────────────────────────────────────────
+           COSTI BASE
+           co1 = €/secondo per diametri piccoli (< 45mm)
+           co2 = €/secondo per diametri grandi (≥ 45mm)
+           Tutti i tempi di lavorazione (in secondi) vengono
+           moltiplicati per co1 o co2 per ottenere il costo.
+           Esempio: 120s × 0.018 €/s = 2.16 €
+           Modificabili dall'utente per aggiustare i prezzi
+           senza toccare le tabelle JSON.
+           ───────────────────────────────────────────────────── -->
       <div class="section-divider"></div>
       <div class="section-label">Costi base (€/s)</div>
       <div class="form-row">
@@ -312,10 +540,17 @@
         </div>
       </div>
 
+      <!-- onclick chiama window.calcola() — definito nello script -->
       <button class="calc-btn" onclick="calcola()">⬡ CALCOLA</button>
-    </div>
 
-    <!-- ═══ RESULTS ═══ -->
+    </div><!-- fine .inputs-panel -->
+
+
+    <!-- ═══════════════════════════════════════════════════════
+         PANNELLO RISULTATI
+         All'avvio mostra il messaggio vuoto.
+         renderResults() lo sovrascrive con le card dei risultati.
+         ═══════════════════════════════════════════════════════ -->
     <div class="results-panel" id="results">
       <div class="results-empty">
         <div class="big-icon">⬡</div>
@@ -323,73 +558,139 @@
       </div>
     </div>
 
-  </div><!-- .main -->
-</div><!-- #calculator -->
+  </div><!-- fine .main -->
+</div><!-- fine #calculator -->
 
+
+<!-- ═══════════════════════════════════════════════════════════
+     JAVASCRIPT — type="module"
+     Il tipo "module" abilita:
+     - import/export (sistema modulare ES6)
+     - scope isolato (le variabili non "inquinano" il namespace globale)
+
+     ATTENZIONE: i moduli non funzionano aprendo il file con
+     file:// nel browser (blocco CORS). Servono:
+     - Live Server in VS Code (sviluppo locale)
+     - GitHub Pages o altro server web (produzione)
+     ═══════════════════════════════════════════════════════════ -->
 <script type="module">
+
+// ─── IMPORT ──────────────────────────────────────────────────
+// Ogni modulo esporta la sua funzione di calcolo principale.
+// Aggiungere un nuovo modulo = aggiungere una riga qui + un branch
+// in calcola() + la logica in renderResults().
 import { calcolaTiranti }        from './moduli/tiranti.js';
 import { calcolaTirantiTorniti } from './moduli/tiranti_torniti.js';
 import { calcolaDadi }           from './moduli/dadi.js';
+import { calcolaPrigionieri }    from './moduli/prigionieri.js';
 
-// ─── Carica tabelle JSON ──────────────────────────────────
-let T = null;   // comune.json
-let TD = null;  // dadi.json
+
+// ─── CARICAMENTO TABELLE JSON ─────────────────────────────────
+// I dati (prezzi, tempi, dimensioni) sono in file JSON separati.
+// Separare i dati dal codice è buona pratica: si aggiornano i
+// prezzi senza toccare la logica, e viceversa.
+//
+// Promise.all([...]) carica i tre file IN PARALLELO:
+// più veloce che caricarli uno alla volta in sequenza.
+// Quando TUTTI sono pronti, esegue .then([a, b, c] => ...).
+//
+// I file vengono "parsati" automaticamente con .json()
+// (convertiti da testo JSON a oggetto JavaScript).
+//
+// T, TD, TP partono null — calcola() li controlla prima di usarli
+// per evitare errori se si clicca CALCOLA troppo presto.
+
+let T  = null;   // comune.json      — dati condivisi tra tutti i moduli
+let TD = null;   // dadi.json        — tabelle specifiche per i dadi
+let TP = null;   // prigionieri.json — tabelle specifiche per i prigionieri
 
 Promise.all([
   fetch('./tabelle/comune.json').then(r => r.json()),
   fetch('./tabelle/dadi.json').then(r => r.json()),
-]).then(([comune, dadi]) => {
-  T = comune;
+  fetch('./tabelle/prigionieri.json').then(r => r.json()),
+]).then(([comune, dadi, prig]) => {
+  T  = comune;
   TD = dadi;
+  TP = prig;
 }).catch(() => { alert('Errore: impossibile caricare le tabelle JSON'); });
 
-// ─── Stato prodotto corrente ──────────────────────────────
+
+// ─── STATO ───────────────────────────────────────────────────
+// Teniamo traccia di quale prodotto è attivo in questa variabile.
+// null = siamo nella schermata di selezione.
 let prodottoCorrente = null;
 
-// ─── Selettore prodotto ───────────────────────────────────
+
+// ─── SELETTORE PRODOTTO ───────────────────────────────────────
+// querySelectorAll restituisce tutti i bottoni attivi (non disabled).
+// Per ognuno aggiungiamo un listener: alla pressione salva il prodotto
+// e mostra il calcolatore appropriato.
 document.querySelectorAll('.product-btn:not(.disabled)').forEach(btn => {
   btn.addEventListener('click', () => {
-    prodottoCorrente = btn.dataset.product;
+    prodottoCorrente = btn.dataset.product; // legge data-product="..."
     mostraCalcolatore(prodottoCorrente);
   });
 });
 
+
+// ─── MOSTRA CALCOLATORE ───────────────────────────────────────
+// Chiamata quando l'utente sceglie un prodotto.
+// 1. Nasconde il selettore, mostra il calcolatore
+// 2. Aggiorna header con nome e descrizione prodotto
+// 3. Mostra/nasconde i campi specifici per quel prodotto
+// 4. Se dadi: aggiorna subito il campo altezza
+// 5. Resetta il pannello risultati
 function mostraCalcolatore(prodotto) {
   document.getElementById('product-selector').style.display = 'none';
   document.getElementById('calculator').style.display = 'block';
 
-  const isTornito = prodotto === 'tiranti_torniti';
-  const isDadi    = prodotto === 'dadi';
-  const isTiranti = prodotto === 'tiranti';
+  // Flag booleani — rendono il codice più leggibile di
+  // confrontare la stringa prodotto ovunque
+  const isTornito     = prodotto === 'tiranti_torniti';
+  const isDadi        = prodotto === 'dadi';
+  const isTiranti     = prodotto === 'tiranti';
+  const isPrigionieri = prodotto === 'prigionieri';
 
-  // Header
-  const titoli = { tiranti: 'Tiranti', tiranti_torniti: 'Tiranti Torniti', dadi: 'Dadi' };
-  const subs   = { tiranti: 'Da barra a diametro medio', tiranti_torniti: 'Da barra grezza con tornitura', dadi: 'UNI 5587 / 5588 / 5589' };
+  // Aggiorna testi header
+  const titoli = {
+    tiranti:          'Tiranti',
+    tiranti_torniti:  'Tiranti Torniti',
+    dadi:             'Dadi',
+    prigionieri:      'Prigionieri'
+  };
+  const subs = {
+    tiranti:          'Da barra a diametro medio',
+    tiranti_torniti:  'Da barra grezza con tornitura',
+    dadi:             'UNI 5587 / 5588 / 5589',
+    prigionieri:      'UNI 5909 / 5911 / libero'
+  };
   document.getElementById('header-title').textContent = titoli[prodotto] || prodotto;
-  document.getElementById('header-sub').textContent   = subs[prodotto] || '';
+  document.getElementById('header-sub').textContent   = subs[prodotto]   || '';
 
-  // Lunghezza — nascosta per i dadi (l'altezza è automatica da tabella)
-  document.querySelector('label[for="lungh"]')?.parentElement &&
-    (document.getElementById('lungh').closest('.form-group').style.display = isDadi ? 'none' : 'block');
-
-  // Campi specifici
+  // Funzione locale: mostra o nasconde un elemento per id.
+  // Creata qui dentro perché serve solo in questa funzione.
   const show = (id, visible) => {
     const el = document.getElementById(id);
     if (el) el.style.display = visible ? 'block' : 'none';
   };
 
-  show('row-lungh',         !isDadi);
-  show('row-altez',          isDadi);
-  show('row-dia-disp',       isTornito);
-  show('row-prigioniero',    isTiranti);
-  show('row-fantina',        isTornito);
-  show('row-barra-giusta',   isTornito);
-  show('row-uni',            isDadi);
-  show('row-chiave-tipo',    isDadi);
-  show('row-dia-disp-dadi',  isDadi);
-  show('row-stampaggio',     isDadi);
-  show('row-trattamento',    isDadi);
+  // Ogni riga ha una condizione che determina se è visibile.
+  // Leggi come: "mostra lungh se NON sono i dadi", ecc.
+  show('row-lungh',        !isDadi);                    // lunghezza: tutti tranne dadi
+  show('row-altez',         isDadi);                    // altezza auto: solo dadi
+  show('row-dia-disp',      isTornito || isPrigionieri);// barra grezza: torniti e prigionieri
+  show('row-prigioniero',   isTiranti);                 // opzione prigioniero: solo tiranti
+  show('row-fantina',       isTornito || isPrigionieri);// fantina: torniti e prigionieri
+  show('row-barra-giusta',  isTornito || isPrigionieri);// barra giusta: torniti e prigionieri
+  show('row-tipo-prig',     isPrigionieri);             // tipo UNI: solo prigionieri
+  show('row-parte-liscia',  isPrigionieri);             // gambo alleggerito: solo prigionieri
+  show('row-uni',           isDadi);                    // tipo UNI dado: solo dadi
+  show('row-chiave-tipo',   isDadi);                    // serie chiave: solo dadi
+  show('row-dia-disp-dadi', isDadi);                    // barra grezza dadi: solo dadi
+  show('row-stampaggio',    isDadi);                    // fresatura/stampaggio: solo dadi
+  show('row-trattamento',   isDadi);                    // trattamento termico: solo dadi
 
+  // Per i dadi calcola subito l'altezza di default
   if (isDadi) aggiornaAltezzaDado();
 
   // Reset risultati
@@ -400,6 +701,11 @@ function mostraCalcolatore(prodotto) {
     </div>`;
 }
 
+
+// ─── TORNA AL SELETTORE ───────────────────────────────────────
+// Su window perché viene chiamata da onclick nell'HTML.
+// I module script hanno scope chiuso: senza window.xxx,
+// il codice HTML non potrebbe trovare la funzione.
 window.tornaAlSelettore = function() {
   document.getElementById('calculator').style.display = 'none';
   document.getElementById('product-selector').style.display = 'block';
@@ -408,63 +714,124 @@ window.tornaAlSelettore = function() {
   prodottoCorrente = null;
 };
 
-// ─── Toggle buttons ───────────────────────────────────────
+
+// ─── TOGGLE BUTTONS ───────────────────────────────────────────
+// Logica comune a tutti i toggle button:
+// - Ogni gruppo (data-group) può avere un solo bottone attivo
+// - La classe CSS "active" lo fa sembrare selezionato
+// - Alcuni toggle aprono/chiudono campi dipendenti
 document.querySelectorAll('.toggle-btn').forEach(btn => {
   btn.addEventListener('click', () => {
     const group = btn.dataset.group;
+
+    // Deseleziona tutto il gruppo, poi seleziona solo questo
     document.querySelectorAll(`.toggle-btn[data-group="${group}"]`)
       .forEach(b => b.classList.remove('active'));
     btn.classList.add('active');
 
+    // Campi che compaiono/scompaiono in base al valore selezionato:
+
+    // prigioniero = ON → mostra lunghezze filetto A e B
     if (group === 'prigioniero') {
       document.getElementById('prigioniero-group').style.display =
         btn.dataset.val === 'ON' ? 'block' : 'none';
     }
+    // barra_giusta = ON → mostra lunghezza barra
     if (group === 'barra_giusta') {
       document.getElementById('lungh-barra-group').style.display =
         btn.dataset.val === 'ON' ? 'block' : 'none';
     }
+    // trattamento = ON → mostra prezzo kg e forfait
     if (group === 'trattamento') {
       document.getElementById('trattamento-group').style.display =
         btn.dataset.val === 'ON' ? 'block' : 'none';
     }
+    // tipo_prig = libero → mostra campi m1/b1 manuali
+    if (group === 'tipo_prig') {
+      document.getElementById('prig-mb-group').style.display =
+        btn.dataset.val === 'prig' ? 'block' : 'none';
+    }
   });
 });
 
-// ─── Costi materiali default ──────────────────────────────
+
+// ─── DEFAULT COSTO MATERIALI ──────────────────────────────────
+// Precompila il campo costo quando si cambia il materiale.
+// Per inox e altro non c'è un default (prezzi variabili):
+// il campo viene azzerato con hint "inserire manualmente".
 const COSTO_DEFAULT = {
-  B7: { val: 1.87,  hint: 'default tabella' },
-  L7: { val: 2.09,  hint: 'default tabella' },
-  B7M:{ val: 1.98,  hint: 'default tabella' },
-  '42CD4': { val: 1.815, hint: 'default tabella' },
-  inox:  { val: 0, hint: 'inserire manualmente' },
-  altro: { val: 0, hint: 'inserire manualmente' },
+  B7:     { val: 1.87,  hint: 'default tabella' },
+  L7:     { val: 2.09,  hint: 'default tabella' },
+  B7M:    { val: 1.98,  hint: 'default tabella' },
+  '42CD4':{ val: 1.815, hint: 'default tabella' },
+  inox:   { val: 0,     hint: 'inserire manualmente' },
+  altro:  { val: 0,     hint: 'inserire manualmente' },
 };
 
 document.getElementById('mat').addEventListener('change', function() {
-  const v = this.value;
+  const v   = this.value;
   const def = COSTO_DEFAULT[v] || { val: 0, hint: '' };
-  document.getElementById('costo_mat_override').value = def.val;
+  document.getElementById('costo_mat_override').value  = def.val;
   document.getElementById('costo-mat-hint').textContent = def.hint ? `— ${def.hint}` : '';
+  // Mostra il gruppo "altro" solo se mat = "altro"
   document.getElementById('altro-group').style.display = v === 'altro' ? 'block' : 'none';
 });
 
-// ─── Auto-fill altezza dado ───────────────────────────────
+
+// ─── PREVIEW QUANTITÀ ────────────────────────────────────────
+// Mostra il totale mentre si digita, quando c'è un + nella qtà.
+// Accetta solo cifre, spazi e +; tutto il resto → "formato non valido".
+function parseQtaUI(raw) {
+  const s = String(raw).trim();
+  // Regex: accetta solo cifre (\d), spazi (\s) e +
+  if (!/^[\d\s+]+$/.test(s)) return NaN;
+  const parts = s.split('+').map(p => parseInt(p.trim(), 10));
+  if (parts.some(isNaN)) return NaN;
+  // reduce somma tutti gli elementi dell'array: [300, 240, 850] → 1390
+  return parts.reduce((a, b) => a + b, 0);
+}
+
+document.getElementById('qta').addEventListener('input', function() {
+  const preview = document.getElementById('qta-preview');
+  if (this.value.includes('+')) {
+    const tot = parseQtaUI(this.value);
+    preview.textContent = isNaN(tot) ? '⚠ formato non valido' : `= ${tot}`;
+  } else {
+    preview.textContent = '';
+  }
+});
+
+
+// ─── AGGIORNA ALTEZZA DADO ────────────────────────────────────
+// Riempie automaticamente il campo altezza quando cambia
+// il tipo UNI o il diametro (solo per il modulo dadi).
+//
+// Logica: legge dia e uni selezionati → cerca l'altezza nelle
+// tabelle TD già caricate → scrive il valore nel campo.
+// Se il diametro non è in tabella → svuota il campo + avviso.
+//
+// L'utente può sempre sovrascrivere manualmente il valore
+// (per dadi fuori standard o con altezze personalizzate).
 function aggiornaAltezzaDado() {
   if (prodottoCorrente !== 'dadi' || !TD) return;
+
   const dia = getStr('dia');
   const uni = getToggleVal('uni');
 
-  // Diametro nominale: per metrici coincide col numero, per pollici leggiamo dalla tabella comune
+  // Diametro nominale: per metrici è il numero stesso.
+  // Per i pollici, prova a leggerlo dalla tabella in comune.json.
+  // L'operatore ?. (optional chaining) evita errori se T è ancora null.
+  // L'operatore ?? (nullish coalescing) usa parseFloat come fallback.
   const dian = T?.diametri_nominali_pollici?.[dia] ?? parseFloat(dia);
 
   let altez = null;
-  if (uni === '5587') altez = dian;
+  if      (uni === '5587') altez = dian;                            // UNI alto: altezza = nominale
   else if (uni === '5588') altez = TD.altezze_5588[String(dia)] ?? null;
   else if (uni === '5589') altez = TD.altezze_5589[String(dia)] ?? null;
 
   const input = document.getElementById('altez_override');
   const hint  = document.getElementById('altez-hint');
+
   if (altez !== null) {
     input.value = altez;
     hint.textContent = 'da tabella';
@@ -474,56 +841,73 @@ function aggiornaAltezzaDado() {
   }
 }
 
+// Aggancia la funzione ai due eventi che la fanno scattare
 document.getElementById('dia').addEventListener('change', aggiornaAltezzaDado);
 document.querySelectorAll('.toggle-btn[data-group="uni"]').forEach(btn => {
+  // setTimeout(..., 0): aspetta che il click del toggle finisca
+  // (e che "active" sia già aggiornato) prima di leggere il valore.
+  // Senza di questo, leggerebbe ancora il valore del bottone precedente.
   btn.addEventListener('click', () => setTimeout(aggiornaAltezzaDado, 0));
 });
-function parseQtaUI(raw) {
-  const s = String(raw).trim();
-  if (!/^[\d\s+]+$/.test(s)) return NaN;
-  const parts = s.split('+').map(p => parseInt(p.trim(), 10));
-  if (parts.some(isNaN)) return NaN;
-  return parts.reduce((a, b) => a + b, 0);
-}
 
-document.getElementById('qta').addEventListener('input', function() {
-  const preview = document.getElementById('qta-preview');
-  const parts = this.value.split('+').map(p => p.trim()).filter(p => p !== '');
-  if (parts.length <= 1) { preview.textContent = ''; return; }
-  const nums = parts.map(p => parseInt(p, 10));
-  if (nums.some(isNaN)) {
-    preview.textContent = '⚠ valore non valido';
-    preview.style.color = 'var(--red)';
-    return;
-  }
-  preview.style.color = 'var(--accent)';
-  preview.textContent = `= ${nums.reduce((a,b)=>a+b,0)} pz`;
-});
 
-// ─── Helpers ──────────────────────────────────────────────
-function getStr(id)  { return document.getElementById(id)?.value || ''; }
-function getNum(id, fb) {
+// ─── HELPER: LETTURA CAMPI ────────────────────────────────────
+// Funzioni di comodo per non ripetere document.getElementById
+// ogni volta in calcola(). Rendono il codice molto più leggibile.
+
+// Legge un numero; se il campo è vuoto/invalido restituisce il default
+function getNum(id, def = 0) {
   const v = parseFloat(document.getElementById(id)?.value);
-  return isNaN(v) ? fb : v;
+  return isNaN(v) ? def : v;
 }
-function getToggle(group) {
-  return document.querySelector(`.toggle-btn.active[data-group="${group}"]`)
-    ?.dataset.val === 'ON';
+
+// Legge una stringa (es. il valore di una select)
+function getStr(id) {
+  return document.getElementById(id)?.value ?? '';
 }
+
+// Legge il valore del bottone toggle attivo in un gruppo
+// (restituisce la stringa data-val: 'OFF', 'ON', '5909', ecc.)
 function getToggleVal(group) {
   return document.querySelector(`.toggle-btn.active[data-group="${group}"]`)
     ?.dataset.val || '';
 }
 
-// ─── CALCOLA ──────────────────────────────────────────────
+// Versione booleana di getToggleVal: true se data-val === 'ON'
+function getToggle(group) {
+  return getToggleVal(group) === 'ON';
+}
+
+
+// ─── CALCOLA ─────────────────────────────────────────────────
+// Funzione principale — chiamata dal bottone CALCOLA.
+// Su window per essere accessibile dall'onclick nell'HTML.
+//
+// Flusso:
+// 1. Controlla che le tabelle JSON siano pronte
+// 2. Scrive i costi base (co1, co2) nell'oggetto T
+// 3. Raccoglie tutti gli input con le funzioni helper
+// 4. Eventuale validazione specifica (es. dadi: dia_disp vs chiave)
+// 5. Chiama il modulo giusto → ottiene R (oggetto risultati)
+// 6. Passa R a renderResults()
+// In caso di errore: mostra il messaggio nel pannello risultati
+// invece di far crashare silenziosamente.
 window.calcola = function() {
-  if (!T || !TD) { alert('Tabelle non ancora caricate, riprova tra un secondo.'); return; }
+  if (!T || !TD || !TP) {
+    alert('Tabelle non ancora caricate, riprova tra un secondo.');
+    return;
+  }
+
   try {
+    // I co1/co2 letti dall'UI sovrascrivono quelli del JSON in memoria.
+    // Tutti i moduli leggono da T.costi_base, quindi basta aggiornarli qui.
     T.costi_base.co1 = getNum('co1', 0.018);
     T.costi_base.co2 = getNum('co2', 0.022);
 
-    let R;
+    let R; // R = oggetto risultati restituito dal modulo
+
     if (prodottoCorrente === 'tiranti') {
+      // ── Tiranti semplici ──────────────────────────────────
       R = calcolaTiranti({
         dia_raw:            getStr('dia'),
         passo:              getStr('passo'),
@@ -538,7 +922,9 @@ window.calcola = function() {
         fil_a:              getNum('fil_a', 25),
         fil_b:              getNum('fil_b', 25),
       }, T);
+
     } else if (prodottoCorrente === 'tiranti_torniti') {
+      // ── Tiranti torniti ───────────────────────────────────
       R = calcolaTirantiTorniti({
         dia_raw:            getStr('dia'),
         passo:              getStr('passo'),
@@ -554,60 +940,131 @@ window.calcola = function() {
         BARRA_GIUSTA:       getToggle('barra_giusta'),
         lungh_barra:        getNum('lungh_barra', 3000),
       }, T);
-    } else if (prodottoCorrente === 'dadi') {
-      // Validazione diametro di partenza
-      const _diaDisp  = getNum('dia_disp_dadi', 60);
-      const _dia      = getStr('dia');
-      const _chiaveT  = getToggleVal('chiave_tipo');
-      const _chiave   = TD.chiavi_metriche[_dia]
-                     ?? TD.chiavi_pollici_p[_dia]
-                     ?? TD.chiavi_pollici_l[_dia];
-      if (_chiave) {
-        const _spigolo = _chiave * 1.154;
-        const _stamp   = getToggle('stampaggio');
-        if (!_stamp && _diaDisp < _spigolo) {
-          alert(`⚠ Diametro barra (${_diaDisp} mm) inferiore allo spigolo esagono (${_spigolo.toFixed(1)} mm).\nPer fresare devi partire da un tondo più grosso.`);
-          return;
-        }
-        if (_stamp && _diaDisp >= _chiave) {
-          alert(`⚠ Diametro barra (${_diaDisp} mm) superiore o uguale alla chiave (${_chiave} mm).\nPer stampare devi partire da un tondo più piccolo della chiave.`);
-          return;
-        }
-      }
-      R = calcolaDadi({
-        UNI:                getToggleVal('uni'),
+
+    } else if (prodottoCorrente === 'prigionieri') {
+      // ── Prigionieri ───────────────────────────────────────
+      R = calcolaPrigionieri({
+        tipo:               getToggleVal('tipo_prig'),
         dia_raw:            getStr('dia'),
         passo:              getStr('passo'),
-        chiave_tipo:        getToggleVal('chiave_tipo'),
-        altez_override:     getNum('altez_override', 0),
+        lungh_raw:          getNum('lungh', 100),
+        parte_liscia:       getNum('parte_liscia', 0),
+        m1:                 getNum('m1', 0),
+        b1:                 getNum('b1', 0),
         qta_raw:            getStr('qta'),
         qta_x:              getNum('qta_x', 0),
         mat:                getStr('mat'),
         materiale_speciale: getStr('materiale_speciale'),
         dens_altro:         getNum('dens_altro', 7.916),
         costo_mat_override: getNum('costo_mat_override', 0),
-        dia_disp:           getNum('dia_disp_dadi', 60),
-        STAMPAGGIO:         getToggle('stampaggio'),
+        dia_disp:           getNum('dia_disp', 16),
+        FANTINA:            getToggle('fantina'),
+        BARRA_GIUSTA:       getToggle('barra_giusta'),
+        lungh_barra:        getNum('lungh_barra', 3000),
+      }, T, TP);
+
+    } else if (prodottoCorrente === 'dadi') {
+      // ── Dadi — validazione prima del calcolo ──────────────
+      // Il diametro della barra grezza deve essere compatibile
+      // con la lavorazione scelta, per ragioni geometriche:
+      //
+      // FRESATURA: si ricava l'esagono da un tondo.
+      //   Il tondo deve essere almeno grande quanto lo spigolo
+      //   dell'esagono (la distanza tra vertici opposti).
+      //   Spigolo = chiave × 1.154 (chiave / cos30°)
+      //   Se il tondo è più piccolo → non c'è materiale sufficiente.
+      //
+      // STAMPAGGIO: il tondo viene stampato nella forma esagonale.
+      //   Deve entrare nella matrice → deve essere < chiave.
+      //   Se è troppo grande → non entra nello stampo.
+
+      const _diaDisp = getNum('dia_disp_dadi', 60);
+      const _dia     = getStr('dia');
+      // Cerca la chiave nelle tabelle: prima metrici, poi pollici P, poi L
+      const _chiave  = TD.chiavi_metriche[_dia]
+                    ?? TD.chiavi_pollici_p[_dia]
+                    ?? TD.chiavi_pollici_l[_dia];
+
+      if (_chiave) {
+        const _spigolo = _chiave * 1.154; // distanza vertice-vertice esagono
+        const _stamp   = getToggle('stampaggio');
+
+        if (!_stamp && _diaDisp < _spigolo) {
+          alert(`⚠ Diametro barra (${_diaDisp} mm) inferiore allo spigolo (${_spigolo.toFixed(1)} mm).\nPer fresare devi partire da un tondo più grosso.`);
+          return; // blocca il calcolo
+        }
+        if (_stamp && _diaDisp >= _chiave) {
+          alert(`⚠ Diametro barra (${_diaDisp} mm) superiore alla chiave (${_chiave} mm).\nPer stampare devi partire da un tondo più piccolo della chiave.`);
+          return; // blocca il calcolo
+        }
+      }
+
+      R = calcolaDadi({
+        UNI:                 getToggleVal('uni'),
+        dia_raw:             getStr('dia'),
+        passo:               getStr('passo'),
+        chiave_tipo:         getToggleVal('chiave_tipo'),
+        altez_override:      getNum('altez_override', 0),
+        qta_raw:             getStr('qta'),
+        qta_x:               getNum('qta_x', 0),
+        mat:                 getStr('mat'),
+        materiale_speciale:  getStr('materiale_speciale'),
+        dens_altro:          getNum('dens_altro', 7.916),
+        costo_mat_override:  getNum('costo_mat_override', 0),
+        dia_disp:            getNum('dia_disp_dadi', 60),
+        STAMPAGGIO:          getToggle('stampaggio'),
         TRATTAMENTO_TERMICO: getToggle('trattamento'),
-        prezzo_kg:          getNum('prezzo_kg', 1.2),
-        forfait:            getNum('forfait', 400),
+        prezzo_kg:           getNum('prezzo_kg', 1.2),
+        forfait:             getNum('forfait', 400),
       }, T, TD);
     }
 
     renderResults(R);
+
   } catch(e) {
+    // Mostra l'errore nel pannello invece di far crashare.
+    // Gli errori tipici: diametro fuori range, combinazione
+    // dia/passo non in tabella, calcolo geometrico impossibile.
     document.getElementById('results').innerHTML =
       `<div class="error-msg">⚠ ERRORE: ${e.message}</div>`;
   }
 };
 
-function r(n, d=2) { return (typeof n === 'number' && !isNaN(n)) ? n.toFixed(d) : '—'; }
 
+// ─── UTILITY: FORMATTAZIONE NUMERO ───────────────────────────
+// r(n, d) → stringa con d decimali, oppure "—" se n non è un numero.
+// Usata ovunque nei template HTML.
+// Esempi: r(1.2345) → "1.23"   r(0.018, 3) → "0.018"   r(undefined) → "—"
+function r(n, d = 2) {
+  return (typeof n === 'number' && !isNaN(n)) ? n.toFixed(d) : '—';
+}
+
+
+// ─── RENDER RISULTATI ────────────────────────────────────────
+// Riceve l'oggetto R (risultati dal modulo) e costruisce l'HTML.
+//
+// Usa template literals (backtick `...`) per costruire HTML
+// con valori dinamici tramite ${...}.
+//
+// Struttura output:
+//   1. Card principale: costo totale
+//   2. Griglia: dettaglio voce per voce
+//   3. Grafico a barre: composizione visiva del costo
+//   4. Card geometria: (solo dadi e prigionieri)
+//   5. Card barre: (solo con BARRA_GIUSTA)
+//   6. Card tempi: secondi per voce + stringa gestionale
+//   7. Card peso: peso singolo, lotto, modificatore
 function renderResults(R) {
-  const panel = document.getElementById('results');
+  const panel     = document.getElementById('results');
   const isTornito = prodottoCorrente === 'tiranti_torniti';
   const isDadi    = prodottoCorrente === 'dadi';
+  const isPrig    = prodottoCorrente === 'prigionieri';
 
+  // ── Funzione bar(): riga del grafico a barre ──────────────
+  // pct: percentuale rispetto al costo totale
+  //      Math.max(2, ...) garantisce almeno 2% di larghezza
+  //      per visibilità anche per voci molto piccole
+  // cls: classe CSS per il colore (mat, torn, taglio, ecc.)
   function bar(label, val, cls) {
     const pct = R.costo_tot > 0 ? Math.max(2, (val / R.costo_tot) * 100) : 0;
     return `<div class="bar-row">
@@ -617,74 +1074,111 @@ function renderResults(R) {
     </div>`;
   }
 
-  // ── Righe costi ──
+  // ── Righe griglia costi ───────────────────────────────────
+  // Array costruito diversamente per ogni prodotto.
+  // ...() spread operator con array condizionale:
+  //   ...(condizione ? [{...}] : [])
+  // aggiunge la riga solo se la condizione è vera.
   let righe = [];
+
   if (isDadi) {
     righe = [
-      { label: '🟢 Materiale',   val: R.mat_cost,  sub: `peso: ${r(R.peso,3)} kg` },
-      ...(R.tratta > 0  ? [{ label: '🌡 Trattamento', val: R.tratta,   sub: '' }] : []),
-      ...(R.placc > 0   ? [{ label: '🔧 Placchette',  val: R.placc,    sub: '' }] : []),
-      { label: '✂ Taglio',      val: R.ta,        sub: `setup: €${r(R.setup_ta)}` },
+      { label: '🟢 Materiale',   val: R.mat_cost,  sub: `peso grezzo: ${r(R.peso, 3)} kg` },
+      ...(R.tratta > 0  ? [{ label: '🌡 Trattamento', val: R.tratta,  sub: '' }] : []),
+      ...(R.placc  > 0  ? [{ label: '🔧 Placchette',  val: R.placc,   sub: '' }] : []),
+      { label: '✂ Taglio',       val: R.ta,         sub: `setup: €${r(R.setup_ta)}` },
       ...(R.pt_serve ? [{ label: '◎ Prima torn.', val: R.pt_costo, sub: `setup: €${r(R.setup_pt)}` }] : []),
       ...(R.STAMPAGGIO
-        ? [{ label: '⬡ Stampaggio', val: R.st, sub: `setup: €${r(R.setup_st)}` }]
-        : [{ label: '⟋ Fresatura',  val: R.fr, sub: `setup: €${r(R.setup_fr)}` }]),
-      { label: '◎ Tornitura',   val: R.to,        sub: `setup: €${r(R.setup_to)}` },
-      { label: '🏷 Marcatura',   val: R.marc_fin,  sub: '' },
+        ? [{ label: '⬡ Stampaggio', val: R.st,  sub: `setup: €${r(R.setup_st)}` }]
+        : [{ label: '⟋ Fresatura',  val: R.fr,  sub: `setup: €${r(R.setup_fr)}` }]),
+      { label: '◎ Tornitura',    val: R.to,         sub: `setup: €${r(R.setup_to)}` },
+      { label: '🏷 Marcatura',    val: R.marc_fin,   sub: '' },
+    ];
+  } else if (isPrig) {
+    righe = [
+      { label: '🟢 Materiale',   val: R.mat_cost,   sub: `peso grezzo: ${r(R.peso, 3)} kg` },
+      ...(R.bonifica > 0 ? [{ label: '🔥 Bonifica',     val: R.bonifica, sub: '' }] : []),
+      ...(R.attrez   > 0 ? [{ label: '🔧 Attrezzatura', val: R.attrez,   sub: '' }] : []),
+      ...(!R.FANTINA  ? [{ label: '✂ Taglio',     val: R.ta_costo,  sub: `setup: €${r(R.setup_taglio)}` }] : []),
+      { label: '◎ Tornitura',    val: R.to_costo,   sub: `setup: €${r(R.setup_torn)}` },
+      { label: '⟳ Rullatura',    val: R.ru_costo,   sub: `setup: €${r(R.setup_rull)}` },
+      { label: '🏷 Marcatura',    val: R.marc_fin,   sub: '' },
     ];
   } else if (isTornito) {
     righe = [
-      { label: '🟢 Materiale',  val: R.mat_cost,   sub: `peso: ${r(R.peso,3)} kg` },
-      ...(R.bonifica > 0 ? [{ label: '🔥 Bonifica', val: R.bonifica, sub: '' }] : []),
-      ...(R.attrez > 0   ? [{ label: '🔧 Attrezzatura', val: R.attrez, sub: '' }] : []),
+      { label: '🟢 Materiale',   val: R.mat_cost,   sub: `peso grezzo: ${r(R.peso, 3)} kg` },
+      ...(R.bonifica > 0 ? [{ label: '🔥 Bonifica',     val: R.bonifica, sub: '' }] : []),
+      ...(R.attrez   > 0 ? [{ label: '🔧 Attrezzatura', val: R.attrez,   sub: '' }] : []),
       ...(!R.FANTINA && R.tempo_ta !== null
-        ? [{ label: '✂ Taglio', val: R.taglio_fin, sub: `setup: €${r(R.setup_taglio)}` }] : []),
-      { label: '◎ Tornitura',  val: R.torni_fin,  sub: `setup: €${r(R.setup_torn)}` },
-      { label: '⟳ Rullatura',  val: R.rulla_fin,  sub: `setup: €${r(R.setup_rull)}` },
-      { label: '🏷 Marcatura',  val: R.marc_fin,   sub: '' },
+        ? [{ label: '✂ Taglio',  val: R.taglio_fin,  sub: `setup: €${r(R.setup_taglio)}` }] : []),
+      { label: '◎ Tornitura',    val: R.torni_fin,   sub: `setup: €${r(R.setup_torn)}` },
+      { label: '⟳ Rullatura',    val: R.rulla_fin,   sub: `setup: €${r(R.setup_rull)}` },
+      { label: '🏷 Marcatura',    val: R.marc_fin,    sub: '' },
     ];
   } else {
+    // Tiranti semplici
     righe = [
-      { label: '🟢 Materiale',  val: R.mat_cost,   sub: `peso: ${r(R.peso,3)} kg` },
-      ...(R.bonifica > 0 ? [{ label: '🔥 Bonifica', val: R.bonifica, sub: '' }] : []),
-      { label: '✂ Taglio',     val: R.taglio_fin,  sub: `setup: €${r(R.setup_taglio)}` },
-      { label: '⟋ Smusso',     val: R.smusso_fin,  sub: `setup: €${r(R.setup_smusso)}` },
-      { label: '⟳ Rullatura',  val: R.rulla_fin,   sub: `setup: €${r(R.setup_rull)}` },
-      { label: '🏷 Marcatura',  val: R.marc_fin,    sub: '' },
+      { label: '🟢 Materiale',   val: R.mat_cost,    sub: `peso: ${r(R.peso, 3)} kg` },
+      ...(R.bonifica > 0 ? [{ label: '🔥 Bonifica',  val: R.bonifica, sub: '' }] : []),
+      { label: '✂ Taglio',       val: R.taglio_fin,  sub: `setup: €${r(R.setup_taglio)}` },
+      { label: '⟋ Smusso',       val: R.smusso_fin,  sub: `setup: €${r(R.setup_smusso)}` },
+      { label: '⟳ Rullatura',    val: R.rulla_fin,   sub: `setup: €${r(R.setup_rull)}` },
+      { label: '🏷 Marcatura',    val: R.marc_fin,    sub: '' },
     ];
   }
 
+  // Ogni riga dell'array → un blocco HTML
   const gridHTML = righe.map(row => `
     <div class="cost-row">
       <div class="cost-row-label">${row.label}</div>
       <div class="cost-row-value">€${r(row.val)}</div>
       ${row.sub ? `<div class="cost-row-sub">${row.sub}</div>` : ''}
-    </div>`).join('');
+    </div>`).join(''); // .join('') unisce senza separatori
 
-  // ── Breakdown barre ──
-  const barreHTML = (isTornito && R.BARRA_GIUSTA) ? `
-    <div class="result-card">
-      <div class="breakdown-title">▎ Barre utilizzate</div>
-      <div class="cost-grid" style="margin-top:0">
-        <div class="cost-row"><div class="cost-row-label">N° barre</div><div class="cost-row-value">${R.num_barre}</div></div>
-        <div class="cost-row"><div class="cost-row-label">Peso barre</div><div class="cost-row-value">${r(R.peso_barre,2)} kg</div></div>
-      </div>
-    </div>` : '';
-
-  // ── Info geometria dadi ──
+  // ── Card geometria dadi ───────────────────────────────────
+  // Mostra dimensioni calcolate (chiave, spigolo, altezza, peso finito).
+  // Stringa vuota '' se non si tratta di dadi → non viene renderizzata.
   const dadiInfoHTML = isDadi ? `
     <div class="result-card">
       <div class="breakdown-title">▎ Geometria dado</div>
       <div class="cost-grid" style="margin-top:0">
-        <div class="cost-row"><div class="cost-row-label">Chiave</div><div class="cost-row-value">${r(R.chiave,1)} mm</div></div>
-        <div class="cost-row"><div class="cost-row-label">Spigolo</div><div class="cost-row-value">${r(R.spigolo,1)} mm</div></div>
-        <div class="cost-row"><div class="cost-row-label">Altezza</div><div class="cost-row-value">${r(R.altez,1)} mm</div></div>
-        <div class="cost-row"><div class="cost-row-label">Peso finito</div><div class="cost-row-value">${r(R.peso_fin,3)} kg</div></div>
+        <div class="cost-row"><div class="cost-row-label">Chiave</div><div class="cost-row-value">${r(R.chiave, 1)} mm</div></div>
+        <div class="cost-row"><div class="cost-row-label">Spigolo</div><div class="cost-row-value">${r(R.spigolo, 1)} mm</div></div>
+        <div class="cost-row"><div class="cost-row-label">Altezza</div><div class="cost-row-value">${r(R.altez, 1)} mm</div></div>
+        <div class="cost-row"><div class="cost-row-label">Peso finito</div><div class="cost-row-value">${r(R.peso_fin, 3)} kg</div></div>
       </div>
     </div>` : '';
 
-  // ── Tempi grid ──
+  // ── Card geometria prigionieri ────────────────────────────
+  const prigInfoHTML = isPrig ? `
+    <div class="result-card">
+      <div class="breakdown-title">▎ Geometria prigioniero</div>
+      <div class="cost-grid" style="margin-top:0">
+        <div class="cost-row"><div class="cost-row-label">Radice (m)</div><div class="cost-row-value">${r(R.m_rad, 1)} mm</div></div>
+        <div class="cost-row"><div class="cost-row-label">Filetto (b)</div><div class="cost-row-value">${r(R.b_fil, 1)} mm</div></div>
+        <div class="cost-row"><div class="cost-row-label">Lungh. filettata</div><div class="cost-row-value">${r(R.lungh_fil, 1)} mm</div></div>
+        <div class="cost-row"><div class="cost-row-label">Lungh. liscia</div><div class="cost-row-value">${r(R.lungh_liscia, 1)} mm</div></div>
+        <div class="cost-row"><div class="cost-row-label">Ø parte liscia</div><div class="cost-row-value">${r(R.dian_liscia, 2)} mm</div></div>
+        <div class="cost-row"><div class="cost-row-label">Peso finito</div><div class="cost-row-value">${r(R.peso_fin, 3)} kg</div></div>
+      </div>
+    </div>` : '';
+
+  // ── Card barre (solo se BARRA_GIUSTA è attiva) ────────────
+  const barreHTML = R.BARRA_GIUSTA ? `
+    <div class="result-card">
+      <div class="breakdown-title">▎ Barre utilizzate</div>
+      <div class="cost-grid" style="margin-top:0">
+        <div class="cost-row"><div class="cost-row-label">N° barre</div><div class="cost-row-value">${R.num_barre}</div></div>
+        <div class="cost-row"><div class="cost-row-label">Peso barre</div><div class="cost-row-value">${r(R.peso_barre, 2)} kg</div></div>
+      </div>
+    </div>` : '';
+
+  // ── Griglia tempi ─────────────────────────────────────────
+  // Mostra i secondi per ogni lavorazione e i relativi setup.
+  // I setup (approntamenti) hanno il prefisso "A": ATAGL, ATOR1, ecc.
+  // Vengono costruiti diversamente per prodotto e modalità (fantina/no fantina).
   let tempiGridHTML = '';
+
   if (isDadi) {
     if (R.STAMPAGGIO) {
       tempiGridHTML = `
@@ -705,6 +1199,18 @@ function renderResults(R) {
         <div class="tempo-cell"><div class="tc-label">A.Torn.</div><div class="tc-val">3600<span class="tc-unit"> s</span></div></div>
         <div class="tempo-cell"><div class="tc-label">A.Fresa</div><div class="tc-val">3600<span class="tc-unit"> s</span></div></div>`;
     }
+  } else if (isPrig) {
+    tempiGridHTML = R.FANTINA ? `
+      <div class="tempo-cell"><div class="tc-label">Torn. fantina</div><div class="tc-val">${Math.round(R.tempo_torn_fantina)}<span class="tc-unit"> s</span></div></div>
+      <div class="tempo-cell"><div class="tc-label">Rullatura</div><div class="tc-val">${Math.round(R.t_rull)}<span class="tc-unit"> s</span></div></div>
+      <div class="tempo-cell"><div class="tc-label">A.Torn2</div><div class="tc-val">7200<span class="tc-unit"> s</span></div></div>
+      <div class="tempo-cell"><div class="tc-label">A.Rullatura</div><div class="tc-val">1800<span class="tc-unit"> s</span></div></div>` : `
+      <div class="tempo-cell"><div class="tc-label">Taglio</div><div class="tc-val">${Math.round(R.tempo_taglio)}<span class="tc-unit"> s</span></div></div>
+      <div class="tempo-cell"><div class="tc-label">Tornitura</div><div class="tc-val">${Math.round(R.tempo_torn)}<span class="tc-unit"> s</span></div></div>
+      <div class="tempo-cell"><div class="tc-label">Rullatura</div><div class="tc-val">${Math.round(R.t_rull)}<span class="tc-unit"> s</span></div></div>
+      <div class="tempo-cell"><div class="tc-label">A.Taglio</div><div class="tc-val">300<span class="tc-unit"> s</span></div></div>
+      <div class="tempo-cell"><div class="tc-label">A.Torn1</div><div class="tc-val">3600<span class="tc-unit"> s</span></div></div>
+      <div class="tempo-cell"><div class="tc-label">A.Rullatura</div><div class="tc-val">1800<span class="tc-unit"> s</span></div></div>`;
   } else if (isTornito) {
     tempiGridHTML = R.FANTINA ? `
       <div class="tempo-cell"><div class="tc-label">Tornitura (fantina)</div><div class="tc-val">${Math.round(R.tempo_torn_fantina)}<span class="tc-unit"> s</span></div></div>
@@ -718,6 +1224,7 @@ function renderResults(R) {
       <div class="tempo-cell"><div class="tc-label">A.Torn1</div><div class="tc-val">3600<span class="tc-unit"> s</span></div></div>
       <div class="tempo-cell"><div class="tc-label">A.Rullatura</div><div class="tc-val">1800<span class="tc-unit"> s</span></div></div>`;
   } else {
+    // Tiranti semplici
     tempiGridHTML = `
       <div class="tempo-cell"><div class="tc-label">Taglio</div><div class="tc-val">${Math.round(R.tempo_ta)}<span class="tc-unit"> s</span></div></div>
       <div class="tempo-cell"><div class="tc-label">Smusso</div><div class="tc-val">${Math.round(R.smusso_t)}<span class="tc-unit"> s</span></div></div>
@@ -727,67 +1234,96 @@ function renderResults(R) {
       <div class="tempo-cell"><div class="tc-label">A.Rullatura</div><div class="tc-val">1800<span class="tc-unit"> s</span></div></div>`;
   }
 
+  // ── Costruzione HTML finale ───────────────────────────────
+  // Tutto viene scritto in panel.innerHTML in un solo assegnamento.
+  // Le variabili HTML costruite sopra (gridHTML, barreHTML, ecc.)
+  // vengono interpolate con ${...}.
   panel.innerHTML = `
+
+    <!-- 1. Card costo totale -->
     <div class="result-card primary">
       <div class="cost-header">● COSTO TOTALE UNITARIO</div>
       <div class="cost-value"><span class="currency">€</span>${r(R.costo_tot)}<span class="unit">/ pz</span></div>
       <div class="cost-summary">
         Lavorazione: <strong>€${r(R.costo_lav)}</strong>&nbsp;&nbsp;|&nbsp;&nbsp;
         Materiale: <strong>€${r(R.mat_cost)}</strong>
-        ${(R.bonifica > 0) ? `&nbsp;&nbsp;|&nbsp;&nbsp;Bonifica: <strong>€${r(R.bonifica)}</strong>` : ''}
-        ${(R.tratta > 0)   ? `&nbsp;&nbsp;|&nbsp;&nbsp;Trattamento: <strong>€${r(R.tratta)}</strong>` : ''}
+        ${R.bonifica > 0 ? `&nbsp;&nbsp;|&nbsp;&nbsp;Bonifica: <strong>€${r(R.bonifica)}</strong>` : ''}
+        ${R.tratta   > 0 ? `&nbsp;&nbsp;|&nbsp;&nbsp;Trattamento: <strong>€${r(R.tratta)}</strong>` : ''}
       </div>
     </div>
 
+    <!-- 2. Griglia dettaglio voci -->
     <div class="cost-grid">${gridHTML}</div>
 
+    <!-- 3. Grafico a barre -->
     <div class="result-card">
       <div class="breakdown-title">▎ Composizione costo unitario</div>
       ${bar('Materiale', R.mat_cost, 'mat')}
-      ${isDadi && R.STAMPAGGIO  ? bar('Stampaggio', R.st + R.setup_st, 'torn') : ''}
-      ${isDadi && !R.STAMPAGGIO ? bar('Fresatura',  R.fr + R.setup_fr, 'smusso') : ''}
-      ${isDadi ? bar('Tornitura', R.to + R.setup_to, 'torn') : ''}
-      ${!isDadi && isTornito    ? bar('Tornitura', R.torni_fin + R.setup_torn, 'torn') : ''}
-      ${!isDadi && !isTornito   ? bar('Taglio',    R.taglio_fin + R.setup_taglio, 'taglio') : ''}
-      ${!isDadi && !isTornito   ? bar('Smusso',    R.smusso_fin + R.setup_smusso, 'smusso') : ''}
-      ${!isDadi ? bar('Rullatura', R.rulla_fin + R.setup_rull, 'rull') : ''}
+      ${isDadi  && R.STAMPAGGIO  ? bar('Stampaggio', R.st + R.setup_st, 'torn') : ''}
+      ${isDadi  && !R.STAMPAGGIO ? bar('Fresatura',  R.fr + R.setup_fr, 'smusso') : ''}
+      ${isDadi  ? bar('Tornitura', R.to + R.setup_to, 'torn') : ''}
+      ${isPrig  ? bar('Tornitura', R.to_costo + R.setup_torn, 'torn') : ''}
+      ${isPrig  ? bar('Rullatura', R.ru_costo + R.setup_rull, 'rull') : ''}
+      ${!isDadi && !isPrig &&  isTornito ? bar('Tornitura', R.torni_fin + R.setup_torn, 'torn') : ''}
+      ${!isDadi && !isPrig && !isTornito ? bar('Taglio',    R.taglio_fin + R.setup_taglio, 'taglio') : ''}
+      ${!isDadi && !isPrig && !isTornito ? bar('Smusso',    R.smusso_fin + R.setup_smusso, 'smusso') : ''}
+      ${!isDadi && !isPrig ? bar('Rullatura', R.rulla_fin + R.setup_rull, 'rull') : ''}
       ${bar('Marcatura', R.marc_fin, 'marc')}
-      ${(R.bonifica > 0) ? bar('Bonifica', R.bonifica, 'bonif') : ''}
-      ${(R.tratta > 0)   ? bar('Trattamento', R.tratta, 'bonif') : ''}
+      ${R.bonifica > 0 ? bar('Bonifica',    R.bonifica, 'bonif') : ''}
+      ${R.tratta   > 0 ? bar('Trattamento', R.tratta,   'bonif') : ''}
     </div>
 
+    <!-- 4. Geometria (solo dadi / prigionieri) -->
     ${dadiInfoHTML}
+    ${prigInfoHTML}
+
+    <!-- 5. Barre (solo con BARRA_GIUSTA) -->
     ${barreHTML}
 
+    <!-- 6. Tempi e gestionale -->
     <div class="result-card">
       <div class="breakdown-title">▎ Tempi (secondi per pezzo)</div>
       <div class="tempi-grid">${tempiGridHTML}</div>
       <div class="gestionale-wrap">
         <div class="gestionale-title">▎ Per il gestionale</div>
         <div style="display:flex;align-items:flex-start;gap:10px">
+          <!-- <pre> mantiene i newline (\n) nella stringa -->
           <pre id="tempi-gestionale" class="gestionale-pre">${R.tempi_gestionale}</pre>
-          <button class="copia-btn" data-tempi="${R.tempi_gestionale.replace(/\n/g,'\\n')}">COPIA</button>
+          <!-- data-tempi: i \n sono escaped (\n → \\n) perché gli attributi
+               HTML non supportano newline reali. Vengono ri-convertiti
+               in newline veri nel listener del bottone COPIA. -->
+          <button class="copia-btn" data-tempi="${R.tempi_gestionale.replace(/\n/g, '\\n')}">COPIA</button>
         </div>
         <div id="copy-feedback" class="copy-feedback"></div>
       </div>
     </div>
 
+    <!-- 7. Peso e lotto -->
     <div class="result-card">
       <div class="breakdown-title">▎ Peso e lotto</div>
       <div class="cost-grid" style="margin-top:0">
-        ${!isDadi ? `<div class="cost-row"><div class="cost-row-label">Diametro medio</div><div class="cost-row-value">${r(R.diam,1)} mm</div></div>` : ''}
-        <div class="cost-row"><div class="cost-row-label">Peso singolo</div><div class="cost-row-value">${r(R.peso,3)} kg</div></div>
+        <!-- diametro medio: non applicabile per i dadi (hanno chiave, non diam. medio) -->
+        ${!isDadi ? `<div class="cost-row"><div class="cost-row-label">Diametro medio</div><div class="cost-row-value">${r(R.diam, 1)} mm</div></div>` : ''}
+        <div class="cost-row"><div class="cost-row-label">Peso singolo</div><div class="cost-row-value">${r(R.peso, 3)} kg</div></div>
         <div class="cost-row">
-          <div class="cost-row-label">${R.qta_x > 0 ? `⭐ Peso sottocommessa (×${R.qta_x})` : `⭐ Peso lotto (×${R.qta})`}</div>
-          <div class="cost-row-value accent">${r(R.peso_principale,2)} kg</div>
-          <div class="cost-row-sub">reale: ${r(R.peso_principale_reale,2)} kg — coeff. ${r(R.mod_peso,3)}</div>
+          <!-- etichetta dinamica: "sottocommessa" se qta_x > 0, altrimenti "lotto" -->
+          <div class="cost-row-label">${R.qta_x > 0
+            ? `⭐ Peso sottocommessa (×${R.qta_x})`
+            : `⭐ Peso lotto (×${R.qta})`}</div>
+          <div class="cost-row-value accent">${r(R.peso_principale, 2)} kg</div>
+          <!-- modificatore peso: coefficiente > 1 applicato al peso dichiarato
+               per coprire sfridi, tolleranze di taglio, imprecisioni.
+               Varia in base alla fascia di peso totale del lotto. -->
+          <div class="cost-row-sub">reale: ${r(R.peso_principale_reale, 2)} kg — coeff. ${r(R.mod_peso, 3)}</div>
         </div>
+        <!-- riga peso lotto completo: appare solo se qta_x > 0 (sottocommessa) -->
         ${R.peso_lotto_completo !== null ? `
         <div class="cost-row">
           <div class="cost-row-label">Peso lotto totale (×${R.qta})</div>
-          <div class="cost-row-value">${r(R.peso_lotto_completo,2)} kg</div>
+          <div class="cost-row-value">${r(R.peso_lotto_completo, 2)} kg</div>
           <div class="cost-row-sub">approntamenti su ${R.qta} pz${R.qta_str ? ` (${R.qta_str})` : ''}</div>
         </div>` : (R.qta_str ? `
+        <!-- dettaglio somma qtà: appare se la qtà era una somma (300+240...) -->
         <div class="cost-row" style="grid-column:span 2">
           <div class="cost-row-label">Dettaglio quantità</div>
           <div class="cost-row-value" style="font-size:13px">${R.qta_str}</div>
@@ -795,13 +1331,23 @@ function renderResults(R) {
       </div>
     </div>
 
+    <!-- Eventuali messaggi dal modulo (avvisi, note speciali) -->
     ${R.messages && R.messages.length > 0
-      ? R.messages.map(m => `<div class="info-box">${m}</div>`).join('') : ''}
+      ? R.messages.map(m => `<div class="info-box">${m}</div>`).join('')
+      : ''}
   `;
 
+  // ── Listener bottone COPIA ────────────────────────────────
+  // Aggiunto QUI perché il bottone non esisteva prima di
+  // scrivere panel.innerHTML.
+  //
+  // clipboard.writeText() = API moderna, funziona su HTTPS e localhost.
+  // execCommand('copy') = vecchio metodo di fallback (sempre funziona).
   panel.querySelector('.copia-btn')?.addEventListener('click', function() {
+    // Ripristina i newline reali (\\n → \n)
     const text = (this.dataset.tempi || '').replace(/\\n/g, '\n');
     navigator.clipboard.writeText(text).catch(() => {
+      // Fallback: textarea temporaneo, selezione, copia, rimozione
       const ta = document.createElement('textarea');
       ta.value = text;
       document.body.appendChild(ta);
@@ -810,9 +1356,13 @@ function renderResults(R) {
       document.body.removeChild(ta);
     });
     const fb = document.getElementById('copy-feedback');
-    if (fb) { fb.textContent = '✓ Copiato negli appunti'; setTimeout(() => fb.textContent = '', 2000); }
+    if (fb) {
+      fb.textContent = '✓ Copiato negli appunti';
+      setTimeout(() => fb.textContent = '', 2000); // sparisce dopo 2s
+    }
   });
 }
+
 </script>
 </body>
 </html>

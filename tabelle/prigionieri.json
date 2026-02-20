@@ -1,0 +1,72 @@
+{
+  "radice_5911": {
+    "6":  9,  "7":  10, "8":  12, "10": 15,
+    "12": 18, "14": 20, "16": 22, "18": 25,
+    "20": 28, "22": 30
+  },
+  "radice_5911_grandi": {
+    "soglia": 24,
+    "moltiplicatore": 1.5
+  },
+
+  "filetto_5909_5911": {
+    "6":  18, "7":  20, "8":  22, "10": 26,
+    "12": { "corto": 30, "lungo": 36, "soglia": 125 },
+    "14": { "corto": 34, "lungo": 40, "soglia": 125 },
+    "16": { "corto": 38, "lungo": 44, "soglia": 125 },
+    "18": { "corto": 42, "lungo": 48, "soglia": 125 },
+    "20": { "corto": 46, "lungo": 52, "soglia": 125 },
+    "22": { "corto": 50, "lungo": 56, "soglia": 125 },
+    "24": { "corto": 54, "medio": 60, "lungo": 73, "soglia1": 125, "soglia2": 200 }
+  },
+  "filetto_grandi_formula": {
+    "soglia": 24,
+    "formula": "dia*2+12"
+  },
+
+  "rullatura_standard": [
+    { "dian_a": 22, "b_a": 110, "secondi": 20 },
+    { "dian_a": 22, "b_a": 9999,"secondi": 30 },
+    { "dian_a": 33, "b_a": 200, "secondi": 30 },
+    { "dian_a": 33, "b_a": 9999,"secondi": 40 },
+    { "dian_a": 42, "b_a": 200, "secondi": 35 },
+    { "dian_a": 42, "b_a": 9999,"secondi": 45 },
+    { "dian_a": 56, "b_a": 250, "secondi": 40 },
+    { "dian_a": 56, "b_a": 9999,"secondi": 55 }
+  ],
+  "rullatura_inox_altro": [
+    { "dian_a": 22, "b_a": 110, "secondi": 20 },
+    { "dian_a": 22, "b_a": 9999,"secondi": 30 },
+    { "dian_a": 33, "b_a": 200, "secondi": 40 },
+    { "dian_a": 33, "b_a": 9999,"secondi": 50 },
+    { "dian_a": 42, "b_a": 200, "secondi": 45 },
+    { "dian_a": 42, "b_a": 9999,"secondi": 55 },
+    { "dian_a": 56, "b_a": 250, "secondi": 50 },
+    { "dian_a": 56, "b_a": 9999,"secondi": 70 }
+  ],
+
+  "taglio": {
+    "standard": [
+      { "fino_a": 20,    "costo": 0.20 },
+      { "fino_a": 33,    "costo": 0.30 },
+      { "fino_a": 52,    "costo": 0.40 },
+      { "fino_a": 56,    "costo": 0.50 },
+      { "fino_a": 63,    "costo": 0.60 },
+      { "fino_a": 85,    "costo": 1.00 }
+    ],
+    "inox_altro": [
+      { "fino_a": 20,    "costo": 0.30 },
+      { "fino_a": 33,    "costo": 0.40 },
+      { "fino_a": 52,    "costo": 0.50 },
+      { "fino_a": 56,    "costo": 0.70 },
+      { "fino_a": 63,    "costo": 0.80 }
+    ]
+  },
+
+  "setup_secondi": {
+    "taglio":             300,
+    "tornitura_normale":  3600,
+    "tornitura_fantina":  7200,
+    "rullatura":          1800
+  }
+}
