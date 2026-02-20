@@ -224,6 +224,20 @@ header span {
   letter-spacing: 1px;
 }
 
+/* Campo quantità — evidenziato */
+.qta-highlight {
+  position: relative;
+}
+.qta-highlight label {
+  color: var(--accent) !important;
+}
+.qta-highlight input {
+  border-color: var(--accent) !important;
+  background: #1c1900 !important;
+  border-width: 2px !important;
+  font-size: 15px !important;
+}
+
 .toggle-group { display: flex; }
 .toggle-group button {
   flex: 1;

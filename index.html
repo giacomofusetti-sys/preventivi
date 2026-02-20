@@ -131,27 +131,27 @@
         </div>
       </div>
 
-      <!-- Diametro disponibile — solo torniti -->
-      <div id="row-dia-disp" class="form-group" style="display:none">
-        <label>Diametro barra grezza (mm)</label>
-        <input type="number" id="dia_disp" value="50" min="1" step="1">
-      </div>
-
       <div class="form-row">
-        <div class="form-group">
-          <label>Qtà totale diametro</label>
-          <input type="text" id="qta" value="30" placeholder="es. 300+240+850">
-          <div id="qta-preview"></div>
-        </div>
         <div class="form-group">
           <label>Lunghezza (mm)</label>
           <input type="number" id="lungh" value="100" min="1">
+        </div>
+        <div class="form-group qta-highlight">
+          <label>Qtà totale</label>
+          <input type="text" id="qta" value="30" placeholder="es. 300+240+850">
+          <div id="qta-preview"></div>
         </div>
       </div>
 
       <div class="form-group">
         <label>Qtà sottocommessa <span class="label-hint">(0 = usa qtà totale)</span></label>
         <input type="number" id="qta_x" value="0" min="0">
+      </div>
+
+      <!-- Diametro disponibile — solo torniti -->
+      <div id="row-dia-disp" class="form-group" style="display:none">
+        <label>Diametro barra grezza (mm)</label>
+        <input type="number" id="dia_disp" value="50" min="1" step="1">
       </div>
 
       <!-- MATERIALE -->
