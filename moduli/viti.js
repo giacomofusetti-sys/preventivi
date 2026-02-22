@@ -298,16 +298,10 @@ function getModQta(dian, lungh, TV) {
 
 // ─── BONIFICA VITI ───────────────────────────────────────────
 
-function calcolaBonificaViti(peso, qta, dian, lungh, BONIFICA, TV) {
-  if (!BONIFICA) return 0;
-  const b = TV.bonifica;
-  let cfg;
-  if (dian <= 42 && lungh <= dian * 10) cfg = b.piccolo_corto;
-  else if (dian <= 42)                  cfg = b.piccolo_lungo;
-  else if (lungh <= dian * 10)          cfg = b.grande_corto;
-  else                                  cfg = b.grande_lungo;
-  const tot = peso * cfg.moltiplicatore * qta;
-  return tot < cfg.minimo_lotto ? cfg.minimo_lotto / qta : peso * cfg.moltiplicatore;
+function calcolaBonificaViti(peso, qta, dian, lungh, TRATTAMENTO, costo_bonifica_kg, forfait_bonifica) {
+  if (!TRATTAMENTO) return 0;
+  const tot = peso * costo_bonifica_kg * qta;
+  return tot < forfait_bonifica ? forfait_bonifica / qta : peso * costo_bonifica_kg;
 }
 
 // ─── MARCATURA ───────────────────────────────────────────────
@@ -361,7 +355,9 @@ export function calcolaViti(inp, T, TV) {
     dia_parte_liscia = 0,       // 0 = usa nominale
     chiave_tipo      = 'p',     // 'p' = pesante, 'l' = leggera (solo 5931 pollici)
     STAMPAGGIO       = true,
-    BONIFICA         = false,
+    TRATTAMENTO      = false,
+    costo_bonifica_kg = 1.20,
+    forfait_bonifica  = 400,
   } = inp;
 
   const { co1, co2 } = T.costi_base;
@@ -512,12 +508,12 @@ export function calcolaViti(inp, T, TV) {
   const rull_fin = ru_c * qta < 10 ? 10 / qta : ru_c;
 
   // ── Raddrizzatura ─────────────────────────────────────────
-  const raddr_c   = calcolaRaddrizzatura(dian, lungh, mat, BONIFICA, TV);
+  const raddr_c   = calcolaRaddrizzatura(dian, lungh, mat, TRATTAMENTO, TV);
   const raddr_fin = raddr_c > 0 ? (raddr_c * qta < 10 ? 10 / qta : raddr_c) : 0;
   const t_raddr   = raddr_c > 0 ? Math.round(raddr_c / 0.016) : 0;
 
   // ── Bonifica ─────────────────────────────────────────────
-  const bonifica = calcolaBonificaViti(peso, qta, dian, lungh, BONIFICA, TV);
+  const bonifica = calcolaBonificaViti(peso, qta, dian, lungh, TRATTAMENTO, costo_bonifica_kg, forfait_bonifica);
 
   // ── Attrezzatura (inox/altro) ─────────────────────────────
   const attrezzatura = isInox ? 0.6 : 0;
@@ -633,6 +629,6 @@ export function calcolaViti(inp, T, TV) {
     ha_fresa:  t_fresa > 0,
     ha_brocc:  brocc_c > 0,
     ha_raddr:  raddr_c > 0,
-    ha_bonifica: BONIFICA,
+    ha_bonifica: TRATTAMENTO,
   };
 }

@@ -176,6 +176,16 @@
       </div>
 
 
+      <!-- CAMPI ESCLUSIVI VITI — sopra Geometria, come row-uni per i dadi -->
+      <div id="row-tipo-vite" class="form-group" style="display:none">
+        <label>Tipo vite</label>
+        <div class="toggle-group">
+          <button class="toggle-btn active" data-group="tipo_vite" data-val="5737">5737 — Esag. gambo</button>
+          <button class="toggle-btn"        data-group="tipo_vite" data-val="5739">5739 — Esag. tutta fil.</button>
+          <button class="toggle-btn"        data-group="tipo_vite" data-val="5931">5931 — Cava (brugola)</button>
+        </div>
+      </div>
+
       <!-- ─────────────────────────────────────────────────────
            SEZIONE GEOMETRIA
            ───────────────────────────────────────────────────── -->
@@ -502,16 +512,6 @@
         </div>
       </div>
 
-      <!-- CAMPI ESCLUSIVI VITI -->
-      <div id="row-tipo-vite" class="form-group" style="display:none">
-        <label>Tipo vite</label>
-        <div class="toggle-group">
-          <button class="toggle-btn active" data-group="tipo_vite" data-val="5737">5737 — Esag. gambo</button>
-          <button class="toggle-btn"        data-group="tipo_vite" data-val="5739">5739 — Esag. tutta fil.</button>
-          <button class="toggle-btn"        data-group="tipo_vite" data-val="5931">5931 — Cava (brugola)</button>
-        </div>
-      </div>
-
       <div id="row-lav-vite" class="form-group" style="display:none">
         <label>Lavorazione testa</label>
         <div class="toggle-group">
@@ -520,11 +520,24 @@
         </div>
       </div>
 
-      <div id="row-bonifica-vite" class="form-group" style="display:none">
-        <label>Bonifica</label>
+      <div id="row-trattamento-vite" class="form-group" style="display:none">
+        <label>Trattamento termico</label>
         <div class="toggle-group">
-          <button class="toggle-btn active" data-group="bonifica_vite" data-val="OFF">OFF</button>
-          <button class="toggle-btn"        data-group="bonifica_vite" data-val="ON">ON</button>
+          <button class="toggle-btn active" data-group="trattamento_vite" data-val="OFF">OFF</button>
+          <button class="toggle-btn"        data-group="trattamento_vite" data-val="ON">ON</button>
+        </div>
+      </div>
+      <!-- Appare solo se trattamento_vite = ON -->
+      <div id="trattamento-vite-group" style="display:none">
+        <div class="form-row">
+          <div class="form-group">
+            <label>Costo trattamento (€/kg)</label>
+            <input type="number" id="costo_bonifica_kg" value="1.20" step="0.01">
+          </div>
+          <div class="form-group">
+            <label>Forfait minimo (€)</label>
+            <input type="number" id="forfait_bonifica" value="400" step="10">
+          </div>
         </div>
       </div>
 
@@ -619,7 +632,7 @@
           <input type="number" id="co1" value="0.018" step="0.001">
         </div>
         <div class="form-group">
-          <label>Co2 — grande diam.</label>
+          <label>Co2 — diam. ≥ 45mm</label>
           <input type="number" id="co2" value="0.022" step="0.001">
         </div>
       </div>
@@ -777,7 +790,7 @@ function mostraCalcolatore(prodotto) {
   // Campi esclusivi viti
   show('row-tipo-vite',     isViti);
   show('row-lav-vite',      isViti);
-  show('row-bonifica-vite', isViti);
+  show('row-trattamento-vite', isViti);
   show('row-tf-vite',       isViti);
   show('row-filetto-vite',  isViti);
   show('row-dpl-vite',      isViti);
@@ -860,6 +873,11 @@ document.querySelectorAll('.toggle-btn').forEach(btn => {
     if (group === 'tipo_prig') {
       document.getElementById('prig-mb-group').style.display =
         btn.dataset.val === 'prig' ? 'block' : 'none';
+    }
+    // trattamento_vite = ON → mostra costo kg e forfait
+    if (group === 'trattamento_vite') {
+      document.getElementById('trattamento-vite-group').style.display =
+        btn.dataset.val === 'ON' ? 'block' : 'none';
     }
     // viti: fresa = mostra dia_disp_viti, filetto, dpl
     if (group === 'lav_vite') {
@@ -1178,7 +1196,9 @@ window.calcola = async function() {
         dia_parte_liscia:   getNum('dpl_vite', 0),
         chiave_tipo:        getToggleVal('chiave_tipo'),
         STAMPAGGIO:         getToggleVal('lav_vite') === 'stamp',
-        BONIFICA:           getToggle('bonifica_vite'),
+        TRATTAMENTO:        getToggle('trattamento_vite'),
+        costo_bonifica_kg:  getNum('costo_bonifica_kg', 1.20),
+        forfait_bonifica:   getNum('forfait_bonifica', 400),
       }, T, TV);
     }
 
