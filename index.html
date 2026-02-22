@@ -108,10 +108,10 @@
       <div class="product-desc">UNI 6058 / libero<br>con fresatura o stampaggio</div>
     </button>
 
-    <button class="product-btn disabled" disabled>
-      <div class="product-icon">○</div>
+    <button class="product-btn" data-product="viti">
+      <div class="product-icon">⬡</div>
       <div class="product-name">Viti</div>
-      <div class="product-desc">In sviluppo</div>
+      <div class="product-desc">UNI 5737 / 5739 / 5931<br>con stampaggio o fresatura</div>
     </button>
 
   </div>
@@ -319,6 +319,8 @@
           <option value="L7">L7</option>
           <option value="B7M">B7M</option>
           <option value="42CD4">42CD4</option>
+          <option value="B16">B16</option>
+          <option value="41Cr">41Cr</option>
           <option value="inox">Inox</option>
           <option value="altro">Altro</option>
         </select>
@@ -500,6 +502,55 @@
         </div>
       </div>
 
+      <!-- CAMPI ESCLUSIVI VITI -->
+      <div id="row-tipo-vite" class="form-group" style="display:none">
+        <label>Tipo vite</label>
+        <div class="toggle-group">
+          <button class="toggle-btn active" data-group="tipo_vite" data-val="5737">5737 — Esag. gambo</button>
+          <button class="toggle-btn"        data-group="tipo_vite" data-val="5739">5739 — Esag. tutta fil.</button>
+          <button class="toggle-btn"        data-group="tipo_vite" data-val="5931">5931 — Cava (brugola)</button>
+        </div>
+      </div>
+
+      <div id="row-lav-vite" class="form-group" style="display:none">
+        <label>Lavorazione testa</label>
+        <div class="toggle-group">
+          <button class="toggle-btn active" data-group="lav_vite" data-val="stamp">Stampaggio</button>
+          <button class="toggle-btn"        data-group="lav_vite" data-val="fresa">Fresa / Tornitura</button>
+        </div>
+      </div>
+
+      <div id="row-bonifica-vite" class="form-group" style="display:none">
+        <label>Bonifica</label>
+        <div class="toggle-group">
+          <button class="toggle-btn active" data-group="bonifica_vite" data-val="OFF">OFF</button>
+          <button class="toggle-btn"        data-group="bonifica_vite" data-val="ON">ON</button>
+        </div>
+      </div>
+
+      <div id="row-tf-vite" class="form-group" style="display:none">
+        <label>Filettatura totale <span class="label-hint">(ignora tabella)</span></label>
+        <div class="toggle-group">
+          <button class="toggle-btn active" data-group="tf_vite" data-val="OFF">OFF</button>
+          <button class="toggle-btn"        data-group="tf_vite" data-val="ON">ON</button>
+        </div>
+      </div>
+
+      <div id="row-filetto-vite" class="form-group" style="display:none">
+        <label>Lunghezza filetto (mm) <span class="label-hint">(0 = da tabella)</span></label>
+        <input type="number" id="filetto_vite" value="0" min="0" step="1">
+      </div>
+
+      <div id="row-dpl-vite" class="form-group" style="display:none">
+        <label>Ø parte liscia (mm) <span class="label-hint">(0 = usa Ø nominale)</span></label>
+        <input type="number" id="dpl_vite" value="0" min="0" step="0.1">
+      </div>
+
+      <div id="row-dia-disp-viti" class="form-group" style="display:none">
+        <label>Diametro barra grezza (mm)</label>
+        <input type="number" id="dia_disp_viti" value="30" min="1" step="0.1">
+      </div>
+
       <!-- DIAMETRO BARRA GREZZA DADI (solo dadi)
            Campo separato da quello dei torniti perché ha
            validazione diversa:
@@ -638,15 +689,18 @@ import { calcolaPrigionieri }    from './moduli/prigionieri.js';
 let T  = null;   // comune.json      — dati condivisi tra tutti i moduli
 let TD = null;   // dadi.json        — tabelle specifiche per i dadi
 let TP = null;   // prigionieri.json — tabelle specifiche per i prigionieri
+let TV = null;   // viti.json        — tabelle specifiche per le viti
 
 Promise.all([
   fetch('./tabelle/comune.json').then(r => r.json()),
   fetch('./tabelle/dadi.json').then(r => r.json()),
   fetch('./tabelle/prigionieri.json').then(r => r.json()),
-]).then(([comune, dadi, prig]) => {
+  fetch('./tabelle/viti.json').then(r => r.json()),
+]).then(([comune, dadi, prig, viti]) => {
   T  = comune;
   TD = dadi;
   TP = prig;
+  TV = viti;
 }).catch(() => { alert('Errore: impossibile caricare le tabelle JSON'); });
 
 
@@ -686,6 +740,7 @@ function mostraCalcolatore(prodotto) {
   const isTiranti     = prodotto === 'tiranti';
   const isPrigionieri = prodotto === 'prigionieri';
   const isOcchio      = prodotto === 'tiranti_occhio';
+  const isViti        = prodotto === 'viti';
 
   // Aggiorna testi header
   const titoli = {
@@ -694,6 +749,7 @@ function mostraCalcolatore(prodotto) {
     dadi:             'Dadi',
     prigionieri:      'Prigionieri',
     tiranti_occhio:   'Tiranti a Occhio',
+    viti:             'Viti',
   };
   const subs = {
     tiranti:          'Da barra a diametro medio',
@@ -701,6 +757,7 @@ function mostraCalcolatore(prodotto) {
     dadi:             'UNI 5587 / 5588 / 5589',
     prigionieri:      'UNI 5909 / 5911 / libero',
     tiranti_occhio:   'UNI 6058 / libero',
+    viti:             'UNI 5737 / 5739 / 5931',
   };
   document.getElementById('header-title').textContent = titoli[prodotto] || prodotto;
   document.getElementById('header-sub').textContent   = subs[prodotto]   || '';
@@ -717,6 +774,14 @@ function mostraCalcolatore(prodotto) {
   show('row-lungh',        !isDadi);                    // lunghezza: tutti tranne dadi
   show('row-altez',         isDadi);                    // altezza auto: solo dadi
   show('row-dia-disp',      isTornito || isPrigionieri || isOcchio); // barra grezza: torniti, prigionieri, occhio
+  // Campi esclusivi viti
+  show('row-tipo-vite',     isViti);
+  show('row-lav-vite',      isViti);
+  show('row-bonifica-vite', isViti);
+  show('row-tf-vite',       isViti);
+  show('row-filetto-vite',  isViti);
+  show('row-dpl-vite',      isViti);
+  show('row-dia-disp-viti', isViti);
   show('row-prigioniero',   isTiranti);                 // opzione prigioniero: solo tiranti
   show('row-fantina',       isTornito || isPrigionieri);// fantina: torniti e prigionieri
   show('row-barra-giusta',  isTornito || isPrigionieri);// barra giusta: torniti e prigionieri
@@ -796,6 +861,14 @@ document.querySelectorAll('.toggle-btn').forEach(btn => {
       document.getElementById('prig-mb-group').style.display =
         btn.dataset.val === 'prig' ? 'block' : 'none';
     }
+    // viti: fresa = mostra dia_disp_viti, filetto, dpl
+    if (group === 'lav_vite') {
+      const isFresa = btn.dataset.val === 'fresa';
+      document.getElementById('row-dia-disp-viti').style.display = 'block'; // sempre
+      // con fresa mostra anche filetto e parte liscia
+      document.getElementById('row-filetto-vite').style.display = 'block';
+      document.getElementById('row-dpl-vite').style.display = 'block';
+    }
   });
 });
 
@@ -805,12 +878,14 @@ document.querySelectorAll('.toggle-btn').forEach(btn => {
 // Per inox e altro non c'è un default (prezzi variabili):
 // il campo viene azzerato con hint "inserire manualmente".
 const COSTO_DEFAULT = {
-  B7:     { val: 1.87,  hint: 'default tabella' },
-  L7:     { val: 2.09,  hint: 'default tabella' },
-  B7M:    { val: 1.98,  hint: 'default tabella' },
-  '42CD4':{ val: 1.815, hint: 'default tabella' },
-  inox:   { val: 0,     hint: 'inserire manualmente' },
-  altro:  { val: 0,     hint: 'inserire manualmente' },
+  B7:     { val: 1.87,   hint: 'default tabella' },
+  L7:     { val: 2.09,   hint: 'default tabella' },
+  B7M:    { val: 1.98,   hint: 'default tabella' },
+  '42CD4':{ val: 1.8975, hint: 'default tabella' },
+  B16:    { val: 2.875,  hint: 'default tabella' },
+  '41Cr': { val: 1.98,   hint: 'default tabella' },
+  inox:   { val: 0,      hint: 'inserire manualmente' },
+  altro:  { val: 0,      hint: 'inserire manualmente' },
 };
 
 document.getElementById('mat').addEventListener('change', function() {
@@ -938,7 +1013,7 @@ function getToggle(group) {
 // In caso di errore: mostra il messaggio nel pannello risultati
 // invece di far crashare silenziosamente.
 window.calcola = async function() {
-  if (!T || !TD || !TP) {
+  if (!T || !TD || !TP || !TV) {
     alert('Tabelle non ancora caricate, riprova tra un secondo.');
     return;
   }
@@ -1083,6 +1158,30 @@ window.calcola = async function() {
       }, T);
     }
 
+    // ── Viti ─────────────────────────────────────────────
+    if (prodottoCorrente === 'viti') {
+      const { calcolaViti } = await import('./moduli/viti.js');
+      R = calcolaViti({
+        tipo:               getToggleVal('tipo_vite'),
+        dia_raw:            getStr('dia'),
+        passo:              getStr('passo'),
+        lungh_raw:          getNum('lungh', 100),
+        qta_raw:            getStr('qta'),
+        qta_x:              getNum('qta_x', 0),
+        mat:                getStr('mat'),
+        materiale_speciale: getStr('materiale_speciale'),
+        dens_altro:         getNum('dens_altro', 7.916),
+        costo_mat_override: getNum('costo_mat_override', 0),
+        dia_disp_raw:       getNum('dia_disp_viti', 30),
+        TF:                 getToggle('tf_vite'),
+        filetto_override:   getNum('filetto_vite', 0),
+        dia_parte_liscia:   getNum('dpl_vite', 0),
+        chiave_tipo:        getToggleVal('chiave_tipo'),
+        STAMPAGGIO:         getToggleVal('lav_vite') === 'stamp',
+        BONIFICA:           getToggle('bonifica_vite'),
+      }, T, TV);
+    }
+
     renderResults(R);
 
   } catch(e) {
@@ -1124,6 +1223,7 @@ function renderResults(R) {
   const isDadi    = prodottoCorrente === 'dadi';
   const isPrig    = prodottoCorrente === 'prigionieri';
   const isOcchio  = prodottoCorrente === 'tiranti_occhio';
+  const isViti    = prodottoCorrente === 'viti';
 
   // ── Funzione bar(): riga del grafico a barre ──────────────
   // pct: percentuale rispetto al costo totale
@@ -1131,7 +1231,8 @@ function renderResults(R) {
   //      per visibilità anche per voci molto piccole
   // cls: classe CSS per il colore (mat, torn, taglio, ecc.)
   function bar(label, val, cls) {
-    const pct = R.costo_tot > 0 ? Math.max(2, (val / R.costo_tot) * 100) : 0;
+    const _tot = R.costo_tot ?? R.totale ?? 1;
+    const pct = _tot > 0 ? Math.max(2, (val / _tot) * 100) : 0;
     return `<div class="bar-row">
       <div class="bar-label">${label}</div>
       <div class="bar-track"><div class="bar-fill ${cls}" style="width:${pct}%"></div></div>
@@ -1179,6 +1280,22 @@ function renderResults(R) {
       { label: '◎ Tornitura',    val: R.torni_fin,   sub: `setup: €${r(R.setup_torn)}` },
       { label: '⟳ Rullatura',    val: R.rulla_fin,   sub: `setup: €${r(R.setup_rull)}` },
       { label: '🏷 Marcatura',    val: R.marc_fin,    sub: '' },
+    ];
+  } else if (isViti) {
+    righe = [
+      { label: '🟢 Materiale',   val: R.mat_cost_plus, sub: `peso grezzo: ${r(R.peso, 3)} kg (+${R.mod_qta} pz mat.)` },
+      ...(R.bonifica     > 0 ? [{ label: '🔥 Bonifica',     val: R.bonifica,     sub: '' }] : []),
+      ...(R.attrezzatura > 0 ? [{ label: '🔧 Attrezzatura', val: R.attrezzatura, sub: '' }] : []),
+      { label: '✂ Taglio',       val: R.ta,             sub: `setup: €${r(R.setup_taglio)}` },
+      ...(R.ha_smusso  ? [{ label: '⟋ Smusso',     val: R.smusso_fin, sub: `setup: €${r(R.setup_smusso)}` }] : []),
+      ...(R.ha_stamp   ? [{ label: '⬡ Stampaggio', val: R.stamp_fin,  sub: `setup: €${r(R.setup_stamp)}`  }] : []),
+      ...(R.ha_stamp   ? [{ label: '⟐ Sbavatura',  val: R.sbav_fin,   sub: `setup: €${r(R.setup_sbav)}`  }] : []),
+      ...(R.ha_torn    ? [{ label: '◎ Tornitura',  val: R.torn_fin,   sub: `setup: €${r(R.setup_torn)}`  }] : []),
+      ...(R.ha_fresa   ? [{ label: '⟋ Fresatura',  val: R.fresa_fin,  sub: `setup: €${r(R.setup_fresa)}` }] : []),
+      ...(R.ha_brocc   ? [{ label: '⬢ Brocciatura',val: R.brocc_fin,  sub: `setup: €${r(R.setup_brocc)}` }] : []),
+      { label: '⟳ Rullatura',    val: R.rull_fin,       sub: `setup: €${r(R.setup_rull)}` },
+      ...(R.ha_raddr   ? [{ label: '📐 Raddrizzatura', val: R.raddr_fin, sub: `setup: €${r(R.setup_raddr)}` }] : []),
+      { label: '🏷 Marcatura',    val: R.marc_fin,       sub: '' },
     ];
   } else if (isOcchio) {
     righe = [
@@ -1252,6 +1369,20 @@ function renderResults(R) {
       </div>
     </div>` : '';
 
+  // ── Card geometria viti ─────────────────────────────────────
+  const vitiInfoHTML = isViti ? `
+    <div class="result-card">
+      <div class="breakdown-title">▎ Geometria vite</div>
+      <div class="cost-grid" style="margin-top:0">
+        <div class="cost-row"><div class="cost-row-label">Tipo</div><div class="cost-row-value">UNI ${R.tipo}</div></div>
+        <div class="cost-row"><div class="cost-row-label">Filetto</div><div class="cost-row-value">${r(R.filet, 1)} mm</div></div>
+        ${R.lungh_liscia > 0 ? `<div class="cost-row"><div class="cost-row-label">Parte liscia</div><div class="cost-row-value">${r(R.lungh_liscia, 1)} mm</div></div>` : ''}
+        <div class="cost-row"><div class="cost-row-label">Altezza testa</div><div class="cost-row-value">${r(R.h_testa, 1)} mm</div></div>
+        <div class="cost-row"><div class="cost-row-label">Spezzone</div><div class="cost-row-value">${r(R.lungh_spezzone, 1)} mm</div></div>
+        <div class="cost-row"><div class="cost-row-label">Peso finito</div><div class="cost-row-value">${r(R.peso_fin, 3)} kg</div></div>
+      </div>
+    </div>` : '';
+
   // ── Card barre (solo se BARRA_GIUSTA è attiva) ────────────
   const barreHTML = R.BARRA_GIUSTA ? `
     <div class="result-card">
@@ -1312,6 +1443,26 @@ function renderResults(R) {
       <div class="tempo-cell"><div class="tc-label">A.Taglio</div><div class="tc-val">300<span class="tc-unit"> s</span></div></div>
       <div class="tempo-cell"><div class="tc-label">A.Torn1</div><div class="tc-val">3600<span class="tc-unit"> s</span></div></div>
       <div class="tempo-cell"><div class="tc-label">A.Rullatura</div><div class="tc-val">1800<span class="tc-unit"> s</span></div></div>`;
+  } else if (isViti) {
+    tempiGridHTML = `
+      <div class="tempo-cell"><div class="tc-label">Taglio</div><div class="tc-val">${Math.round(R.t_taglio)}<span class="tc-unit"> s</span></div></div>
+      ${R.ha_smusso ? `<div class="tempo-cell"><div class="tc-label">Smusso</div><div class="tc-val">${Math.round(R.t_smusso)}<span class="tc-unit"> s</span></div></div>` : ''}
+      ${R.ha_stamp  ? `<div class="tempo-cell"><div class="tc-label">Stampaggio</div><div class="tc-val">${Math.round(R.t_stamp)}<span class="tc-unit"> s</span></div></div>` : ''}
+      ${R.ha_stamp  ? `<div class="tempo-cell"><div class="tc-label">Sbavatura</div><div class="tc-val">${Math.round(R.t_sbav)}<span class="tc-unit"> s</span></div></div>` : ''}
+      ${R.ha_torn   ? `<div class="tempo-cell"><div class="tc-label">Tornitura</div><div class="tc-val">${Math.round(R.t_torn)}<span class="tc-unit"> s</span></div></div>` : ''}
+      ${R.ha_fresa  ? `<div class="tempo-cell"><div class="tc-label">Fresatura</div><div class="tc-val">${Math.round(R.t_fresa)}<span class="tc-unit"> s</span></div></div>` : ''}
+      ${R.ha_brocc  ? `<div class="tempo-cell"><div class="tc-label">Brocciatura</div><div class="tc-val">${Math.round(R.t_brocc)}<span class="tc-unit"> s</span></div></div>` : ''}
+      <div class="tempo-cell"><div class="tc-label">Rullatura</div><div class="tc-val">${Math.round(R.t_rulla)}<span class="tc-unit"> s</span></div></div>
+      ${R.ha_raddr  ? `<div class="tempo-cell"><div class="tc-label">Raddrizzatura</div><div class="tc-val">${Math.round(R.t_raddr)}<span class="tc-unit"> s</span></div></div>` : ''}
+      <div class="tempo-cell"><div class="tc-label">A.Taglio</div><div class="tc-val">300<span class="tc-unit"> s</span></div></div>
+      ${R.ha_smusso ? `<div class="tempo-cell"><div class="tc-label">A.Smusso</div><div class="tc-val">1800<span class="tc-unit"> s</span></div></div>` : ''}
+      ${R.ha_stamp  ? `<div class="tempo-cell"><div class="tc-label">A.Stamp.</div><div class="tc-val">3600<span class="tc-unit"> s</span></div></div>` : ''}
+      ${R.ha_stamp  ? `<div class="tempo-cell"><div class="tc-label">A.Sbavat.</div><div class="tc-val">1800<span class="tc-unit"> s</span></div></div>` : ''}
+      ${R.ha_torn   ? `<div class="tempo-cell"><div class="tc-label">A.Torn1</div><div class="tc-val">3600<span class="tc-unit"> s</span></div></div>` : ''}
+      ${R.ha_fresa  ? `<div class="tempo-cell"><div class="tc-label">A.Fresa</div><div class="tc-val">3600<span class="tc-unit"> s</span></div></div>` : ''}
+      ${R.ha_brocc  ? `<div class="tempo-cell"><div class="tc-label">A.Brocc.</div><div class="tc-val">3600<span class="tc-unit"> s</span></div></div>` : ''}
+      <div class="tempo-cell"><div class="tc-label">A.Rullatura</div><div class="tc-val">1800<span class="tc-unit"> s</span></div></div>
+      ${R.ha_raddr  ? `<div class="tempo-cell"><div class="tc-label">A.Raddr.</div><div class="tc-val">1800<span class="tc-unit"> s</span></div></div>` : ''}`;
   } else if (isOcchio) {
     tempiGridHTML = R.STAMPAGGIO ? `
       <div class="tempo-cell"><div class="tc-label">Taglio</div><div class="tc-val">${Math.round(R.ta_tempo)}<span class="tc-unit"> s</span></div></div>
@@ -1351,10 +1502,10 @@ function renderResults(R) {
     <!-- 1. Card costo totale -->
     <div class="result-card primary">
       <div class="cost-header">● COSTO TOTALE UNITARIO</div>
-      <div class="cost-value"><span class="currency">€</span>${r(R.costo_tot)}<span class="unit">/ pz</span></div>
+      <div class="cost-value"><span class="currency">€</span>${r(R.costo_tot ?? R.totale)}<span class="unit">/ pz</span></div>
       <div class="cost-summary">
-        Lavorazione: <strong>€${r(R.costo_lav)}</strong>&nbsp;&nbsp;|&nbsp;&nbsp;
-        Materiale: <strong>€${r(R.mat_cost)}</strong>
+        Lavorazione: <strong>€${r(R.costo_lav ?? R.lavorazione)}</strong>&nbsp;&nbsp;|&nbsp;&nbsp;
+        Materiale: <strong>€${r(isViti ? R.mat_cost_plus : R.mat_cost)}</strong>
         ${R.bonifica > 0 ? `&nbsp;&nbsp;|&nbsp;&nbsp;Bonifica: <strong>€${r(R.bonifica)}</strong>` : ''}
         ${R.tratta   > 0 ? `&nbsp;&nbsp;|&nbsp;&nbsp;Trattamento: <strong>€${r(R.tratta)}</strong>` : ''}
       </div>
@@ -1376,10 +1527,15 @@ function renderResults(R) {
       ${isOcchio ? bar('Tornitura', R.to_costo + R.setup_torn, 'torn') : ''}
       ${isOcchio ? bar('Fresatura', R.fr_costo + R.setup_fres, 'smusso') : ''}
       ${isOcchio ? bar('Rullatura', R.ru_costo + R.setup_rull, 'rull') : ''}
-      ${!isDadi && !isPrig && !isOcchio &&  isTornito ? bar('Tornitura', R.torni_fin + R.setup_torn, 'torn') : ''}
-      ${!isDadi && !isPrig && !isOcchio && !isTornito ? bar('Taglio',    R.taglio_fin + R.setup_taglio, 'taglio') : ''}
-      ${!isDadi && !isPrig && !isOcchio && !isTornito ? bar('Smusso',    R.smusso_fin + R.setup_smusso, 'smusso') : ''}
-      ${!isDadi && !isPrig && !isOcchio ? bar('Rullatura', R.rulla_fin + R.setup_rull, 'rull') : ''}
+      ${isViti  && R.ha_stamp  ? bar('Stampaggio', R.stamp_fin + R.setup_stamp, 'torn') : ''}
+      ${isViti  && R.ha_torn   ? bar('Tornitura',  R.torn_fin  + R.setup_torn,  'torn') : ''}
+      ${isViti  && R.ha_fresa  ? bar('Fresatura',  R.fresa_fin + R.setup_fresa, 'smusso') : ''}
+      ${isViti  && R.ha_brocc  ? bar('Brocciatura',R.brocc_fin + R.setup_brocc, 'smusso') : ''}
+      ${isViti  ? bar('Rullatura', R.rull_fin + R.setup_rull, 'rull') : ''}
+      ${!isDadi && !isPrig && !isOcchio && !isViti &&  isTornito ? bar('Tornitura', R.torni_fin + R.setup_torn, 'torn') : ''}
+      ${!isDadi && !isPrig && !isOcchio && !isViti && !isTornito ? bar('Taglio',    R.taglio_fin + R.setup_taglio, 'taglio') : ''}
+      ${!isDadi && !isPrig && !isOcchio && !isViti && !isTornito ? bar('Smusso',    R.smusso_fin + R.setup_smusso, 'smusso') : ''}
+      ${!isDadi && !isPrig && !isOcchio && !isViti ? bar('Rullatura', R.rulla_fin + R.setup_rull, 'rull') : ''}
       ${bar('Marcatura', R.marc_fin, 'marc')}
       ${R.bonifica > 0 ? bar('Bonifica',    R.bonifica, 'bonif') : ''}
       ${R.tratta   > 0 ? bar('Trattamento', R.tratta,   'bonif') : ''}
@@ -1389,6 +1545,7 @@ function renderResults(R) {
     ${dadiInfoHTML}
     ${prigInfoHTML}
     ${occhioInfoHTML}
+    ${vitiInfoHTML}
 
     <!-- 5. Barre (solo con BARRA_GIUSTA) -->
     ${barreHTML}
@@ -1416,7 +1573,8 @@ function renderResults(R) {
       <div class="breakdown-title">▎ Peso e lotto</div>
       <div class="cost-grid" style="margin-top:0">
         <!-- diametro medio: non applicabile per dadi e occhio -->
-        ${(!isDadi && !isOcchio) ? `<div class="cost-row"><div class="cost-row-label">Diametro medio</div><div class="cost-row-value">${r(R.diam, 1)} mm</div></div>` : ''}
+        ${(!isDadi && !isOcchio && !isViti) ? `<div class="cost-row"><div class="cost-row-label">Diametro medio</div><div class="cost-row-value">${r(R.diam, 1)} mm</div></div>` : ''}
+        ${isViti ? `<div class="cost-row"><div class="cost-row-label">Diametro medio</div><div class="cost-row-value">${r(R.medio, 2)} mm</div></div>` : ''}
         <div class="cost-row"><div class="cost-row-label">Peso singolo</div><div class="cost-row-value">${r(R.peso, 3)} kg</div></div>
         <div class="cost-row">
           <!-- etichetta dinamica: "sottocommessa" se qta_x > 0, altrimenti "lotto" -->
