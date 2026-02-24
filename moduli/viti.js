@@ -164,12 +164,13 @@ function calcolaTornitura(tipo, dian, medio, dia_disp, dia_parte_liscia,
   let tempo = ttf + ttl;
   if (tempo > 0) tempo += 15;
 
-  // Minimo e casi semplici
+  // Caso semplice: solo filetto su pezzo corto, gambo già a misura — nessun minimo
   if ((tipo === '5737' || tipo === '5931') && lungh < 350 && pldt_base === 0) {
-    // Caso tipico: solo filetto corto, gambo già a misura
     tempo = (filet / div) * Math.ceil(differenza_fil / 3) + 12;
+    return tempo <= 0 ? 0 : tempo;
   }
 
+  // Caso generale (tornitura parte liscia o pezzo lungo): minimo 90s
   if (tempo <= 0) return 0;
   tempo = Math.max(tempo, 90);
   return tempo;
@@ -300,8 +301,16 @@ function getModQta(dian, lungh, TV) {
 
 function calcolaBonificaViti(peso, qta, dian, lungh, TRATTAMENTO, costo_bonifica_kg, forfait_bonifica) {
   if (!TRATTAMENTO) return 0;
-  const tot = peso * costo_bonifica_kg * qta;
-  return tot < forfait_bonifica ? forfait_bonifica / qta : peso * costo_bonifica_kg;
+  // 4 casi da Python (assoluti 1.20/1.45/1.50/1.60) → moltiplicatori relativi a costo_bonifica_kg
+  let mult_costo, mult_forfait;
+  if (dian <= 42 && lungh <= dian * 10) { mult_costo = 1;    mult_forfait = 1;    } // ×1.20/1.20
+  else if (dian <= 42)                  { mult_costo = 1.21; mult_forfait = 1.05; } // ×1.45/1.20
+  else if (lungh <= dian * 10)          { mult_costo = 1.25; mult_forfait = 1;    } // ×1.50/1.20
+  else                                  { mult_costo = 1.33; mult_forfait = 1.05; } // ×1.60/1.20
+  const costo_eff  = costo_bonifica_kg * mult_costo;
+  const forfait_eff = forfait_bonifica  * mult_forfait;
+  const tot = peso * costo_eff * qta;
+  return tot < forfait_eff ? forfait_eff / qta : peso * costo_eff;
 }
 
 // ─── MARCATURA ───────────────────────────────────────────────
@@ -516,7 +525,8 @@ export function calcolaViti(inp, T, TV) {
   const bonifica = calcolaBonificaViti(peso, qta, dian, lungh, TRATTAMENTO, costo_bonifica_kg, forfait_bonifica);
 
   // ── Attrezzatura (inox/altro) ─────────────────────────────
-  const attrezzatura = isInox ? 0.6 : 0;
+  // Nessuna attrezzatura se inox stampato partendo già dal diametro medio (nessuna tornitura)
+  const attrezzatura = isInox && !(STAMPAGGIO && differenza_fil <= 0 && t_torn === 0) ? 0.6 : 0;
 
   // ── Marcatura ─────────────────────────────────────────────
   const marc_fin = calcolaMarcatura(dian, qta, mat, STAMPAGGIO, TV);

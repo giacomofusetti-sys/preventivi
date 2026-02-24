@@ -336,13 +336,18 @@
         </select>
       </div>
 
-      <!-- Costo materiale modificabile: precompilato con il valore
-           di default ma editabile. Permette di usare il prezzo
-           reale di acquisto invece del listino standard.
-           Il "hint" a destra mostra "default tabella" o "inserire manualmente". -->
-      <div class="form-group">
-        <label>Costo materiale (€/kg) <span class="label-hint" id="costo-mat-hint"></span></label>
-        <input type="number" id="costo_mat_override" value="1.87" step="0.001">
+      <!-- Costo materiale: prezzo netto di acquisto + ricarico %.
+           Il valore finale passato ai moduli è base × (1 + ricarico/100).
+           Se base = 0 (inox / altro manuale) il modulo usa la tabella. -->
+      <div class="form-row">
+        <div class="form-group">
+          <label>Costo base (€/kg) <span class="label-hint" id="costo-mat-hint"></span></label>
+          <input type="number" id="costo_mat_base" value="1.70" step="0.001" min="0">
+        </div>
+        <div class="form-group">
+          <label>Ricarico %</label>
+          <input type="number" id="costo_mat_ricarico" value="10" step="1" min="0">
+        </div>
       </div>
 
       <!-- Gruppo "altro": appare solo se mat = "altro".
@@ -895,21 +900,24 @@ document.querySelectorAll('.toggle-btn').forEach(btn => {
 // Precompila il campo costo quando si cambia il materiale.
 // Per inox e altro non c'è un default (prezzi variabili):
 // il campo viene azzerato con hint "inserire manualmente".
+// base  = prezzo netto acquisto (senza ricarico)
+// ricarico = % da applicare (10 per quasi tutti, 15 per 42CD4, 20 per inox)
 const COSTO_DEFAULT = {
-  B7:     { val: 1.87,   hint: 'default tabella' },
-  L7:     { val: 2.09,   hint: 'default tabella' },
-  B7M:    { val: 1.98,   hint: 'default tabella' },
-  '42CD4':{ val: 1.8975, hint: 'default tabella' },
-  B16:    { val: 2.875,  hint: 'default tabella' },
-  '41Cr': { val: 1.98,   hint: 'default tabella' },
-  inox:   { val: 0,      hint: 'inserire manualmente' },
-  altro:  { val: 0,      hint: 'inserire manualmente' },
+  B7:     { base: 1.70,  ricarico: 10, hint: 'default tabella' },
+  L7:     { base: 1.90,  ricarico: 10, hint: 'default tabella' },
+  B7M:    { base: 1.80,  ricarico: 10, hint: 'default tabella' },
+  '42CD4':{ base: 1.65,  ricarico: 15, hint: 'default tabella' },
+  B16:    { base: 2.614, ricarico: 10, hint: 'default tabella' },
+  '41Cr': { base: 1.80,  ricarico: 10, hint: 'default tabella' },
+  inox:   { base: 0,     ricarico: 20, hint: 'inserire manualmente' },
+  altro:  { base: 0,     ricarico: 10, hint: 'inserire manualmente' },
 };
 
 document.getElementById('mat').addEventListener('change', function() {
   const v   = this.value;
-  const def = COSTO_DEFAULT[v] || { val: 0, hint: '' };
-  document.getElementById('costo_mat_override').value  = def.val;
+  const def = COSTO_DEFAULT[v] || { base: 0, ricarico: 10, hint: '' };
+  document.getElementById('costo_mat_base').value     = def.base;
+  document.getElementById('costo_mat_ricarico').value = def.ricarico;
   document.getElementById('costo-mat-hint').textContent = def.hint ? `— ${def.hint}` : '';
   // Mostra il gruppo "altro" solo se mat = "altro"
   document.getElementById('altro-group').style.display = v === 'altro' ? 'block' : 'none';
@@ -1055,7 +1063,7 @@ window.calcola = async function() {
         mat:                getStr('mat'),
         materiale_speciale: getStr('materiale_speciale'),
         dens_altro:         getNum('dens_altro', 7.916),
-        costo_mat_override: getNum('costo_mat_override', 0),
+        costo_mat_override: getNum('costo_mat_base', 0) * (1 + getNum('costo_mat_ricarico', 10) / 100),
         PRIGIONIERO:        getToggle('prigioniero'),
         fil_a:              getNum('fil_a', 25),
         fil_b:              getNum('fil_b', 25),
@@ -1072,7 +1080,7 @@ window.calcola = async function() {
         mat:                getStr('mat'),
         materiale_speciale: getStr('materiale_speciale'),
         dens_altro:         getNum('dens_altro', 7.916),
-        costo_mat_override: getNum('costo_mat_override', 0),
+        costo_mat_override: getNum('costo_mat_base', 0) * (1 + getNum('costo_mat_ricarico', 10) / 100),
         dia_disp:           getNum('dia_disp', 50),
         FANTINA:            getToggle('fantina'),
         BARRA_GIUSTA:       getToggle('barra_giusta'),
@@ -1094,7 +1102,7 @@ window.calcola = async function() {
         mat:                getStr('mat'),
         materiale_speciale: getStr('materiale_speciale'),
         dens_altro:         getNum('dens_altro', 7.916),
-        costo_mat_override: getNum('costo_mat_override', 0),
+        costo_mat_override: getNum('costo_mat_base', 0) * (1 + getNum('costo_mat_ricarico', 10) / 100),
         dia_disp:           getNum('dia_disp', 16),
         FANTINA:            getToggle('fantina'),
         BARRA_GIUSTA:       getToggle('barra_giusta'),
@@ -1148,7 +1156,7 @@ window.calcola = async function() {
         mat:                 getStr('mat'),
         materiale_speciale:  getStr('materiale_speciale'),
         dens_altro:          getNum('dens_altro', 7.916),
-        costo_mat_override:  getNum('costo_mat_override', 0),
+        costo_mat_override:  getNum('costo_mat_base', 0) * (1 + getNum('costo_mat_ricarico', 10) / 100),
         dia_disp:            getNum('dia_disp_dadi', 60),
         STAMPAGGIO:          getToggle('stampaggio'),
         TRATTAMENTO_TERMICO: getToggle('trattamento'),
@@ -1168,7 +1176,7 @@ window.calcola = async function() {
         mat:                getStr('mat'),
         materiale_speciale: getStr('materiale_speciale'),
         dens_altro:         getNum('dens_altro', 7.916),
-        costo_mat_override: getNum('costo_mat_override', 0),
+        costo_mat_override: getNum('costo_mat_base', 0) * (1 + getNum('costo_mat_ricarico', 10) / 100),
         dia_testa_custom:   getNum('dia_testa_custom', 0),
         dia_foro_custom:    getNum('dia_foro_custom', 0),
         dia_disp:           getNum('dia_disp', 50),
@@ -1189,7 +1197,7 @@ window.calcola = async function() {
         mat:                getStr('mat'),
         materiale_speciale: getStr('materiale_speciale'),
         dens_altro:         getNum('dens_altro', 7.916),
-        costo_mat_override: getNum('costo_mat_override', 0),
+        costo_mat_override: getNum('costo_mat_base', 0) * (1 + getNum('costo_mat_ricarico', 10) / 100),
         dia_disp_raw:       getNum('dia_disp_viti', 30),
         TF:                 getToggle('tf_vite'),
         filetto_override:   getNum('filetto_vite', 0),
