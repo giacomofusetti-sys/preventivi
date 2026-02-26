@@ -811,7 +811,7 @@ function mostraCalcolatore(prodotto) {
   show('row-chiave-tipo',   isDadi);                    // serie chiave: solo dadi
   show('row-dia-disp-dadi', isDadi);                    // barra grezza dadi: solo dadi
   show('row-stampaggio',    isDadi);                    // fresatura/stampaggio: solo dadi
-  show('row-trattamento',   isDadi);                    // trattamento termico: solo dadi
+  show('row-trattamento',   isDadi || isTiranti || isTornito || isPrigionieri || isOcchio); // trattamento termico: tutti tranne viti
 
   // Per i dadi calcola subito l'altezza di default
   if (isDadi) aggiornaAltezzaDado();
@@ -1068,6 +1068,12 @@ window.calcola = async function() {
         fil_a:              getNum('fil_a', 25),
         fil_b:              getNum('fil_b', 25),
       }, T);
+      if (getToggle('trattamento')) {
+        const tratt = Math.max(R.peso * getNum('prezzo_kg', 1.2), getNum('forfait', 400) / R.qta);
+        R.trattamento = tratt;
+        R.costo_tot += tratt;
+        R.costo_lav += tratt;
+      }
 
     } else if (prodottoCorrente === 'tiranti_torniti') {
       // ── Tiranti torniti ───────────────────────────────────
@@ -1086,6 +1092,12 @@ window.calcola = async function() {
         BARRA_GIUSTA:       getToggle('barra_giusta'),
         lungh_barra:        getNum('lungh_barra', 3000),
       }, T);
+      if (getToggle('trattamento')) {
+        const tratt = Math.max(R.peso * getNum('prezzo_kg', 1.2), getNum('forfait', 400) / R.qta);
+        R.trattamento = tratt;
+        R.costo_tot += tratt;
+        R.costo_lav += tratt;
+      }
 
     } else if (prodottoCorrente === 'prigionieri') {
       // ── Prigionieri ───────────────────────────────────────
@@ -1108,6 +1120,12 @@ window.calcola = async function() {
         BARRA_GIUSTA:       getToggle('barra_giusta'),
         lungh_barra:        getNum('lungh_barra', 3000),
       }, T, TP);
+      if (getToggle('trattamento')) {
+        const tratt = Math.max(R.peso * getNum('prezzo_kg', 1.2), getNum('forfait', 400) / R.qta);
+        R.trattamento = tratt;
+        R.costo_tot += tratt;
+        R.costo_lav += tratt;
+      }
 
     } else if (prodottoCorrente === 'dadi') {
       // ── Dadi — validazione prima del calcolo ──────────────
@@ -1182,6 +1200,12 @@ window.calcola = async function() {
         dia_disp:           getNum('dia_disp', 50),
         STAMPAGGIO:         getToggle('stampaggio_occhio'),
       }, T);
+      if (getToggle('trattamento')) {
+        const tratt = Math.max(R.peso * getNum('prezzo_kg', 1.2), getNum('forfait', 400) / R.qta);
+        R.trattamento = tratt;
+        R.costo_tot += tratt;
+        R.costo_lav += tratt;
+      }
     }
 
     // ── Viti ─────────────────────────────────────────────
@@ -1291,8 +1315,9 @@ function renderResults(R) {
   } else if (isPrig) {
     righe = [
       { label: '🟢 Materiale',   val: R.mat_cost,   sub: `peso grezzo: ${r(R.peso, 3)} kg` },
-      ...(R.bonifica > 0 ? [{ label: '🔥 Bonifica',     val: R.bonifica, sub: '' }] : []),
-      ...(R.attrez   > 0 ? [{ label: '🔧 Attrezzatura', val: R.attrez,   sub: '' }] : []),
+      ...(R.bonifica     > 0 ? [{ label: '🔥 Bonifica',      val: R.bonifica,     sub: '' }] : []),
+      ...(R.trattamento  > 0 ? [{ label: '🌡 Trattamento',   val: R.trattamento,  sub: '' }] : []),
+      ...(R.attrez       > 0 ? [{ label: '🔧 Attrezzatura',  val: R.attrez,       sub: '' }] : []),
       ...(!R.FANTINA  ? [{ label: '✂ Taglio',     val: R.ta_costo,  sub: `setup: €${r(R.setup_taglio)}` }] : []),
       { label: '◎ Tornitura',    val: R.to_costo,   sub: `setup: €${r(R.setup_torn)}` },
       { label: '⟳ Rullatura',    val: R.ru_costo,   sub: `setup: €${r(R.setup_rull)}` },
@@ -1301,8 +1326,9 @@ function renderResults(R) {
   } else if (isTornito) {
     righe = [
       { label: '🟢 Materiale',   val: R.mat_cost,   sub: `peso grezzo: ${r(R.peso, 3)} kg` },
-      ...(R.bonifica > 0 ? [{ label: '🔥 Bonifica',     val: R.bonifica, sub: '' }] : []),
-      ...(R.attrez   > 0 ? [{ label: '🔧 Attrezzatura', val: R.attrez,   sub: '' }] : []),
+      ...(R.bonifica     > 0 ? [{ label: '🔥 Bonifica',      val: R.bonifica,     sub: '' }] : []),
+      ...(R.trattamento  > 0 ? [{ label: '🌡 Trattamento',   val: R.trattamento,  sub: '' }] : []),
+      ...(R.attrez       > 0 ? [{ label: '🔧 Attrezzatura',  val: R.attrez,       sub: '' }] : []),
       ...(!R.FANTINA && R.tempo_ta !== null
         ? [{ label: '✂ Taglio',  val: R.taglio_fin,  sub: `setup: €${r(R.setup_taglio)}` }] : []),
       { label: '◎ Tornitura',    val: R.torni_fin,   sub: `setup: €${r(R.setup_torn)}` },
@@ -1328,8 +1354,9 @@ function renderResults(R) {
   } else if (isOcchio) {
     righe = [
       { label: '🟢 Materiale',   val: R.mat_cost,   sub: `peso: ${r(R.peso, 3)} kg` },
-      ...(R.bonifica > 0 ? [{ label: '🔥 Bonifica',     val: R.bonifica, sub: '' }] : []),
-      ...(R.attrez   > 0 ? [{ label: '🔧 Attrezzatura', val: R.attrez,   sub: '' }] : []),
+      ...(R.bonifica     > 0 ? [{ label: '🔥 Bonifica',      val: R.bonifica,     sub: '' }] : []),
+      ...(R.trattamento  > 0 ? [{ label: '🌡 Trattamento',   val: R.trattamento,  sub: '' }] : []),
+      ...(R.attrez       > 0 ? [{ label: '🔧 Attrezzatura',  val: R.attrez,       sub: '' }] : []),
       { label: '✂ Taglio',       val: R.ta_costo,   sub: `setup: €${r(R.setup_taglio)}` },
       ...(R.STAMPAGGIO ? [{ label: '⬡ Stampaggio', val: R.st_costo, sub: `setup: €${r(R.setup_stamp)}` }] : []),
       { label: '◎ Tornitura',    val: R.to_costo,   sub: `setup: €${r(R.setup_torn)}` },
@@ -1341,7 +1368,8 @@ function renderResults(R) {
     // Tiranti semplici
     righe = [
       { label: '🟢 Materiale',   val: R.mat_cost,    sub: `peso: ${r(R.peso, 3)} kg` },
-      ...(R.bonifica > 0 ? [{ label: '🔥 Bonifica',  val: R.bonifica, sub: '' }] : []),
+      ...(R.bonifica    > 0 ? [{ label: '🔥 Bonifica',     val: R.bonifica,    sub: '' }] : []),
+      ...(R.trattamento > 0 ? [{ label: '🌡 Trattamento',  val: R.trattamento, sub: '' }] : []),
       { label: '✂ Taglio',       val: R.taglio_fin,  sub: `setup: €${r(R.setup_taglio)}` },
       { label: '⟋ Smusso',       val: R.smusso_fin,  sub: `setup: €${r(R.setup_smusso)}` },
       { label: '⟳ Rullatura',    val: R.rulla_fin,   sub: `setup: €${r(R.setup_rull)}` },
@@ -1534,8 +1562,9 @@ function renderResults(R) {
       <div class="cost-summary">
         Lavorazione: <strong>€${r(R.costo_lav ?? R.lavorazione)}</strong>&nbsp;&nbsp;|&nbsp;&nbsp;
         Materiale: <strong>€${r(isViti ? R.mat_cost_plus : R.mat_cost)}</strong>
-        ${R.bonifica > 0 ? `&nbsp;&nbsp;|&nbsp;&nbsp;Bonifica: <strong>€${r(R.bonifica)}</strong>` : ''}
-        ${R.tratta   > 0 ? `&nbsp;&nbsp;|&nbsp;&nbsp;Trattamento: <strong>€${r(R.tratta)}</strong>` : ''}
+        ${R.bonifica     > 0 ? `&nbsp;&nbsp;|&nbsp;&nbsp;Bonifica: <strong>€${r(R.bonifica)}</strong>` : ''}
+        ${R.tratta       > 0 ? `&nbsp;&nbsp;|&nbsp;&nbsp;Trattamento: <strong>€${r(R.tratta)}</strong>` : ''}
+        ${R.trattamento  > 0 ? `&nbsp;&nbsp;|&nbsp;&nbsp;Trattamento: <strong>€${r(R.trattamento)}</strong>` : ''}
       </div>
     </div>
 
@@ -1565,8 +1594,9 @@ function renderResults(R) {
       ${!isDadi && !isPrig && !isOcchio && !isViti && !isTornito ? bar('Smusso',    R.smusso_fin + R.setup_smusso, 'smusso') : ''}
       ${!isDadi && !isPrig && !isOcchio && !isViti ? bar('Rullatura', R.rulla_fin + R.setup_rull, 'rull') : ''}
       ${bar('Marcatura', R.marc_fin, 'marc')}
-      ${R.bonifica > 0 ? bar('Bonifica',    R.bonifica, 'bonif') : ''}
-      ${R.tratta   > 0 ? bar('Trattamento', R.tratta,   'bonif') : ''}
+      ${R.bonifica     > 0 ? bar('Bonifica',    R.bonifica,    'bonif') : ''}
+      ${R.tratta       > 0 ? bar('Trattamento', R.tratta,      'bonif') : ''}
+      ${R.trattamento  > 0 ? bar('Trattamento', R.trattamento, 'bonif') : ''}
     </div>
 
     <!-- 4. Geometria (solo dadi / prigionieri / occhio) -->
