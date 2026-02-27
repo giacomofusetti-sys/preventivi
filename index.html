@@ -186,6 +186,78 @@
         </div>
       </div>
 
+      <div id="row-dia-disp-viti" class="form-group" style="display:none">
+        <label>Diametro barra di partenza (mm)</label>
+        <input type="number" id="dia_disp_viti" value="30" min="1" step="0.1">
+      </div>
+
+      <!-- TIPO PRIGIONIERO (solo modulo prigionieri)
+           5909 = radice = diametro nominale (il tipo più semplice)
+           5911 = radice più lunga da tabella (più avvitamento nell'impianto)
+           Libero = l'utente inserisce manualmente m1 (radice) e b1 (filetto) -->
+      <div id="row-tipo-prig" class="form-group" style="display:none">
+        <label>Tipo prigioniero</label>
+        <div class="toggle-group">
+          <button class="toggle-btn active" data-group="tipo_prig" data-val="5909">5909</button>
+          <button class="toggle-btn"        data-group="tipo_prig" data-val="5911">5911</button>
+          <button class="toggle-btn"        data-group="tipo_prig" data-val="prig">Libero</button>
+        </div>
+      </div>
+      <!-- Appare solo se tipo = libero (prig) -->
+      <div id="prig-mb-group" style="display:none">
+        <div class="form-row">
+          <div class="form-group">
+            <!-- m1 = radice: il troncone che si avvita nell'impianto -->
+            <label>Radice m1 (mm)</label>
+            <input type="number" id="m1" value="0" min="0">
+          </div>
+          <div class="form-group">
+            <!-- b1 = filetto: il troncone su cui va il dado -->
+            <label>Filetto b1 (mm)</label>
+            <input type="number" id="b1" value="0" min="0">
+          </div>
+        </div>
+      </div>
+
+      <!-- TIPO TIRANTE A OCCHIO
+           6058 = UNI 6058 (testa standard = dian×2)
+           libero = testa e foro personalizzati -->
+      <div id="row-tipo-occhio" class="form-group" style="display:none">
+        <label>Tipo tirante a occhio</label>
+        <div class="toggle-group">
+          <button class="toggle-btn active" data-group="tipo_occhio" data-val="6058">UNI 6058</button>
+          <button class="toggle-btn"        data-group="tipo_occhio" data-val="libero">Libero</button>
+        </div>
+      </div>
+      <!-- Diametri testa e foro personalizzati (solo se tipo = libero, e opzionali) -->
+      <div id="occhio-testa-foro-group" style="display:none">
+        <div class="form-row">
+          <div class="form-group">
+            <label>Ø testa (mm) <span class="label-hint">(0 = dian×2)</span></label>
+            <input type="number" id="dia_testa_custom" value="0" min="0" step="1">
+          </div>
+          <div class="form-group">
+            <label>Ø foro (mm) <span class="label-hint">(0 = tabella)</span></label>
+            <input type="number" id="dia_foro_custom" value="0" min="0" step="1">
+          </div>
+        </div>
+      </div>
+
+      <!-- STAMPAGGIO TIRANTE A OCCHIO (solo occhio) -->
+      <div id="row-stampaggio-occhio" class="form-group" style="display:none">
+        <label>Lavorazione testa</label>
+        <div class="toggle-group">
+          <button class="toggle-btn active" data-group="stampaggio_occhio" data-val="OFF">Fresatura</button>
+          <button class="toggle-btn"        data-group="stampaggio_occhio" data-val="ON">Stampaggio</button>
+        </div>
+      </div>
+
+      <!-- Diametro barra di partenza: per torniti, prigionieri e occhio. -->
+      <div id="row-dia-disp" class="form-group" style="display:none">
+        <label>Diametro barra di partenza (mm)</label>
+        <input type="number" id="dia_disp" value="50" min="1" step="1">
+      </div>
+
       <!-- ─────────────────────────────────────────────────────
            SEZIONE GEOMETRIA
            ───────────────────────────────────────────────────── -->
@@ -304,14 +376,6 @@
         <input type="number" id="qta_x" value="0" min="0">
       </div>
 
-      <!-- Diametro barra grezza: solo per torniti e prigionieri.
-           È il diametro del tondo grezzo da cui si ricava il pezzo.
-           La differenza tra questo e il diametro medio del filetto
-           determina le passate di tornitura (e quindi il tempo). -->
-      <div id="row-dia-disp" class="form-group" style="display:none">
-        <label>Diametro barra grezza (mm)</label>
-        <input type="number" id="dia_disp" value="50" min="1" step="1">
-      </div>
 
 
       <!-- ─────────────────────────────────────────────────────
@@ -446,33 +510,6 @@
         </div>
       </div>
 
-      <!-- TIPO PRIGIONIERO (solo modulo prigionieri)
-           5909 = radice = diametro nominale (il tipo più semplice)
-           5911 = radice più lunga da tabella (più avvitamento nell'impianto)
-           Libero = l'utente inserisce manualmente m1 (radice) e b1 (filetto) -->
-      <div id="row-tipo-prig" class="form-group" style="display:none">
-        <label>Tipo prigioniero</label>
-        <div class="toggle-group">
-          <button class="toggle-btn active" data-group="tipo_prig" data-val="5909">5909</button>
-          <button class="toggle-btn"        data-group="tipo_prig" data-val="5911">5911</button>
-          <button class="toggle-btn"        data-group="tipo_prig" data-val="prig">Libero</button>
-        </div>
-      </div>
-      <!-- Appare solo se tipo = libero (prig) -->
-      <div id="prig-mb-group" style="display:none">
-        <div class="form-row">
-          <div class="form-group">
-            <!-- m1 = radice: il troncone che si avvita nell'impianto -->
-            <label>Radice m1 (mm)</label>
-            <input type="number" id="m1" value="0" min="0">
-          </div>
-          <div class="form-group">
-            <!-- b1 = filetto: il troncone su cui va il dado -->
-            <label>Filetto b1 (mm)</label>
-            <input type="number" id="b1" value="0" min="0">
-          </div>
-        </div>
-      </div>
 
       <!-- PARTE LISCIA (solo prigionieri)
            Alcuni prigionieri hanno il gambo "alleggerito": la parte
@@ -484,38 +521,6 @@
         <input type="number" id="parte_liscia" value="0" min="0" step="0.1">
       </div>
 
-      <!-- TIPO TIRANTE A OCCHIO
-           6058 = UNI 6058 (testa standard = dian×2)
-           libero = testa e foro personalizzati -->
-      <div id="row-tipo-occhio" class="form-group" style="display:none">
-        <label>Tipo tirante a occhio</label>
-        <div class="toggle-group">
-          <button class="toggle-btn active" data-group="tipo_occhio" data-val="6058">UNI 6058</button>
-          <button class="toggle-btn"        data-group="tipo_occhio" data-val="libero">Libero</button>
-        </div>
-      </div>
-      <!-- Diametri testa e foro personalizzati (solo se tipo = libero, e opzionali) -->
-      <div id="occhio-testa-foro-group" style="display:none">
-        <div class="form-row">
-          <div class="form-group">
-            <label>Ø testa (mm) <span class="label-hint">(0 = dian×2)</span></label>
-            <input type="number" id="dia_testa_custom" value="0" min="0" step="1">
-          </div>
-          <div class="form-group">
-            <label>Ø foro (mm) <span class="label-hint">(0 = tabella)</span></label>
-            <input type="number" id="dia_foro_custom" value="0" min="0" step="1">
-          </div>
-        </div>
-      </div>
-
-      <!-- STAMPAGGIO TIRANTE A OCCHIO (solo occhio) -->
-      <div id="row-stampaggio-occhio" class="form-group" style="display:none">
-        <label>Lavorazione testa</label>
-        <div class="toggle-group">
-          <button class="toggle-btn active" data-group="stampaggio_occhio" data-val="OFF">Fresatura</button>
-          <button class="toggle-btn"        data-group="stampaggio_occhio" data-val="ON">Stampaggio</button>
-        </div>
-      </div>
 
       <div id="row-lav-vite" class="form-group" style="display:none">
         <label>Lavorazione testa</label>
@@ -564,10 +569,6 @@
         <input type="number" id="dpl_vite" value="0" min="0" step="0.1">
       </div>
 
-      <div id="row-dia-disp-viti" class="form-group" style="display:none">
-        <label>Diametro barra grezza (mm)</label>
-        <input type="number" id="dia_disp_viti" value="30" min="1" step="0.1">
-      </div>
 
       <!-- DIAMETRO BARRA GREZZA DADI (solo dadi)
            Campo separato da quello dei torniti perché ha
@@ -576,7 +577,7 @@
            - Stampaggio: deve essere < chiave esagono
            La validazione avviene in calcola() prima di chiamare il modulo. -->
       <div id="row-dia-disp-dadi" class="form-group" style="display:none">
-        <label>Diametro barra grezza (mm)</label>
+        <label>Diametro barra di partenza (mm)</label>
         <input type="number" id="dia_disp_dadi" value="60" min="1" step="1">
       </div>
 
