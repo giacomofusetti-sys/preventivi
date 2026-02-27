@@ -27,7 +27,7 @@ function calcolaTempoTornitura(diam_medio, dia_disp, lungh, mat, materiale_speci
     if (!k) throw new Error(`Specifica un materiale_speciale valido per "altro" (F53, 660, 718)`);
     tempo *= k;
   }
-  return Math.max(tempo, 75);
+  return Math.max(tempo, 90);
 }
 
 function calcolaTempoSportello(dian) {

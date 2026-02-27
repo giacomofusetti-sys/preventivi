@@ -33,7 +33,7 @@ function calcolaTempoTornitura(diam_medio, dia_disp, lungh, mat, materiale_speci
   }
 
   // Minimo 75 secondi
-  return Math.max(tempo, 75);
+  return Math.max(tempo, 90);
 }
 
 function calcolaTempoSportello(dian) {
