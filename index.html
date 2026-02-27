@@ -79,13 +79,7 @@
     <button class="product-btn" data-product="tiranti">
       <div class="product-icon">⬡</div>
       <div class="product-name">Tiranti</div>
-      <div class="product-desc">Da barra a diametro medio<br>senza tornitura</div>
-    </button>
-
-    <button class="product-btn" data-product="tiranti_torniti">
-      <div class="product-icon">◎</div>
-      <div class="product-name">Tiranti Torniti</div>
-      <div class="product-desc">Da barra grezza<br>con tornitura</div>
+      <div class="product-desc">Da barra a diametro medio o superiore</div>
     </button>
 
     <button class="product-btn" data-product="prigionieri">
@@ -252,11 +246,28 @@
         </div>
       </div>
 
-      <!-- Diametro barra di partenza: per torniti, prigionieri e occhio. -->
+      <!-- TIRANTI: diametro medio necessario (aggiornato dinamicamente) -->
+      <div id="medio-display" style="display:none; background:#162216; border:1px solid #4a7; border-radius:6px; padding:8px 12px; margin-bottom:6px; color:#8f8;">
+        Diametro medio necessario: <strong id="medio-val">--</strong> mm
+      </div>
+
+      <!-- TIRANTI: barra a diametro medio disponibile? -->
+      <div id="row-dia-disponibile" class="form-group" style="display:none">
+        <label>Barra a diametro medio disponibile?</label>
+        <div class="toggle-group">
+          <button class="toggle-btn active" data-group="dia_disponibile" data-val="SI">SI</button>
+          <button class="toggle-btn"        data-group="dia_disponibile" data-val="NO">NO</button>
+        </div>
+      </div>
+
+      <!-- Diametro barra di partenza: per prigionieri, occhio, e tiranti quando NO -->
       <div id="row-dia-disp" class="form-group" style="display:none">
         <label>Diametro barra di partenza (mm)</label>
         <input type="number" id="dia_disp" value="50" min="1" step="1">
       </div>
+
+      <!-- TIRANTI: differenza rispetto al medio (appare quando dia_disponibile = NO) -->
+      <div id="diff-label" style="display:none; color:#e87; font-size:0.85em; padding:2px 0 8px 6px;"></div>
 
       <!-- ─────────────────────────────────────────────────────
            SEZIONE GEOMETRIA
@@ -682,10 +693,10 @@
 // Ogni modulo esporta la sua funzione di calcolo principale.
 // Aggiungere un nuovo modulo = aggiungere una riga qui + un branch
 // in calcola() + la logica in renderResults().
-import { calcolaTiranti }        from './moduli/tiranti.js';
-import { calcolaTirantiTorniti } from './moduli/tiranti_torniti.js';
-import { calcolaDadi }           from './moduli/dadi.js';
-import { calcolaPrigionieri }    from './moduli/prigionieri.js';
+import { calcolaTiranti }     from './moduli/tiranti_unificato.js';
+import { calcolaDadi }        from './moduli/dadi.js';
+import { calcolaPrigionieri } from './moduli/prigionieri.js';
+import { parseDia, getDiametroMedio } from './lib/calcolo_comune.js';
 // tiranti_occhio.js viene importato dinamicamente in calcola()
 // per evitare che un file mancante blocchi l'intera applicazione
 
@@ -754,7 +765,6 @@ function mostraCalcolatore(prodotto) {
 
   // Flag booleani — rendono il codice più leggibile di
   // confrontare la stringa prodotto ovunque
-  const isTornito     = prodotto === 'tiranti_torniti';
   const isDadi        = prodotto === 'dadi';
   const isTiranti     = prodotto === 'tiranti';
   const isPrigionieri = prodotto === 'prigionieri';
@@ -763,20 +773,18 @@ function mostraCalcolatore(prodotto) {
 
   // Aggiorna testi header
   const titoli = {
-    tiranti:          'Tiranti',
-    tiranti_torniti:  'Tiranti Torniti',
-    dadi:             'Dadi',
-    prigionieri:      'Prigionieri',
-    tiranti_occhio:   'Tiranti a Occhio',
-    viti:             'Viti',
+    tiranti:        'Tiranti',
+    dadi:           'Dadi',
+    prigionieri:    'Prigionieri',
+    tiranti_occhio: 'Tiranti a Occhio',
+    viti:           'Viti',
   };
   const subs = {
-    tiranti:          'Da barra a diametro medio',
-    tiranti_torniti:  'Da barra grezza con tornitura',
-    dadi:             'UNI 5587 / 5588 / 5589',
-    prigionieri:      'UNI 5909 / 5911 / libero',
-    tiranti_occhio:   'UNI 6058 / libero',
-    viti:             'UNI 5737 / 5739 / 5931',
+    tiranti:        'Da barra a diametro medio o superiore',
+    dadi:           'UNI 5587 / 5588 / 5589',
+    prigionieri:    'UNI 5909 / 5911 / libero',
+    tiranti_occhio: 'UNI 6058 / libero',
+    viti:           'UNI 5737 / 5739 / 5931',
   };
   document.getElementById('header-title').textContent = titoli[prodotto] || prodotto;
   document.getElementById('header-sub').textContent   = subs[prodotto]   || '';
@@ -792,7 +800,7 @@ function mostraCalcolatore(prodotto) {
   // Leggi come: "mostra lungh se NON sono i dadi", ecc.
   show('row-lungh',        !isDadi);                    // lunghezza: tutti tranne dadi
   show('row-altez',         isDadi);                    // altezza auto: solo dadi
-  show('row-dia-disp',      isTornito || isPrigionieri || isOcchio); // barra grezza: torniti, prigionieri, occhio
+  show('row-dia-disp',      isPrigionieri || isOcchio);             // barra di partenza: prigionieri, occhio (tiranti: gestito da toggle)
   // Campi esclusivi viti
   show('row-tipo-vite',     isViti);
   show('row-lav-vite',      isViti);
@@ -802,8 +810,8 @@ function mostraCalcolatore(prodotto) {
   show('row-dpl-vite',      isViti);
   show('row-dia-disp-viti', isViti);
   show('row-prigioniero',   isTiranti);                 // opzione prigioniero: solo tiranti
-  show('row-fantina',       isTornito || isPrigionieri);// fantina: torniti e prigionieri
-  show('row-barra-giusta',  isTornito || isPrigionieri);// barra giusta: torniti e prigionieri
+  show('row-fantina',       isPrigionieri);             // fantina: prigionieri (tiranti: gestito da toggle)
+  show('row-barra-giusta',  isPrigionieri);             // barra giusta: prigionieri (tiranti: gestito da toggle)
   show('row-tipo-prig',     isPrigionieri);             // tipo UNI: solo prigionieri
   show('row-parte-liscia',  isPrigionieri);             // gambo alleggerito: solo prigionieri
   show('row-tipo-occhio',   isOcchio);                  // tipo 6058/libero: solo occhio
@@ -812,10 +820,18 @@ function mostraCalcolatore(prodotto) {
   show('row-chiave-tipo',   isDadi);                    // serie chiave: solo dadi
   show('row-dia-disp-dadi', isDadi);                    // barra grezza dadi: solo dadi
   show('row-stampaggio',    isDadi);                    // fresatura/stampaggio: solo dadi
-  show('row-trattamento',   isDadi || isTiranti || isTornito || isPrigionieri || isOcchio); // trattamento termico: tutti tranne viti
+  show('row-trattamento',   isDadi || isTiranti || isPrigionieri || isOcchio); // trattamento termico: tutti tranne viti
+  show('medio-display',      isTiranti);                // info diametro medio: solo tiranti
+  show('row-dia-disponibile', isTiranti);               // toggle barra disponibile: solo tiranti
 
   // Per i dadi calcola subito l'altezza di default
   if (isDadi) aggiornaAltezzaDado();
+  // Per i tiranti resetta il toggle a SI e aggiorna il display medio
+  if (isTiranti) {
+    document.querySelectorAll('.toggle-btn[data-group="dia_disponibile"]')
+      .forEach(b => b.classList.toggle('active', b.dataset.val === 'SI'));
+    aggiornaMedio();
+  }
 
   // Reset risultati
   document.getElementById('results').innerHTML = `
@@ -893,7 +909,59 @@ document.querySelectorAll('.toggle-btn').forEach(btn => {
       document.getElementById('row-filetto-vite').style.display = 'block';
       document.getElementById('row-dpl-vite').style.display = 'block';
     }
+    // dia_disponibile: SI = barra a diametro medio, NO = inserisci diametro manuale
+    if (group === 'dia_disponibile') {
+      const isNO = btn.dataset.val === 'NO';
+      document.getElementById('row-dia-disp').style.display     = isNO ? 'block' : 'none';
+      document.getElementById('diff-label').style.display       = isNO ? 'block' : 'none';
+      document.getElementById('row-fantina').style.display      = isNO ? 'block' : 'none';
+      document.getElementById('row-barra-giusta').style.display = isNO ? 'block' : 'none';
+      if (isNO) {
+        const medioVal = parseFloat(document.getElementById('medio-val').textContent);
+        const input = document.getElementById('dia_disp');
+        if (!isNaN(medioVal)) {
+          input.min = (medioVal + 0.1).toFixed(1);
+          input.placeholder = medioVal.toFixed(1);
+          if (!input.value || parseFloat(input.value) <= medioVal) {
+            input.value = '';
+          }
+        }
+        aggiornaDiffLabel();
+      }
+    }
   });
+});
+
+
+// ─── DIAMETRO MEDIO TIRANTI ───────────────────────────────────
+// Aggiorna il display del diametro medio necessario e il placeholder
+// di dia_disp al cambio di diametro o passo, solo per i tiranti.
+function aggiornaMedio() {
+  if (prodottoCorrente !== 'tiranti') return;
+  try {
+    const diam = getDiametroMedio(T, parseDia(getStr('dia')), getStr('passo'));
+    document.getElementById('medio-val').textContent = diam.toFixed(1);
+    const input = document.getElementById('dia_disp');
+    input.min = (diam + 0.1).toFixed(1);
+    input.placeholder = diam.toFixed(1);
+    if (getToggleVal('dia_disponibile') === 'NO') aggiornaDiffLabel();
+  } catch(e) { /* dia/passo non ancora disponibili */ }
+}
+
+function aggiornaDiffLabel() {
+  const medio = parseFloat(document.getElementById('medio-val').textContent);
+  const val   = parseFloat(document.getElementById('dia_disp').value);
+  if (!isNaN(medio) && !isNaN(val)) {
+    document.getElementById('diff-label').textContent =
+      `+${(val - medio).toFixed(1)} mm → tornitura necessaria`;
+  }
+}
+
+document.getElementById('dia').addEventListener('change', aggiornaMedio);
+document.getElementById('passo').addEventListener('change', aggiornaMedio);
+document.getElementById('dia_disp').addEventListener('input', () => {
+  if (prodottoCorrente === 'tiranti' && getToggleVal('dia_disponibile') === 'NO')
+    aggiornaDiffLabel();
 });
 
 
@@ -1054,10 +1122,15 @@ window.calcola = async function() {
     let R; // R = oggetto risultati restituito dal modulo
 
     if (prodottoCorrente === 'tiranti') {
-      // ── Tiranti semplici ──────────────────────────────────
+      // ── Tiranti (unificato: senza o con tornitura) ────────
+      const dia_raw  = getStr('dia');
+      const passo    = getStr('passo');
+      const diam     = getDiametroMedio(T, parseDia(dia_raw), passo);
+      const diaIsNO  = getToggleVal('dia_disponibile') === 'NO';
+      const diaDisp  = diaIsNO ? getNum('dia_disp', diam) : diam;
+
       R = calcolaTiranti({
-        dia_raw:            getStr('dia'),
-        passo:              getStr('passo'),
+        dia_raw, passo,
         lungh_raw:          getNum('lungh', 100),
         qta_raw:            getStr('qta'),
         qta_x:              getNum('qta_x', 0),
@@ -1068,29 +1141,9 @@ window.calcola = async function() {
         PRIGIONIERO:        getToggle('prigioniero'),
         fil_a:              getNum('fil_a', 25),
         fil_b:              getNum('fil_b', 25),
-      }, T);
-      if (getToggle('trattamento')) {
-        const tratt = Math.max(R.peso * getNum('prezzo_kg', 1.2), getNum('forfait', 400) / R.qta);
-        R.trattamento = tratt;
-        R.costo_tot += tratt;
-        R.costo_lav += tratt;
-      }
-
-    } else if (prodottoCorrente === 'tiranti_torniti') {
-      // ── Tiranti torniti ───────────────────────────────────
-      R = calcolaTirantiTorniti({
-        dia_raw:            getStr('dia'),
-        passo:              getStr('passo'),
-        lungh_raw:          getNum('lungh', 100),
-        qta_raw:            getStr('qta'),
-        qta_x:              getNum('qta_x', 0),
-        mat:                getStr('mat'),
-        materiale_speciale: getStr('materiale_speciale'),
-        dens_altro:         getNum('dens_altro', 7.916),
-        costo_mat_override: getNum('costo_mat_base', 0) * (1 + getNum('costo_mat_ricarico', 10) / 100),
-        dia_disp:           getNum('dia_disp', 50),
-        FANTINA:            getToggle('fantina'),
-        BARRA_GIUSTA:       getToggle('barra_giusta'),
+        dia_disp:           diaDisp,
+        FANTINA:            diaIsNO ? getToggle('fantina')      : false,
+        BARRA_GIUSTA:       diaIsNO ? getToggle('barra_giusta') : false,
         lungh_barra:        getNum('lungh_barra', 3000),
       }, T);
       if (getToggle('trattamento')) {
@@ -1272,7 +1325,7 @@ function r(n, d = 2) {
 //   7. Card peso: peso singolo, lotto, modificatore
 function renderResults(R) {
   const panel     = document.getElementById('results');
-  const isTornito = prodottoCorrente === 'tiranti_torniti';
+  const isTornito = R.ha_tornitura === true;
   const isDadi    = prodottoCorrente === 'dadi';
   const isPrig    = prodottoCorrente === 'prigionieri';
   const isOcchio  = prodottoCorrente === 'tiranti_occhio';
