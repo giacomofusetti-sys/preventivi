@@ -17,6 +17,17 @@
   --red:          #e05252;
   --mono:         'Space Mono', monospace;
   --sans:         'Barlow Condensed', sans-serif;
+  color-scheme:   dark;
+}
+
+/* Base esplicita per tutti i form element — impedisce a Firefox e ad
+   altri browser di sovrascrivere i colori con quelli di sistema (OS). */
+input, select, button, textarea {
+  color: #e8e8e8;
+  background-color: #1c1c1c;
+  border-color: #3a3a3a;
+  -moz-appearance: none;
+  appearance: none;
 }
 
 * { box-sizing: border-box; margin: 0; padding: 0; }

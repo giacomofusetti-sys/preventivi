@@ -796,6 +796,30 @@ function mostraCalcolatore(prodotto) {
     if (el) el.style.display = visible ? 'block' : 'none';
   };
 
+  // Nascondi tutti i gruppi condizionali prima di tutto — così cambiare
+  // prodotto non lascia campi "orfani" visibili dallo stato precedente.
+  show('prig-mb-group',          false);
+  show('prigioniero-group',      false);
+  show('lungh-barra-group',      false);
+  show('trattamento-group',      false);
+  show('trattamento-vite-group', false);
+  show('occhio-testa-foro-group',false);
+
+  // Reset campi principali ai valori di default
+  document.getElementById('dia').value   = '33';
+  document.getElementById('passo').value = 'G';
+  document.getElementById('lungh').value = '100';
+  document.getElementById('qta').value   = '30';
+  document.getElementById('qta_x').value = '0';
+
+  // Reset toggle: rimuovi active da tutti, rimettilo solo sul primo di ogni gruppo
+  const seenGroups = new Set();
+  document.querySelectorAll('.toggle-btn').forEach(b => seenGroups.add(b.dataset.group));
+  seenGroups.forEach(g => {
+    document.querySelectorAll(`.toggle-btn[data-group="${g}"]`)
+      .forEach((b, i) => b.classList.toggle('active', i === 0));
+  });
+
   // Ogni riga ha una condizione che determina se è visibile.
   // Leggi come: "mostra lungh se NON sono i dadi", ecc.
   show('row-lungh',        !isDadi);                    // lunghezza: tutti tranne dadi
