@@ -401,8 +401,9 @@ export function calcolaViti(inp, T, TV) {
     }
     if ((tipo === '5737' || tipo === '5739') && s_rif) {
       const spigolo = s_rif * 1.154;
-      if (dia_disp < spigolo) throw new Error(
-        `Diametro barra (${dia_disp} mm) inferiore allo spigolo (${spigolo.toFixed(1)} mm). Per fresare serve un tondo più grosso.`
+      const spigolo_min = spigolo * 0.95;
+      if (dia_disp < spigolo_min) throw new Error(
+        `Diametro barra (${dia_disp} mm) inferiore al minimo accettabile (${spigolo_min.toFixed(1)} mm). Per fresare serve un tondo più grosso.`
       );
     }
   }
