@@ -109,7 +109,7 @@ export function calcolaTiranti(inputs, T) {
     const mat_cost     = peso * costo_mat_kg;
 
     // Taglio
-    const tempo_ta = calcolaTempoTaglio(diam, lungh, mat, materiale_speciale, T);
+    const tempo_ta = calcolaTempoTaglio(diam, mat);
     const ta_raw   = tempo_ta * co1;
     const { ta, messages } = modulaCostoTaglio(ta_raw, qta, mat, costo_mat_kg, peso);
     const taglio_fin = taglioFin(ta, qta);
@@ -204,7 +204,7 @@ export function calcolaTiranti(inputs, T) {
     // Taglio (solo senza fantina)
     let tempo_ta = null, taglio_fin = 0, setup_taglio = 0;
     if (!FANTINA) {
-      tempo_ta   = calcolaTempoTaglio(dia_disp, lungh, mat, materiale_speciale, T);
+      tempo_ta   = calcolaTempoTaglio(dia_disp, mat);
       const ta_raw = tempo_ta * co1;
       const { ta } = modulaCostoTaglio(ta_raw, qta, mat, costo_mat_kg, peso_grezzo);
       taglio_fin   = taglioFin(ta, qta);
