@@ -143,6 +143,7 @@ export function calcolaTiranti(inputs, T) {
     const peso_lotto_completo = qta_x > 0 ? peso * qta : null;
 
     const tempi_gestionale =
+      `\u20AC ${costo_tot.toFixed(2)} - da mat. ${mat} \u00D8 ${dia_disp.toFixed(1)} mm, ${peso_principale_reale.toFixed(2)} kg\n` +
       `TAGLI ${Math.round(tempo_ta)}\n` +
       `SMUSS ${Math.round(smusso_t)}\n` +
       `RULLA ${Math.round(t_rull)}\n` +
@@ -236,15 +237,18 @@ export function calcolaTiranti(inputs, T) {
     const peso_principale_reale = peso_grezzo * q_peso;
     const peso_lotto_completo = qta_x > 0 ? peso_grezzo * qta : null;
 
+    const riga_mat = `\u20AC ${costo_tot.toFixed(2)} - da mat. ${mat} \u00D8 ${dia_disp.toFixed(1)} mm, ${peso_principale_reale.toFixed(2)} kg`;
     let tempi_gestionale;
     if (FANTINA) {
       tempi_gestionale =
+        riga_mat + '\n' +
         `TORN2 ${Math.round(tempo_torn_fantina)}\n` +
         `RULLA ${Math.round(t_rull)}\n` +
         `ATOR2 ${T.setup_secondi.tornitura_fantina}\n` +
         `ARULL ${T.setup_secondi.rullatura}`;
     } else {
       tempi_gestionale =
+        riga_mat + '\n' +
         `TAGLI ${Math.round(tempo_ta)}\n` +
         `TORN1 ${Math.round(tempo_torn_def)}\n` +
         `RULLA ${Math.round(t_rull)}\n` +

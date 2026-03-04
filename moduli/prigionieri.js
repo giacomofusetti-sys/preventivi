@@ -239,15 +239,18 @@ export function calcolaPrigionieri(inputs, TC, TP) {
   const peso_lotto_completo = qta_x > 0 ? peso_grezzo * qta : null;
 
   // --- Stringa tempi per gestionale ---
+  const riga_mat = `\u20AC ${costo_tot.toFixed(2)} - da mat. ${mat} \u00D8 ${dia_disp.toFixed(1)} mm, ${peso_principale_reale.toFixed(2)} kg`;
   let tempi_gestionale;
   if (FANTINA) {
     tempi_gestionale =
+      riga_mat + '\n' +
       `TORN2 ${Math.round(tempo_torn_fantina)}\n` +
       `RULLA ${Math.round(t_rull)}\n` +
       `ATOR2 ${TP.setup_secondi.tornitura_fantina}\n` +
       `ARULL ${TP.setup_secondi.rullatura}`;
   } else {
     tempi_gestionale =
+      riga_mat + '\n' +
       `TAGLI ${Math.round(tempo_taglio)}\n` +
       `TORN1 ${Math.round(tempo_torn)}\n` +
       `RULLA ${Math.round(t_rull)}\n` +

@@ -250,9 +250,11 @@ export function calcolaDadi(inputs, TC, TD) {
   const peso_lotto_completo = qta_x > 0 ? peso * qta : null;
 
   // --- Stringa tempi per gestionale ---
+  const riga_mat = `\u20AC ${costo_tot.toFixed(2)} - da mat. ${mat} \u00D8 ${dia_disp.toFixed(1)} mm, ${peso_principale_reale.toFixed(2)} kg`;
   let tempi_gestionale;
   if (STAMPAGGIO) {
     tempi_gestionale =
+      riga_mat + '\n' +
       `TAGLI ${Math.round(tempo_ta)}\n` +
       `STAM2 ${Math.round(tempo_st)}\n` +
       `TORN1 ${Math.round(tempo_to)}\n` +
@@ -261,6 +263,7 @@ export function calcolaDadi(inputs, TC, TD) {
       `ATOR1 ${TD.setup_secondi.tornitura}`;
   } else {
     tempi_gestionale =
+      riga_mat + '\n' +
       (pt.serve ? `TORN2 ${Math.round(pt.tempo)}\n` : '') +
       `TAGLI ${Math.round(tempo_ta)}\n` +
       `TORN1 ${Math.round(tempo_to)}\n` +

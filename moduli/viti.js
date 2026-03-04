@@ -582,6 +582,7 @@ export function calcolaViti(inp, T, TV) {
   if (brocc_c > 0) lines.push(`ABROC ${S_tag.brocciatura}`);
   lines.push(`ARULL ${S_tag.rullatura}`);
   if (raddr_c > 0) lines.push(`ARADDR ${S_tag.raddrizzatura}`);
+  lines.unshift(`\u20AC ${totale.toFixed(2)} - da mat. ${mat} \u00D8 ${dia_disp.toFixed(1)} mm, ${(peso * (qta_x > 0 ? qta_x : qta)).toFixed(2)} kg`);
   const tempi_gestionale = lines.join('\n');
 
   // ── Output ───────────────────────────────────────────────
