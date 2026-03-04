@@ -89,7 +89,8 @@ export function calcolaTiranti(inputs, T) {
   const dian = getDiametroNominale(T, dia);
 
   // --- Lunghezza ---
-  const lungh = parseFloat(lungh_raw) + 5;
+  const lungh_pezzo = parseFloat(lungh_raw);     // lunghezza reale del pezzo senza scarto
+  const lungh       = lungh_pezzo + 5;           // lunghezza con scarto, solo per calcolo peso/taglio
 
   // --- Densità ---
   const dens = getDensita(T, mat, dens_altro);
@@ -114,17 +115,17 @@ export function calcolaTiranti(inputs, T) {
     const taglio_fin = taglioFin(ta, qta);
 
     // Smusso
-    const smusso_t   = calcolaTempoSmusso(dian, lungh, mat, T);
+    const smusso_t   = calcolaTempoSmusso(dian, lungh_pezzo, mat, T);
     const sm         = smussoCosto(smusso_t, dian, co1, co2);
     const smusso_fin = smussoFin(sm, qta);
 
     // Rullatura
-    const lung_fil  = PRIGIONIERO ? (fil_a + fil_b) : lungh;
+    const lung_fil  = PRIGIONIERO ? (fil_a + fil_b) : lungh_pezzo;
     const t_rull    = calcolaTempoRullatura(dian, lung_fil, passo, mat, T);
     const rulla_fin = rullaturaFin(t_rull, co1, co2, dian, qta);
 
     // Marcatura e bonifica
-    const { costo: marc_fin, setup: setup_marc, tempo: tempo_marc, tempo_setup: tempo_setup_marc } = calcolaMarcatura(dian, lungh, qta, co1, marcatura_complessa);
+    const { costo: marc_fin, setup: setup_marc, tempo: tempo_marc, tempo_setup: tempo_setup_marc } = calcolaMarcatura(dian, lungh_pezzo, qta, co1, marcatura_complessa);
     const bonifica = calcolaBonifica(peso, qta, dian, lungh, mat, T);
 
     // Setup
@@ -221,12 +222,12 @@ export function calcolaTiranti(inputs, T) {
       : setupCosto(T.setup_secondi.tornitura_normale, co1, qta);
 
     // Rullatura
-    const t_rull    = calcolaTempoRullatura(dian, lungh, passo, mat, T);
+    const t_rull    = calcolaTempoRullatura(dian, lungh_pezzo, passo, mat, T);
     const rulla_fin = rullaturaFin(t_rull, co1, co2, dian, qta);
     const setup_rull = setupCosto(T.setup_secondi.rullatura, co1, qta);
 
     // Marcatura, attrezzatura, bonifica
-    const { costo: marc_fin, setup: setup_marc, tempo: tempo_marc, tempo_setup: tempo_setup_marc } = calcolaMarcatura(dian, lungh, qta, co1, marcatura_complessa);
+    const { costo: marc_fin, setup: setup_marc, tempo: tempo_marc, tempo_setup: tempo_setup_marc } = calcolaMarcatura(dian, lungh_pezzo, qta, co1, marcatura_complessa);
     const attrez   = MAT_INOX.includes(mat) ? 0.6 : 0;
     const bonifica = calcolaBonifica(peso_grezzo, qta, dian, lungh, mat, T);
 

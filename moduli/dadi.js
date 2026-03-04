@@ -140,6 +140,7 @@ export function calcolaDadi(inputs, TC, TD) {
   } = inputs;
 
   const coeff = TC.costi_base.co1;
+  const co1   = coeff;
 
   // --- Quantità ---
   const qta = parseQta(qta_raw);
@@ -210,7 +211,7 @@ export function calcolaDadi(inputs, TC, TD) {
   const setup_st = STAMPAGGIO ? setupCosto(TD.setup_secondi.stampaggio, coeff, qta) : 0;
 
   // --- Marcatura ---
-  const { costo: marc_fin, setup: setup_marc, tempo: tempo_marc, tempo_setup: tempo_setup_marc } = calcolaMarcatura(dian, altez, qta, coeff, marcatura_complessa);
+  const { costo: marc_fin, setup: setup_marc, tempo: tempo_marc, tempo_setup: tempo_setup_marc } = calcolaMarcatura(dian, altez, qta, co1, marcatura_complessa);
 
   // --- Placchette (inox/altro) ---
   const placc = MAT_INOX.includes(mat) ? 0.6 : 0;
