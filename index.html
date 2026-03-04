@@ -1011,17 +1011,17 @@ document.getElementById('dia_disp').addEventListener('input', () => {
 // base  = prezzo netto acquisto (senza ricarico)
 // ricarico = % da applicare (10 per quasi tutti, 15 per 42CD4, 20 per inox)
 const COSTO_DEFAULT = {
-  B7:          { base: 1.60, ricarico: 10, hint: '' },
-  L7:          { base: 1.70, ricarico: 10, hint: '' },
-  B7M:         { base: 1.65, ricarico: 10, hint: '' },
-  B16:         { base: 2.00, ricarico: 10, hint: '' },
-  '42CD4':     { base: 1.60, ricarico: 10, hint: '' },
-  'AISI 304':  { base: 4.00, ricarico:  0, hint: '' },
-  'AISI 316':  { base: 5.20, ricarico:  0, hint: '' },
-  'B8 cl.2':   { base: 4.20, ricarico:  0, hint: '' },
-  'B8M cl.2':  { base: 5.40, ricarico:  0, hint: '' },
-  inox:        { base: 0,    ricarico:  0, hint: 'inserire manualmente' },
-  altro:       { base: 0,    ricarico:  0, hint: 'inserire manualmente' },
+  B7:          { base: 1.60, ricarico:  0, hint: '' },
+  L7:          { base: 1.70, ricarico:  0, hint: '' },
+  B7M:         { base: 1.65, ricarico:  0, hint: '' },
+  B16:         { base: 2.00, ricarico:  0, hint: '' },
+  '42CD4':     { base: 1.60, ricarico:  0, hint: '' },
+  'AISI 304':  { base: 4.00, ricarico: 10, hint: '' },
+  'AISI 316':  { base: 5.20, ricarico: 10, hint: '' },
+  'B8 cl.2':   { base: 4.20, ricarico: 10, hint: '' },
+  'B8M cl.2':  { base: 5.40, ricarico: 10, hint: '' },
+  inox:        { base: 0,    ricarico: 10, hint: 'inserire manualmente' },
+  altro:       { base: 0,    ricarico: 10, hint: 'inserire manualmente' },
 };
 
 document.getElementById('mat').addEventListener('change', function() {
@@ -1562,7 +1562,9 @@ function renderResults(R) {
         <div class="tempo-cell"><div class="tc-label">Tornitura</div><div class="tc-val">${Math.round(R.tempo_to)}<span class="tc-unit"> s</span></div></div>
         <div class="tempo-cell"><div class="tc-label">A.Taglio</div><div class="tc-val">300<span class="tc-unit"> s</span></div></div>
         <div class="tempo-cell"><div class="tc-label">A.Stamp.</div><div class="tc-val">3600<span class="tc-unit"> s</span></div></div>
-        <div class="tempo-cell"><div class="tc-label">A.Torn.</div><div class="tc-val">3600<span class="tc-unit"> s</span></div></div>`;
+        <div class="tempo-cell"><div class="tc-label">A.Torn.</div><div class="tc-val">3600<span class="tc-unit"> s</span></div></div>
+        <div class="tempo-cell"><div class="tc-label">Marcatura</div><div class="tc-val">${Math.round(R.tempo_marc)}<span class="tc-unit"> s</span></div></div>
+        <div class="tempo-cell"><div class="tc-label">A.Marcatura</div><div class="tc-val">${R.tempo_setup_marc}<span class="tc-unit"> s</span></div></div>`;
     } else {
       tempiGridHTML = `
         ${R.pt_serve ? `<div class="tempo-cell"><div class="tc-label">Prima torn.</div><div class="tc-val">${Math.round(R.pt_tempo)}<span class="tc-unit"> s</span></div></div>` : ''}
@@ -1572,32 +1574,42 @@ function renderResults(R) {
         ${R.pt_serve ? `<div class="tempo-cell"><div class="tc-label">A.Prima torn.</div><div class="tc-val">3600<span class="tc-unit"> s</span></div></div>` : ''}
         <div class="tempo-cell"><div class="tc-label">A.Taglio</div><div class="tc-val">300<span class="tc-unit"> s</span></div></div>
         <div class="tempo-cell"><div class="tc-label">A.Torn.</div><div class="tc-val">3600<span class="tc-unit"> s</span></div></div>
-        <div class="tempo-cell"><div class="tc-label">A.Fresa</div><div class="tc-val">3600<span class="tc-unit"> s</span></div></div>`;
+        <div class="tempo-cell"><div class="tc-label">A.Fresa</div><div class="tc-val">3600<span class="tc-unit"> s</span></div></div>
+        <div class="tempo-cell"><div class="tc-label">Marcatura</div><div class="tc-val">${Math.round(R.tempo_marc)}<span class="tc-unit"> s</span></div></div>
+        <div class="tempo-cell"><div class="tc-label">A.Marcatura</div><div class="tc-val">${R.tempo_setup_marc}<span class="tc-unit"> s</span></div></div>`;
     }
   } else if (isPrig) {
     tempiGridHTML = R.FANTINA ? `
       <div class="tempo-cell"><div class="tc-label">Torn. fantina</div><div class="tc-val">${Math.round(R.tempo_torn_fantina)}<span class="tc-unit"> s</span></div></div>
       <div class="tempo-cell"><div class="tc-label">Rullatura</div><div class="tc-val">${Math.round(R.t_rull)}<span class="tc-unit"> s</span></div></div>
       <div class="tempo-cell"><div class="tc-label">A.Torn2</div><div class="tc-val">7200<span class="tc-unit"> s</span></div></div>
-      <div class="tempo-cell"><div class="tc-label">A.Rullatura</div><div class="tc-val">1800<span class="tc-unit"> s</span></div></div>` : `
+      <div class="tempo-cell"><div class="tc-label">A.Rullatura</div><div class="tc-val">1800<span class="tc-unit"> s</span></div></div>
+      <div class="tempo-cell"><div class="tc-label">Marcatura</div><div class="tc-val">${Math.round(R.tempo_marc)}<span class="tc-unit"> s</span></div></div>
+      <div class="tempo-cell"><div class="tc-label">A.Marcatura</div><div class="tc-val">${R.tempo_setup_marc}<span class="tc-unit"> s</span></div></div>` : `
       <div class="tempo-cell"><div class="tc-label">Taglio</div><div class="tc-val">${Math.round(R.tempo_taglio)}<span class="tc-unit"> s</span></div></div>
       <div class="tempo-cell"><div class="tc-label">Tornitura</div><div class="tc-val">${Math.round(R.tempo_torn)}<span class="tc-unit"> s</span></div></div>
       <div class="tempo-cell"><div class="tc-label">Rullatura</div><div class="tc-val">${Math.round(R.t_rull)}<span class="tc-unit"> s</span></div></div>
       <div class="tempo-cell"><div class="tc-label">A.Taglio</div><div class="tc-val">300<span class="tc-unit"> s</span></div></div>
       <div class="tempo-cell"><div class="tc-label">A.Torn1</div><div class="tc-val">3600<span class="tc-unit"> s</span></div></div>
-      <div class="tempo-cell"><div class="tc-label">A.Rullatura</div><div class="tc-val">1800<span class="tc-unit"> s</span></div></div>`;
+      <div class="tempo-cell"><div class="tc-label">A.Rullatura</div><div class="tc-val">1800<span class="tc-unit"> s</span></div></div>
+      <div class="tempo-cell"><div class="tc-label">Marcatura</div><div class="tc-val">${Math.round(R.tempo_marc)}<span class="tc-unit"> s</span></div></div>
+      <div class="tempo-cell"><div class="tc-label">A.Marcatura</div><div class="tc-val">${R.tempo_setup_marc}<span class="tc-unit"> s</span></div></div>`;
   } else if (isTornito) {
     tempiGridHTML = R.FANTINA ? `
       <div class="tempo-cell"><div class="tc-label">Tornitura (fantina)</div><div class="tc-val">${Math.round(R.tempo_torn_fantina)}<span class="tc-unit"> s</span></div></div>
       <div class="tempo-cell"><div class="tc-label">Rullatura</div><div class="tc-val">${Math.round(R.t_rull)}<span class="tc-unit"> s</span></div></div>
       <div class="tempo-cell"><div class="tc-label">A.Torn2</div><div class="tc-val">7200<span class="tc-unit"> s</span></div></div>
-      <div class="tempo-cell"><div class="tc-label">A.Rullatura</div><div class="tc-val">1800<span class="tc-unit"> s</span></div></div>` : `
+      <div class="tempo-cell"><div class="tc-label">A.Rullatura</div><div class="tc-val">1800<span class="tc-unit"> s</span></div></div>
+      <div class="tempo-cell"><div class="tc-label">Marcatura</div><div class="tc-val">${Math.round(R.tempo_marc)}<span class="tc-unit"> s</span></div></div>
+      <div class="tempo-cell"><div class="tc-label">A.Marcatura</div><div class="tc-val">${R.tempo_setup_marc}<span class="tc-unit"> s</span></div></div>` : `
       <div class="tempo-cell"><div class="tc-label">Taglio</div><div class="tc-val">${Math.round(R.tempo_ta)}<span class="tc-unit"> s</span></div></div>
       <div class="tempo-cell"><div class="tc-label">Tornitura</div><div class="tc-val">${Math.round(R.tempo_torn_def)}<span class="tc-unit"> s</span></div></div>
       <div class="tempo-cell"><div class="tc-label">Rullatura</div><div class="tc-val">${Math.round(R.t_rull)}<span class="tc-unit"> s</span></div></div>
       <div class="tempo-cell"><div class="tc-label">A.Taglio</div><div class="tc-val">300<span class="tc-unit"> s</span></div></div>
       <div class="tempo-cell"><div class="tc-label">A.Torn1</div><div class="tc-val">3600<span class="tc-unit"> s</span></div></div>
-      <div class="tempo-cell"><div class="tc-label">A.Rullatura</div><div class="tc-val">1800<span class="tc-unit"> s</span></div></div>`;
+      <div class="tempo-cell"><div class="tc-label">A.Rullatura</div><div class="tc-val">1800<span class="tc-unit"> s</span></div></div>
+      <div class="tempo-cell"><div class="tc-label">Marcatura</div><div class="tc-val">${Math.round(R.tempo_marc)}<span class="tc-unit"> s</span></div></div>
+      <div class="tempo-cell"><div class="tc-label">A.Marcatura</div><div class="tc-val">${R.tempo_setup_marc}<span class="tc-unit"> s</span></div></div>`;
   } else if (isViti) {
     tempiGridHTML = `
       <div class="tempo-cell"><div class="tc-label">Taglio</div><div class="tc-val">${Math.round(R.t_taglio)}<span class="tc-unit"> s</span></div></div>
@@ -1645,7 +1657,9 @@ function renderResults(R) {
       <div class="tempo-cell"><div class="tc-label">Rullatura</div><div class="tc-val">${Math.round(R.t_rull)}<span class="tc-unit"> s</span></div></div>
       <div class="tempo-cell"><div class="tc-label">A.Taglio</div><div class="tc-val">300<span class="tc-unit"> s</span></div></div>
       <div class="tempo-cell"><div class="tc-label">A.Smusso</div><div class="tc-val">1800<span class="tc-unit"> s</span></div></div>
-      <div class="tempo-cell"><div class="tc-label">A.Rullatura</div><div class="tc-val">1800<span class="tc-unit"> s</span></div></div>`;
+      <div class="tempo-cell"><div class="tc-label">A.Rullatura</div><div class="tc-val">1800<span class="tc-unit"> s</span></div></div>
+      <div class="tempo-cell"><div class="tc-label">Marcatura</div><div class="tc-val">${Math.round(R.tempo_marc)}<span class="tc-unit"> s</span></div></div>
+      <div class="tempo-cell"><div class="tc-label">A.Marcatura</div><div class="tc-val">${R.tempo_setup_marc}<span class="tc-unit"> s</span></div></div>`;
   }
 
   // ── Costruzione HTML finale ───────────────────────────────

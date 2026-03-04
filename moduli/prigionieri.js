@@ -208,7 +208,7 @@ export function calcolaPrigionieri(inputs, TC, TP) {
   const setup_rull = setupCosto(TP.setup_secondi.rullatura, co1, qta);
 
   // --- Marcatura ---
-  const { costo: marc_fin, setup: setup_marc, tempo_setup: tempo_setup_marc } = calcolaMarcatura(dian, lungh, qta, co1, marcatura_complessa);
+  const { costo: marc_fin, setup: setup_marc, tempo: tempo_marc, tempo_setup: tempo_setup_marc } = calcolaMarcatura(dian, lungh, qta, co1, marcatura_complessa);
 
   // --- Attrezzatura ---
   const attrez = MAT_INOX.includes(mat) ? 0.6 : 0;
@@ -236,6 +236,7 @@ export function calcolaPrigionieri(inputs, TC, TP) {
       riga_mat + '\n' +
       `TORN2 ${Math.round(tempo_torn_fantina)}\n` +
       `RULLA ${Math.round(t_rull)}\n` +
+      `MARCA ${tempo_marc}\n` +
       `ATOR2 ${TP.setup_secondi.tornitura_fantina}\n` +
       `ARULL ${TP.setup_secondi.rullatura}\n` +
       `AMARC ${tempo_setup_marc}`;
@@ -245,6 +246,7 @@ export function calcolaPrigionieri(inputs, TC, TP) {
       `TAGLI ${Math.round(tempo_taglio)}\n` +
       `TORN1 ${Math.round(tempo_torn)}\n` +
       `RULLA ${Math.round(t_rull)}\n` +
+      `MARCA ${tempo_marc}\n` +
       `ATAGL ${TP.setup_secondi.taglio}\n` +
       `ATOR1 ${TP.setup_secondi.tornitura_normale}\n` +
       `ARULL ${TP.setup_secondi.rullatura}\n` +
@@ -259,6 +261,7 @@ export function calcolaPrigionieri(inputs, TC, TP) {
     costo_lav, costo_tot,
     // Tempi
     tempo_taglio, tempo_torn, tempo_torn_fantina, t_rull,
+    tempo_marc, tempo_setup_marc,
     // Geometria
     diam, dian, dian_liscia,
     m_rad, b_fil, lunghtot,

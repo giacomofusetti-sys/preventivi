@@ -210,7 +210,7 @@ export function calcolaDadi(inputs, TC, TD) {
   const setup_st = STAMPAGGIO ? setupCosto(TD.setup_secondi.stampaggio, coeff, qta) : 0;
 
   // --- Marcatura ---
-  const { costo: marc_fin, setup: setup_marc, tempo_setup: tempo_setup_marc } = calcolaMarcatura(dian, altez, qta, coeff, marcatura_complessa);
+  const { costo: marc_fin, setup: setup_marc, tempo: tempo_marc, tempo_setup: tempo_setup_marc } = calcolaMarcatura(dian, altez, qta, coeff, marcatura_complessa);
 
   // --- Placchette (inox/altro) ---
   const placc = MAT_INOX.includes(mat) ? 0.6 : 0;
@@ -250,6 +250,7 @@ export function calcolaDadi(inputs, TC, TD) {
       `TAGLI ${Math.round(tempo_ta)}\n` +
       `STAM2 ${Math.round(tempo_st)}\n` +
       `TORN1 ${Math.round(tempo_to)}\n` +
+      `MARCA ${tempo_marc}\n` +
       `ATAGL ${TD.setup_secondi.taglio}\n` +
       `ASTA2 ${TD.setup_secondi.stampaggio}\n` +
       `ATOR1 ${TD.setup_secondi.tornitura}\n` +
@@ -261,6 +262,7 @@ export function calcolaDadi(inputs, TC, TD) {
       `TAGLI ${Math.round(tempo_ta)}\n` +
       `TORN1 ${Math.round(tempo_to)}\n` +
       `FRESA ${Math.round(tempo_fr)}\n` +
+      `MARCA ${tempo_marc}\n` +
       (pt.serve ? `ATOR2 ${TD.setup_secondi.prima_torn}\n` : '') +
       `ATAGL ${TD.setup_secondi.taglio}\n` +
       `ATOR1 ${TD.setup_secondi.tornitura}\n` +
@@ -276,6 +278,7 @@ export function calcolaDadi(inputs, TC, TD) {
     costo_lav, setup_tot, costo_tot,
     // Tempi
     tempo_ta, tempo_to, tempo_fr, tempo_st,
+    tempo_marc, tempo_setup_marc,
     pt_tempo: pt.tempo, pt_serve: pt.serve,
     // Geometria
     dian, chiave, spigolo, altez,

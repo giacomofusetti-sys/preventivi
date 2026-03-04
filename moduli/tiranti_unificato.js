@@ -124,7 +124,7 @@ export function calcolaTiranti(inputs, T) {
     const rulla_fin = rullaturaFin(t_rull, co1, co2, dian, qta);
 
     // Marcatura e bonifica
-    const { costo: marc_fin, setup: setup_marc, tempo_setup: tempo_setup_marc } = calcolaMarcatura(dian, lungh, qta, co1, marcatura_complessa);
+    const { costo: marc_fin, setup: setup_marc, tempo: tempo_marc, tempo_setup: tempo_setup_marc } = calcolaMarcatura(dian, lungh, qta, co1, marcatura_complessa);
     const bonifica = calcolaBonifica(peso, qta, dian, lungh, mat, T);
 
     // Setup
@@ -149,6 +149,7 @@ export function calcolaTiranti(inputs, T) {
       `TAGLI ${Math.round(tempo_ta)}\n` +
       `SMUSS ${Math.round(smusso_t)}\n` +
       `RULLA ${Math.round(t_rull)}\n` +
+      `MARCA ${tempo_marc}\n` +
       `ATAGL ${T.setup_secondi.taglio}\n` +
       `ASMUS ${T.setup_secondi.smusso}\n` +
       `ARULL ${T.setup_secondi.rullatura}\n` +
@@ -163,6 +164,7 @@ export function calcolaTiranti(inputs, T) {
       costo_lav, costo_tot,
       // Tempi
       tempo_ta, smusso_t, t_rull,
+      tempo_marc, tempo_setup_marc,
       // Peso
       peso, diam, dian,
       peso_principale, peso_principale_reale, peso_lotto_completo,
@@ -224,7 +226,7 @@ export function calcolaTiranti(inputs, T) {
     const setup_rull = setupCosto(T.setup_secondi.rullatura, co1, qta);
 
     // Marcatura, attrezzatura, bonifica
-    const { costo: marc_fin, setup: setup_marc, tempo_setup: tempo_setup_marc } = calcolaMarcatura(dian, lungh, qta, co1, marcatura_complessa);
+    const { costo: marc_fin, setup: setup_marc, tempo: tempo_marc, tempo_setup: tempo_setup_marc } = calcolaMarcatura(dian, lungh, qta, co1, marcatura_complessa);
     const attrez   = MAT_INOX.includes(mat) ? 0.6 : 0;
     const bonifica = calcolaBonifica(peso_grezzo, qta, dian, lungh, mat, T);
 
@@ -247,6 +249,7 @@ export function calcolaTiranti(inputs, T) {
         riga_mat + '\n' +
         `TORN2 ${Math.round(tempo_torn_fantina)}\n` +
         `RULLA ${Math.round(t_rull)}\n` +
+        `MARCA ${tempo_marc}\n` +
         `ATOR2 ${T.setup_secondi.tornitura_fantina}\n` +
         `ARULL ${T.setup_secondi.rullatura}\n` +
         `AMARC ${tempo_setup_marc}`;
@@ -256,6 +259,7 @@ export function calcolaTiranti(inputs, T) {
         `TAGLI ${Math.round(tempo_ta)}\n` +
         `TORN1 ${Math.round(tempo_torn_def)}\n` +
         `RULLA ${Math.round(t_rull)}\n` +
+        `MARCA ${tempo_marc}\n` +
         `ATAGL ${T.setup_secondi.taglio}\n` +
         `ATOR1 ${T.setup_secondi.tornitura_normale}\n` +
         `ARULL ${T.setup_secondi.rullatura}\n` +
@@ -271,6 +275,7 @@ export function calcolaTiranti(inputs, T) {
       costo_lav, costo_tot,
       // Tempi
       tempo_ta, tempo_torn_def, tempo_torn_fantina, t_rull,
+      tempo_marc, tempo_setup_marc,
       // Peso
       peso: peso_grezzo, peso_fin, diam, dian,
       peso_principale, peso_principale_reale, peso_lotto_completo,
