@@ -533,6 +533,17 @@
 
 
 
+      <!-- MARCATURA COMPLESSA (tiranti, prigionieri, dadi)
+           Se ON: tempo marcatura 50s, setup 600s.
+           Se OFF: 10s (lungh ≤ 300) o 20s (lungh > 300), setup 150s. -->
+      <div id="row-marcatura-complessa" class="form-group" style="display:none">
+        <label>Marcatura complessa</label>
+        <div class="toggle-group">
+          <button class="toggle-btn active" data-group="marcatura_complessa" data-val="OFF">OFF</button>
+          <button class="toggle-btn"        data-group="marcatura_complessa" data-val="ON">ON</button>
+        </div>
+      </div>
+
       <div id="row-lav-vite" class="form-group" style="display:none">
         <label>Lavorazione testa</label>
         <div class="toggle-group">
@@ -847,6 +858,7 @@ function mostraCalcolatore(prodotto) {
   show('row-trattamento',   isDadi || isTiranti || isPrigionieri || isOcchio); // trattamento termico: tutti tranne viti
   show('medio-display',      isTiranti);                // info diametro medio: solo tiranti
   show('row-dia-disponibile', isTiranti);               // toggle barra disponibile: solo tiranti
+  show('row-marcatura-complessa', isTiranti || isPrigionieri || isDadi); // marcatura complessa: tiranti, prigionieri, dadi
 
   // Per i dadi calcola subito l'altezza di default
   if (isDadi) aggiornaAltezzaDado();
@@ -1169,6 +1181,7 @@ window.calcola = async function() {
         FANTINA:            diaIsNO ? getToggle('fantina')      : false,
         BARRA_GIUSTA:       diaIsNO ? getToggle('barra_giusta') : false,
         lungh_barra:        getNum('lungh_barra', 3000),
+        marcatura_complessa: getToggle('marcatura_complessa'),
       }, T);
       if (getToggle('trattamento')) {
         const tratt = Math.max(R.peso * getNum('prezzo_kg', 1.2), getNum('forfait', 400) / R.qta);
@@ -1197,6 +1210,7 @@ window.calcola = async function() {
         FANTINA:            getToggle('fantina'),
         BARRA_GIUSTA:       getToggle('barra_giusta'),
         lungh_barra:        getNum('lungh_barra', 3000),
+        marcatura_complessa: getToggle('marcatura_complessa'),
       }, T, TP);
       if (getToggle('trattamento')) {
         const tratt = Math.max(R.peso * getNum('prezzo_kg', 1.2), getNum('forfait', 400) / R.qta);
@@ -1258,6 +1272,7 @@ window.calcola = async function() {
         TRATTAMENTO_TERMICO: getToggle('trattamento'),
         prezzo_kg:           getNum('prezzo_kg', 1.2),
         forfait:             getNum('forfait', 400),
+        marcatura_complessa: getToggle('marcatura_complessa'),
       }, T, TD);
     } else if (prodottoCorrente === 'tiranti_occhio') {
       // ── Tiranti a Occhio — import dinamico ───────────────
@@ -1388,7 +1403,7 @@ function renderResults(R) {
         ? [{ label: '⬡ Stampaggio', val: R.st,  sub: `setup: €${r(R.setup_st)}` }]
         : [{ label: '⟋ Fresatura',  val: R.fr,  sub: `setup: €${r(R.setup_fr)}` }]),
       { label: '◎ Tornitura',    val: R.to,         sub: `setup: €${r(R.setup_to)}` },
-      { label: '🏷 Marcatura',    val: R.marc_fin,   sub: '' },
+      { label: '🏷 Marcatura',    val: R.marc_fin,   sub: `setup: €${r(R.setup_marc)}` },
     ];
   } else if (isPrig) {
     righe = [
@@ -1399,7 +1414,7 @@ function renderResults(R) {
       ...(!R.FANTINA  ? [{ label: '✂ Taglio',     val: R.ta_costo,  sub: `setup: €${r(R.setup_taglio)}` }] : []),
       { label: '◎ Tornitura',    val: R.to_costo,   sub: `setup: €${r(R.setup_torn)}` },
       { label: '⟳ Rullatura',    val: R.ru_costo,   sub: `setup: €${r(R.setup_rull)}` },
-      { label: '🏷 Marcatura',    val: R.marc_fin,   sub: '' },
+      { label: '🏷 Marcatura',    val: R.marc_fin,   sub: `setup: €${r(R.setup_marc)}` },
     ];
   } else if (isTornito) {
     righe = [
@@ -1411,7 +1426,7 @@ function renderResults(R) {
         ? [{ label: '✂ Taglio',  val: R.taglio_fin,  sub: `setup: €${r(R.setup_taglio)}` }] : []),
       { label: '◎ Tornitura',    val: R.torni_fin,   sub: `setup: €${r(R.setup_torn)}` },
       { label: '⟳ Rullatura',    val: R.rulla_fin,   sub: `setup: €${r(R.setup_rull)}` },
-      { label: '🏷 Marcatura',    val: R.marc_fin,    sub: '' },
+      { label: '🏷 Marcatura',    val: R.marc_fin,    sub: `setup: €${r(R.setup_marc)}` },
     ];
   } else if (isViti) {
     righe = [
@@ -1451,7 +1466,7 @@ function renderResults(R) {
       { label: '✂ Taglio',       val: R.taglio_fin,  sub: `setup: €${r(R.setup_taglio)}` },
       { label: '⟋ Smusso',       val: R.smusso_fin,  sub: `setup: €${r(R.setup_smusso)}` },
       { label: '⟳ Rullatura',    val: R.rulla_fin,   sub: `setup: €${r(R.setup_rull)}` },
-      { label: '🏷 Marcatura',    val: R.marc_fin,    sub: '' },
+      { label: '🏷 Marcatura',    val: R.marc_fin,    sub: `setup: €${r(R.setup_marc)}` },
     ];
   }
 
@@ -1671,7 +1686,7 @@ function renderResults(R) {
       ${!isDadi && !isPrig && !isOcchio && !isViti && !isTornito ? bar('Taglio',    R.taglio_fin + R.setup_taglio, 'taglio') : ''}
       ${!isDadi && !isPrig && !isOcchio && !isViti && !isTornito ? bar('Smusso',    R.smusso_fin + R.setup_smusso, 'smusso') : ''}
       ${!isDadi && !isPrig && !isOcchio && !isViti ? bar('Rullatura', R.rulla_fin + R.setup_rull, 'rull') : ''}
-      ${bar('Marcatura', R.marc_fin, 'marc')}
+      ${bar('Marcatura', R.marc_fin + (R.setup_marc || 0), 'marc')}
       ${R.bonifica     > 0 ? bar('Bonifica',    R.bonifica,    'bonif') : ''}
       ${R.tratta       > 0 ? bar('Trattamento', R.tratta,      'bonif') : ''}
       ${R.trattamento  > 0 ? bar('Trattamento', R.trattamento, 'bonif') : ''}

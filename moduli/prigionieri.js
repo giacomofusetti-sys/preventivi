@@ -6,7 +6,7 @@
 import {
   parseDia, getDiametroMedio, getDiametroNominale, getDensita,
   calcolaPeso, getCostoMateriale,
-  calcolaBonifica, getModPeso, setupCosto, parseQta
+  calcolaMarcatura, calcolaBonifica, getModPeso, setupCosto, parseQta
 } from '../lib/calcolo_comune.js';
 
 // --- RADICE (m) ---------------------------------------------
@@ -97,18 +97,6 @@ function calcolaTempoRullatura(dian, b, mat, TP) {
   throw new Error(`Combinazione dian=${dian} b=${b} fuori range per rullatura prigionieri`);
 }
 
-// --- MARCATURA ----------------------------------------------
-
-function calcolaMarcatura(dian, qta, TC) {
-  for (const r of TC.marcatura) {
-    if (dian <= r.fino_a) {
-      const ma = r.costo;
-      return ma * qta < 10 ? 10 / qta : ma;
-    }
-  }
-  throw new Error(`Diametro ${dian} fuori range per marcatura`);
-}
-
 // --- CALCOLO PRINCIPALE -------------------------------------
 
 export function calcolaPrigionieri(inputs, TC, TP) {
@@ -121,6 +109,7 @@ export function calcolaPrigionieri(inputs, TC, TP) {
     costo_mat_override,
     dia_disp,
     FANTINA, BARRA_GIUSTA, lungh_barra,
+    marcatura_complessa,
   } = inputs;
 
   const co1 = TC.costi_base.co1;
@@ -218,7 +207,7 @@ export function calcolaPrigionieri(inputs, TC, TP) {
   const setup_rull = setupCosto(TP.setup_secondi.rullatura, co1, qta);
 
   // --- Marcatura ---
-  const marc_fin = calcolaMarcatura(dian, qta, TC);
+  const { costo: marc_fin, setup: setup_marc, tempo_setup: tempo_setup_marc } = calcolaMarcatura(dian, lungh, qta, co1, marcatura_complessa);
 
   // --- Attrezzatura ---
   const attrez = (mat === 'inox' || mat === 'altro') ? 0.6 : 0;
@@ -227,7 +216,7 @@ export function calcolaPrigionieri(inputs, TC, TP) {
   const bonifica = calcolaBonifica(peso_grezzo, qta, dian, lungh, mat, TC);
 
   // --- Totali ---
-  const costo_lav = ta_costo + to_costo + ru_costo + marc_fin + attrez
+  const costo_lav = ta_costo + to_costo + ru_costo + marc_fin + setup_marc + attrez
                   + setup_taglio + setup_torn + setup_rull;
   const costo_tot = mat_cost + bonifica + costo_lav;
 
@@ -247,7 +236,8 @@ export function calcolaPrigionieri(inputs, TC, TP) {
       `TORN2 ${Math.round(tempo_torn_fantina)}\n` +
       `RULLA ${Math.round(t_rull)}\n` +
       `ATOR2 ${TP.setup_secondi.tornitura_fantina}\n` +
-      `ARULL ${TP.setup_secondi.rullatura}`;
+      `ARULL ${TP.setup_secondi.rullatura}\n` +
+      `AMARC ${tempo_setup_marc}`;
   } else {
     tempi_gestionale =
       riga_mat + '\n' +
@@ -256,13 +246,14 @@ export function calcolaPrigionieri(inputs, TC, TP) {
       `RULLA ${Math.round(t_rull)}\n` +
       `ATAGL ${TP.setup_secondi.taglio}\n` +
       `ATOR1 ${TP.setup_secondi.tornitura_normale}\n` +
-      `ARULL ${TP.setup_secondi.rullatura}`;
+      `ARULL ${TP.setup_secondi.rullatura}\n` +
+      `AMARC ${tempo_setup_marc}`;
   }
 
   return {
     // Costi
     mat_cost, bonifica, attrez,
-    ta_costo, to_costo, ru_costo, marc_fin,
+    ta_costo, to_costo, ru_costo, marc_fin, setup_marc,
     setup_taglio, setup_torn, setup_rull,
     costo_lav, costo_tot,
     // Tempi

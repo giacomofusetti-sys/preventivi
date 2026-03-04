@@ -6,6 +6,7 @@
 import {
   parseDia, getDiametroNominale, getDensita,
   calcolaPeso, getCostoMateriale,
+  calcolaMarcatura,
   getModPeso, setupCosto, parseQta
 } from '../lib/calcolo_comune.js';
 
@@ -108,17 +109,6 @@ function calcolaPrimaTornitura(dia_disp, spigolo, altez, dian, mat, qta, TD) {
   return { serve: true, tempo };
 }
 
-// --- MARCATURA ----------------------------------------------
-
-function calcolaMarcatura(dian, qta, TD) {
-  let ma = null;
-  for (const r of TD.marcatura) {
-    if (dian <= r.fino_a) { ma = r.costo; break; }
-  }
-  if (ma === null) throw new Error(`Diametro ${dian} fuori range per marcatura`);
-  return ma * qta < 10 ? 10 / qta : ma;
-}
-
 // --- TRATTAMENTO TERMICO ------------------------------------
 
 function calcolaTrattamento(peso_fin, prezzo_kg, qta, forfait, attivo) {
@@ -145,6 +135,7 @@ export function calcolaDadi(inputs, TC, TD) {
     dia_disp,
     STAMPAGGIO,
     TRATTAMENTO_TERMICO, prezzo_kg, forfait,
+    marcatura_complessa,
   } = inputs;
 
   const coeff = TC.costi_base.co1;
@@ -218,7 +209,7 @@ export function calcolaDadi(inputs, TC, TD) {
   const setup_st = STAMPAGGIO ? setupCosto(TD.setup_secondi.stampaggio, coeff, qta) : 0;
 
   // --- Marcatura ---
-  const marc_fin = calcolaMarcatura(dian, qta, TD);
+  const { costo: marc_fin, setup: setup_marc, tempo_setup: tempo_setup_marc } = calcolaMarcatura(dian, altez, qta, coeff, marcatura_complessa);
 
   // --- Placchette (inox/altro) ---
   const placc = (mat === 'inox' || mat === 'altro') ? 0.6 : 0;
@@ -234,10 +225,10 @@ export function calcolaDadi(inputs, TC, TD) {
   // --- Totali ---
   let costo_lav, setup_tot;
   if (STAMPAGGIO) {
-    costo_lav = tratta + ta + st + to + marc_fin + placc;
+    costo_lav = tratta + ta + st + to + marc_fin + setup_marc + placc;
     setup_tot = setup_ta + setup_st + setup_to;
   } else {
-    costo_lav = tratta + ta + pt_costo + to + fr + marc_fin + placc;
+    costo_lav = tratta + ta + pt_costo + to + fr + marc_fin + setup_marc + placc;
     setup_tot = setup_ta + setup_pt + setup_to + setup_fr;
   }
   const costo_tot = mat_cost + costo_lav + setup_tot;
@@ -260,7 +251,8 @@ export function calcolaDadi(inputs, TC, TD) {
       `TORN1 ${Math.round(tempo_to)}\n` +
       `ATAGL ${TD.setup_secondi.taglio}\n` +
       `ASTA2 ${TD.setup_secondi.stampaggio}\n` +
-      `ATOR1 ${TD.setup_secondi.tornitura}`;
+      `ATOR1 ${TD.setup_secondi.tornitura}\n` +
+      `AMARC ${tempo_setup_marc}`;
   } else {
     tempi_gestionale =
       riga_mat + '\n' +
@@ -271,13 +263,14 @@ export function calcolaDadi(inputs, TC, TD) {
       (pt.serve ? `ATOR2 ${TD.setup_secondi.prima_torn}\n` : '') +
       `ATAGL ${TD.setup_secondi.taglio}\n` +
       `ATOR1 ${TD.setup_secondi.tornitura}\n` +
-      `AFRES ${TD.setup_secondi.fresatura}`;
+      `AFRES ${TD.setup_secondi.fresatura}\n` +
+      `AMARC ${tempo_setup_marc}`;
   }
 
   return {
     // Costi
     mat_cost, tratta, placc,
-    ta, pt_costo, to, fr, st, marc_fin,
+    ta, pt_costo, to, fr, st, marc_fin, setup_marc,
     setup_ta, setup_pt, setup_to, setup_fr, setup_st,
     costo_lav, setup_tot, costo_tot,
     // Tempi

@@ -267,7 +267,7 @@ export function calcolaTirantiOcchio(inputs, T) {
   const setup_rull = setupCosto(T.setup_secondi.rullatura, co1, qta);
 
   // --- Marcatura ---
-  const marc_fin = calcolaMarcatura(dian, qta, T);
+  const { costo: marc_fin } = calcolaMarcatura(dian, lungh, qta, co1, false);
 
   // --- Attrezzatura (inox / altro) ---
   const attrez = (mat === 'inox' || mat === 'altro') ? 0.6 : 0;
