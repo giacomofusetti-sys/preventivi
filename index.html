@@ -861,7 +861,7 @@ function mostraCalcolatore(prodotto) {
   show('row-trattamento',   isDadi || isTiranti || isPrigionieri || isOcchio); // trattamento termico: tutti tranne viti
   show('medio-display',      isTiranti);                // info diametro medio: solo tiranti
   show('row-dia-disponibile', isTiranti);               // toggle barra disponibile: solo tiranti
-  show('row-marcatura-complessa', isTiranti || isPrigionieri || isDadi); // marcatura complessa: tiranti, prigionieri, dadi
+  show('row-marcatura-complessa', isTiranti || isPrigionieri || isDadi || isOcchio); // marcatura complessa: tiranti, prigionieri, dadi, occhio
 
   // Per i dadi calcola subito l'altezza di default
   if (isDadi) aggiornaAltezzaDado();
@@ -1160,6 +1160,7 @@ window.calcola = async function() {
     // Tutti i moduli leggono da T.costi_base, quindi basta aggiornarli qui.
     T.costi_base.co1 = getNum('co1', 0.018);
     T.costi_base.co2 = getNum('co2', 0.022);
+    console.log('[calcola] prodottoCorrente:', prodottoCorrente, '| marcatura_complessa:', getToggleVal('marcatura_complessa'));
 
     let R; // R = oggetto risultati restituito dal modulo
 
