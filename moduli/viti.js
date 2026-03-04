@@ -6,6 +6,7 @@
 // ============================================================
 
 import {
+  MAT_INOX,
   parseDia,
   getDiametroNominale,
   getDiametroMedio,
@@ -83,12 +84,12 @@ function getDatiTesta(tipo, dia, mat, TV) {
     const sc = lookup(TV.chiavi_cava_metriche, key);
     const t  = lookup(TV.profondita_cava, key);
     if (!dk) throw new Error(`Testa cava non trovata per dia ${dia}`);
-    const dk_eff = (mat === 'inox' || mat === 'altro') ? dk + 2 : dk;
+    const dk_eff = MAT_INOX.includes(mat) ? dk + 2 : dk;
     const lato_c = sc ? sc / 1.732 : 0;
     // Volume testa cava = cilindro - scavo esagonale (con compensazione 4.3%)
     const vol_cil  = Math.PI * (dk_eff / 2) ** 2 * hc;
     const vol_scav = lato_c && t ? (lato_c * lato_c * 0.866 * 6) * t / 2 : 0;
-    const vol_testa = (mat === 'inox' || mat === 'altro')
+    const vol_testa = MAT_INOX.includes(mat)
       ? Math.PI * (dk_eff / 2) ** 2 * hc           // per inox si torna la testa intera
       : (vol_cil - vol_scav) * (1 - 0.043);
     return { dk: dk_eff, hc, sc, t, vol_testa, tipo_testa: 'cava' };
@@ -115,7 +116,7 @@ function calcolaTornitura(tipo, dian, medio, dia_disp, dia_parte_liscia,
   const differenza_fil    = dia_disp - medio;
   const differenza_liscia = dia_disp - dia_parte_liscia;
   const lungh_liscia      = filet > 0 ? lungh - filet : 0;
-  const div               = (mat === 'inox' || mat === 'altro') ? 3 : 4;
+  const div               = MAT_INOX.includes(mat) ? 3 : 4;
 
   // Parte filettata da tornire
   let pfdt = 0;
@@ -146,8 +147,8 @@ function calcolaTornitura(tipo, dian, medio, dia_disp, dia_parte_liscia,
     if (!STAMPAGGIO) {
       // Con FRESA si torna sempre la testa cava
       pldt += hc;
-    } else if (mat === 'inox' || mat === 'altro') {
-      // Con STAMP su inox/altro si torna ugualmente la testa
+    } else if (MAT_INOX.includes(mat)) {
+      // Con STAMP su inox/similari si torna ugualmente la testa
       pldt += hc;
     }
   } else if ((tipo === '5737' || tipo === '5739') && !STAMPAGGIO) {
@@ -179,7 +180,7 @@ function calcolaTornitura(tipo, dian, medio, dia_disp, dia_parte_liscia,
 // ─── SBAVATURA ────────────────────────────────────────────────
 
 function calcolaTempoSbavatura(dian, mat, TV) {
-  const tiers = (mat === 'inox' || mat === 'altro')
+  const tiers = MAT_INOX.includes(mat)
     ? TV.tempi_sbavatura.inox_altro
     : TV.tempi_sbavatura.standard;
   return tierValue(tiers, dian) ?? 0;
@@ -188,7 +189,7 @@ function calcolaTempoSbavatura(dian, mat, TV) {
 // ─── SMUSSO ───────────────────────────────────────────────────
 
 function calcolaTempoSmusso(dian, mat, TV) {
-  const tiers = (mat === 'inox' || mat === 'altro')
+  const tiers = MAT_INOX.includes(mat)
     ? TV.tempi_smusso_viti.inox_altro
     : TV.tempi_smusso_viti.standard;
   return tierValue(tiers, dian) ?? 0;
@@ -207,7 +208,7 @@ function calcolaBrocciatura(dian, mat, tipo, STAMPAGGIO, materiale_speciale, TV)
   // - con FRESA (qualsiasi materiale)
   // - con STAMPAGGIO su inox/altro (cava sempre brocciata)
   if (tipo !== '5931') return 0;
-  const serve = !STAMPAGGIO || mat === 'inox' || mat === 'altro';
+  const serve = !STAMPAGGIO || MAT_INOX.includes(mat);
   if (!serve) return 0;
 
   let t = tierValue(TV.tempi_brocciatura, dian) ?? 0;
@@ -221,14 +222,14 @@ function calcolaBrocciatura(dian, mat, tipo, STAMPAGGIO, materiale_speciale, TV)
 function calcolaFresaturaTesta(dian, mat, tipo, TV) {
   // Solo per 5737/5739 con FRESA, o mai per 5931 (usa brocciatura)
   let t = tierValue(TV.tempi_fresatura_testa, dian) ?? 0;
-  if (mat === 'inox' || mat === 'altro') t *= 2;
+  if (MAT_INOX.includes(mat)) t *= 2;
   return t;
 }
 
 // ─── RULLATURA ───────────────────────────────────────────────
 
 function calcolaTempoRullatura(dian, filet, mat, TV) {
-  const tiers = (mat === 'inox' || mat === 'altro')
+  const tiers = MAT_INOX.includes(mat)
     ? [
         { fino_a: 21.99, div: 10 }, { fino_a: 25.99, div: 18 },
         { fino_a: 32.99, div: 6  }, { fino_a: 42.99, div: 5  },
@@ -355,7 +356,7 @@ export function calcolaViti(inp, T, TV) {
     lungh_raw,
     qta_raw,
     qta_x           = 0,
-    mat,              // '42CD4'|'B16'|'41Cr'|'B7'|'L7'|'B7M'|'inox'|'altro'
+    mat,              // '42CD4'|'B16'|'B7'|'L7'|'B7M'|'AISI 304'|'AISI 316'|'B8 cl.2'|'B8M cl.2'|'inox'|'altro'
     materiale_speciale = '0',
     dens_altro       = 7.916,
     costo_mat_override = 0,
@@ -416,7 +417,7 @@ export function calcolaViti(inp, T, TV) {
   const dens        = getDensitaViti(mat, dens_altro, TV);
   const costo_kg    = getCostoMaterialeViti(mat, costo_mat_override, TV);
   const co          = dian < 45 ? co1 : co2;
-  const isInox      = mat === 'inox' || mat === 'altro';
+  const isInox      = MAT_INOX.includes(mat);
 
   // ── Lunghezza filetto ─────────────────────────────────────
   const filet = TF ? lungh : calcolaLunghFiletto(tipo, dia, lungh, filetto_override, TV);

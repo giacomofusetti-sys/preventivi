@@ -6,6 +6,7 @@
 // ============================================================
 
 import {
+  MAT_INOX,
   parseDia, getDiametroMedio, getDiametroNominale, getDensita,
   calcolaPeso, getCostoMateriale,
   calcolaTempoTaglio, modulaCostoTaglio, taglioFin,
@@ -19,7 +20,7 @@ import {
 
 function calcolaTempoTornitura(diam_medio, dia_disp, lungh, mat, materiale_speciale, T) {
   const differenza = dia_disp - diam_medio;
-  const div = (mat === 'inox' || mat === 'altro') ? 3 : 4;
+  const div = MAT_INOX.includes(mat) ? 3 : 4;
   const passate = Math.ceil(differenza / 3);
   let tempo = (lungh / div) * passate;
   if (mat === 'altro') {
@@ -224,7 +225,7 @@ export function calcolaTiranti(inputs, T) {
 
     // Marcatura, attrezzatura, bonifica
     const { costo: marc_fin, setup: setup_marc, tempo_setup: tempo_setup_marc } = calcolaMarcatura(dian, lungh, qta, co1, marcatura_complessa);
-    const attrez   = (mat === 'inox' || mat === 'altro') ? 0.6 : 0;
+    const attrez   = MAT_INOX.includes(mat) ? 0.6 : 0;
     const bonifica = calcolaBonifica(peso_grezzo, qta, dian, lungh, mat, T);
 
     // Totali

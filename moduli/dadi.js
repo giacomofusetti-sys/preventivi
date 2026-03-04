@@ -4,6 +4,7 @@
 // ============================================================
 
 import {
+  MAT_INOX,
   parseDia, getDiametroNominale, getDensita,
   calcolaPeso, getCostoMateriale,
   calcolaMarcatura,
@@ -55,8 +56,8 @@ function calcolaTempoTaglio(dian, mat, TD) {
     if (dian <= r.fino_a) { t = r.secondi; break; }
   }
   if (t === null) throw new Error(`Diametro ${dian} fuori range per taglio dadi`);
-  if (mat === 'inox')  t *= 2;
-  if (mat === 'altro') t *= 3;
+  if (mat === 'altro')            t *= 3;
+  else if (MAT_INOX.includes(mat)) t *= 2;
   return t;
 }
 
@@ -66,9 +67,9 @@ function calcolaTempoTornitura(altez, dian, mat, TD) {
   const m = TD.moltiplicatori_tornitura;
   const grande = dian >= m.soglia_grande;
   let molt;
-  if (mat === 'inox')       molt = grande ? m.inox_grande    : m.inox_piccolo;
-  else if (mat === 'altro') molt = grande ? m.altro_grande   : m.altro_piccolo;
-  else                      molt = grande ? m.standard_grande : m.standard_piccolo;
+  if (mat === 'altro')            molt = grande ? m.altro_grande   : m.altro_piccolo;
+  else if (MAT_INOX.includes(mat)) molt = grande ? m.inox_grande    : m.inox_piccolo;
+  else                            molt = grande ? m.standard_grande : m.standard_piccolo;
   return (altez + 3) * molt;
 }
 
@@ -77,9 +78,9 @@ function calcolaTempoTornitura(altez, dian, mat, TD) {
 function calcolaTempoFresatura(altez, mat, TD) {
   const m = TD.moltiplicatori_fresatura;
   let molt;
-  if (mat === 'inox')       molt = m.inox;
-  else if (mat === 'altro') molt = m.altro;
-  else                      molt = m.standard;
+  if (mat === 'altro')            molt = m.altro;
+  else if (MAT_INOX.includes(mat)) molt = m.inox;
+  else                            molt = m.standard;
   return (altez + 3) * molt;
 }
 
@@ -91,8 +92,8 @@ function calcolaTempoStampaggio(dian, mat, TD) {
     if (dian <= r.fino_a) { t = r.secondi; break; }
   }
   if (t === null) throw new Error(`Diametro ${dian} fuori range per stampaggio`);
-  if (mat === 'inox')  t *= 2;
-  if (mat === 'altro') t *= 3;
+  if (mat === 'altro')            t *= 3;
+  else if (MAT_INOX.includes(mat)) t *= 2;
   return t;
 }
 
@@ -103,7 +104,7 @@ function calcolaPrimaTornitura(dia_disp, spigolo, altez, dian, mat, qta, TD) {
   const serve = diff > 5 || (diff > 4 && qta > 20);
   if (!serve) return { serve: false, tempo: 0 };
 
-  const div = (mat === 'inox' || mat === 'altro') ? 3 : 4;
+  const div = MAT_INOX.includes(mat) ? 3 : 4;
   let tempo = ((altez + 3) / div) * Math.ceil(diff / 3);
   if (mat === 'altro') tempo *= 3;
   return { serve: true, tempo };
@@ -212,7 +213,7 @@ export function calcolaDadi(inputs, TC, TD) {
   const { costo: marc_fin, setup: setup_marc, tempo_setup: tempo_setup_marc } = calcolaMarcatura(dian, altez, qta, coeff, marcatura_complessa);
 
   // --- Placchette (inox/altro) ---
-  const placc = (mat === 'inox' || mat === 'altro') ? 0.6 : 0;
+  const placc = MAT_INOX.includes(mat) ? 0.6 : 0;
 
   // --- Peso finito (esagono - foro) per trattamento termico ---
   const peso_esa  = ((0.866 * dens * chiave ** 2) / 1000) * (altez / 1000);

@@ -413,10 +413,13 @@
           <option value="B7" selected>B7</option>
           <option value="L7">L7</option>
           <option value="B7M">B7M</option>
-          <option value="42CD4">42CD4</option>
           <option value="B16">B16</option>
-          <option value="41Cr">41Cr</option>
-          <option value="inox">Inox</option>
+          <option value="42CD4">42CD4</option>
+          <option value="AISI 304">AISI 304</option>
+          <option value="AISI 316">AISI 316</option>
+          <option value="B8 cl.2">B8 cl.2</option>
+          <option value="B8M cl.2">B8M cl.2</option>
+          <option value="inox">Inox (generico)</option>
           <option value="altro">Altro</option>
         </select>
       </div>
@@ -1008,14 +1011,17 @@ document.getElementById('dia_disp').addEventListener('input', () => {
 // base  = prezzo netto acquisto (senza ricarico)
 // ricarico = % da applicare (10 per quasi tutti, 15 per 42CD4, 20 per inox)
 const COSTO_DEFAULT = {
-  B7:     { base: 1.70,  ricarico: 10, hint: 'default tabella' },
-  L7:     { base: 1.90,  ricarico: 10, hint: 'default tabella' },
-  B7M:    { base: 1.80,  ricarico: 10, hint: 'default tabella' },
-  '42CD4':{ base: 1.65,  ricarico: 15, hint: 'default tabella' },
-  B16:    { base: 2.614, ricarico: 10, hint: 'default tabella' },
-  '41Cr': { base: 1.80,  ricarico: 10, hint: 'default tabella' },
-  inox:   { base: 0,     ricarico: 20, hint: 'inserire manualmente' },
-  altro:  { base: 0,     ricarico: 10, hint: 'inserire manualmente' },
+  B7:          { base: 1.60, ricarico: 10, hint: '' },
+  L7:          { base: 1.70, ricarico: 10, hint: '' },
+  B7M:         { base: 1.65, ricarico: 10, hint: '' },
+  B16:         { base: 2.00, ricarico: 10, hint: '' },
+  '42CD4':     { base: 1.60, ricarico: 10, hint: '' },
+  'AISI 304':  { base: 4.00, ricarico:  0, hint: '' },
+  'AISI 316':  { base: 5.20, ricarico:  0, hint: '' },
+  'B8 cl.2':   { base: 4.20, ricarico:  0, hint: '' },
+  'B8M cl.2':  { base: 5.40, ricarico:  0, hint: '' },
+  inox:        { base: 0,    ricarico:  0, hint: 'inserire manualmente' },
+  altro:       { base: 0,    ricarico:  0, hint: 'inserire manualmente' },
 };
 
 document.getElementById('mat').addEventListener('change', function() {

@@ -4,6 +4,7 @@
 // ============================================================
 
 import {
+  MAT_INOX,
   parseDia, getDiametroMedio, getDiametroNominale, getDensita,
   calcolaPeso, getCostoMateriale,
   calcolaTempoRullatura, rullaturaFin,
@@ -60,7 +61,7 @@ function getDiaForo(dia, dian, dia_foro_custom) {
 // --- TAGLIO (costo diretto da tabella, come prigionieri) ----
 
 function calcolaTaglioCosto(diaz, mat) {
-  if (mat === 'inox' || mat === 'altro') {
+  if (MAT_INOX.includes(mat)) {
     if (diaz <= 20)  return 0.30;
     if (diaz <= 33)  return 0.40;
     if (diaz <= 52)  return 0.50;
@@ -81,7 +82,7 @@ function calcolaTaglioCosto(diaz, mat) {
 
 function calcolaTempoTornitura(diam_medio, dia_disp, lungh, mat, materiale_speciale, T) {
   const differenza = dia_disp - diam_medio;
-  const div = (mat === 'inox' || mat === 'altro') ? 3 : 4;
+  const div = MAT_INOX.includes(mat) ? 3 : 4;
   const passate = Math.ceil(differenza / 3);
   let tempo = (lungh / div) * passate;
 
@@ -133,7 +134,7 @@ function calcolaTempoFresatura(mat, dia_testa) {
     inox: { 32: 200, 36: 270, 40: 420, 65: 460 },
   };
 
-  const tabella = (mat === 'inox' || mat === 'altro')
+  const tabella = MAT_INOX.includes(mat)
     ? TABELLE.inox
     : TABELLE.std;
 
@@ -153,7 +154,7 @@ function calcolaTempoStampaggio(dian, mat) {
   ];
   for (const [soglia, t] of SOGLIE) {
     if (dian <= soglia) {
-      return (mat === 'inox' || mat === 'altro') ? t * 2 : t;
+      return MAT_INOX.includes(mat) ? t * 2 : t;
     }
   }
   throw new Error(`Diametro ${dian} fuori range per stampaggio tirante a occhio`);
@@ -270,7 +271,7 @@ export function calcolaTirantiOcchio(inputs, T) {
   const { costo: marc_fin } = calcolaMarcatura(dian, lungh, qta, co1, false);
 
   // --- Attrezzatura (inox / altro) ---
-  const attrez = (mat === 'inox' || mat === 'altro') ? 0.6 : 0;
+  const attrez = MAT_INOX.includes(mat) ? 0.6 : 0;
 
   // --- Bonifica ---
   // Usiamo peso_mat (spezzone se STAMP, grezzo altrimenti)

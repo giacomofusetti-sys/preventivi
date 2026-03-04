@@ -4,6 +4,7 @@
 // ============================================================
 
 import {
+  MAT_INOX,
   parseDia, getDiametroMedio, getDiametroNominale, getDensita,
   calcolaPeso, getCostoMateriale,
   calcolaMarcatura, calcolaBonifica, getModPeso, setupCosto, parseQta
@@ -55,7 +56,7 @@ function getFiletto(TP, tipo, dia, lungh, b1_custom) {
 // --- TAGLIO -------------------------------------------------
 
 function calcolaTaglio(diaz, mat, TP) {
-  const tiers = (mat === 'inox' || mat === 'altro')
+  const tiers = MAT_INOX.includes(mat)
     ? TP.taglio.inox_altro
     : TP.taglio.standard;
   for (const r of tiers) {
@@ -87,7 +88,7 @@ function calcolaTempoTornitura(
 // --- RULLATURA ----------------------------------------------
 
 function calcolaTempoRullatura(dian, b, mat, TP) {
-  const tiers = (mat === 'inox' || mat === 'altro')
+  const tiers = MAT_INOX.includes(mat)
     ? TP.rullatura_inox_altro
     : TP.rullatura_standard;
 
@@ -177,7 +178,7 @@ export function calcolaPrigionieri(inputs, TC, TP) {
   }
 
   // --- Tornitura ---
-  const div = (mat === 'inox' || mat === 'altro') ? 3 : 4;
+  const div = MAT_INOX.includes(mat) ? 3 : 4;
   const differenza_fil    = dia_disp - diam;
   const differenza_liscia = dia_disp - dian_liscia;
 
@@ -210,7 +211,7 @@ export function calcolaPrigionieri(inputs, TC, TP) {
   const { costo: marc_fin, setup: setup_marc, tempo_setup: tempo_setup_marc } = calcolaMarcatura(dian, lungh, qta, co1, marcatura_complessa);
 
   // --- Attrezzatura ---
-  const attrez = (mat === 'inox' || mat === 'altro') ? 0.6 : 0;
+  const attrez = MAT_INOX.includes(mat) ? 0.6 : 0;
 
   // --- Bonifica ---
   const bonifica = calcolaBonifica(peso_grezzo, qta, dian, lungh, mat, TC);
