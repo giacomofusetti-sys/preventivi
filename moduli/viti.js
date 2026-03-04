@@ -562,6 +562,9 @@ export function calcolaViti(inp, T, TV) {
   const peso_liscia_kg = lungh_liscia > 0 ? calcolaPeso(dpl, lungh_liscia, dens) : 0;
   const peso_fin      = peso_testa_kg + peso_fil_kg + peso_liscia_kg;
 
+  // ── Peso lotto ───────────────────────────────────────────
+  const peso_principale_reale = peso * (qta_x > 0 ? qta_x : qta);
+
   // ── Stringa gestionale ───────────────────────────────────
   const S_tag = TV.setup_secondi;
   const lines = [];
@@ -583,7 +586,7 @@ export function calcolaViti(inp, T, TV) {
   if (brocc_c > 0) lines.push(`ABROC ${S_tag.brocciatura}`);
   lines.push(`ARULL ${S_tag.rullatura}`);
   if (raddr_c > 0) lines.push(`ARADDR ${S_tag.raddrizzatura}`);
-  lines.unshift(`\u20AC ${totale.toFixed(2)} - da mat. ${mat} \u00D8 ${dia_disp.toFixed(1)} mm, ${(peso * (qta_x > 0 ? qta_x : qta)).toFixed(2)} kg`);
+  lines.unshift(`\u20AC ${totale.toFixed(2)} - da mat. ${mat} \u00D8 ${dia_disp.toFixed(1)} mm, ${peso_principale_reale.toFixed(2)} kg`);
   const tempi_gestionale = lines.join('\n');
 
   // ── Output ───────────────────────────────────────────────
@@ -628,8 +631,8 @@ export function calcolaViti(inp, T, TV) {
     // Per card peso
     qta, qta_x,
     diam: medio,
-    peso_principale: peso * (qta_x > 0 ? qta_x : qta),
-    peso_principale_reale: peso * (qta_x > 0 ? qta_x : qta),
+    peso_principale: peso_principale_reale,
+    peso_principale_reale,
     mod_peso: 1,
     peso_lotto_completo: qta_x > 0 ? peso * qta : null,
     qta_str: null,

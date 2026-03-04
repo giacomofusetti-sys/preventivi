@@ -243,7 +243,7 @@ export function calcolaDadi(inputs, TC, TD) {
   const peso_lotto_completo = qta_x > 0 ? peso * qta : null;
 
   // --- Stringa tempi per gestionale ---
-  const riga_mat = `\u20AC ${costo_tot.toFixed(2)} - da mat. ${mat} \u00D8 ${dia_disp.toFixed(1)} mm, ${peso_principale_reale.toFixed(2)} kg`;
+  const riga_mat = `\u20AC ${costo_tot.toFixed(2)} - da mat. ${mat} \u00D8 ${dia_disp.toFixed(1)} mm, ${peso_principale.toFixed(2)} kg`;
   let tempi_gestionale;
   if (STAMPAGGIO) {
     tempi_gestionale =
