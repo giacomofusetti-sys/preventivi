@@ -369,6 +369,7 @@ export function calcolaViti(inp, T, TV) {
     TRATTAMENTO      = false,
     costo_bonifica_kg = 1.20,
     forfait_bonifica  = 400,
+    medio_override   = 0,
   } = inp;
 
   const { co1, co2 } = T.costi_base;
@@ -376,7 +377,8 @@ export function calcolaViti(inp, T, TV) {
   // ── Parse input ──────────────────────────────────────────
   const dia  = parseDia(dia_raw);
   const dian = getDiametroNominale(T, dia);
-  const medio = getDiametroMedio(T, dia, passo);
+  const medio_raw = getDiametroMedio(T, dia, passo);
+  const medio = medio_override > 0 ? medio_override : medio_raw;
   const lungh = parseFloat(lungh_raw);
   const qta   = parseQta(qta_raw);
   const dia_disp = parseFloat(dia_disp_raw) || dian;
@@ -385,7 +387,12 @@ export function calcolaViti(inp, T, TV) {
   if (isNaN(lungh) || lungh <= 0) throw new Error('Lunghezza non valida');
   if (isNaN(qta)   || qta   <= 0) throw new Error('Quantità non valida');
 
-  // Validazione FRESA: dia_disp deve essere >= spigolo testa
+  // Validazione generale: barra non può essere inferiore al 95% del diametro medio effettivo
+  if (dia_disp < medio * 0.95) throw new Error(
+    `Diametro barra (${dia_disp.toFixed(1)} mm) inferiore al minimo accettabile (${(medio * 0.95).toFixed(1)} mm).`
+  );
+
+  // Validazione FRESA: dia_disp deve essere >= spigolo/diametro testa
   if (!STAMPAGGIO) {
     let s_rif = null;
     if (tipo === '5737' || tipo === '5739') {
@@ -394,8 +401,18 @@ export function calcolaViti(inp, T, TV) {
            ?? lookup(TV.chiavi_pollici_l, String(dia));
     } else if (tipo === '5931') {
       s_rif = lookup(TV.chiavi_cava_metriche, String(dia));
+      const dk = lookup(TV.diametri_testa_cava, String(dia));
+      if (dk && dia_disp < dk) throw new Error(
+        `Diametro barra (${dia_disp} mm) inferiore al diametro testa (${dk} mm). Per fresare serve un tondo più grosso.`
+      );
     }
-    // Nota: rimosso blocco errore per dia_disp < spigolo/testa — modalità minorazione consentita
+    if ((tipo === '5737' || tipo === '5739') && s_rif) {
+      const spigolo = s_rif * 1.154;
+      const spigolo_min = spigolo * 0.95;
+      if (dia_disp < spigolo_min) throw new Error(
+        `Diametro barra (${dia_disp} mm) inferiore al minimo accettabile (${spigolo_min.toFixed(1)} mm). Per fresare serve un tondo più grosso.`
+      );
+    }
   }
 
   // Materiali solo-fresa
@@ -625,11 +642,7 @@ export function calcolaViti(inp, T, TV) {
     mod_peso: 1,
     peso_lotto_completo: qta_x > 0 ? peso * qta : null,
     qta_str: null,
-    messages: dia_disp < medio ? [
-      dian <= 24
-        ? '⚠ Minorazione: partenza da diametro medio, verificare assenza testimone'
-        : '⚠ Minorazione su diametro grande: consigliato partire da barra più grossa del medio'
-    ] : [],
+    messages: [],
     BARRA_GIUSTA: false,
 
     // Flag attivi (per UI)

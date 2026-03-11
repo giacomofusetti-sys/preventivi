@@ -71,6 +71,7 @@ export function calcolaTiranti(inputs, T) {
     dia_disp,
     FANTINA, BARRA_GIUSTA, lungh_barra,
     marcatura_complessa,
+    medio_override = 0,
   } = inputs;
 
   const co1 = T.costi_base.co1;
@@ -85,8 +86,13 @@ export function calcolaTiranti(inputs, T) {
 
   // --- Diametri ---
   const dia  = parseDia(dia_raw);
-  const diam = getDiametroMedio(T, dia, passo);
+  const diam = medio_override > 0 ? medio_override : getDiametroMedio(T, dia, passo);
   const dian = getDiametroNominale(T, dia);
+
+  // Validazione: la barra non può essere inferiore al 95% del diametro medio effettivo
+  if (dia_disp < diam * 0.95) throw new Error(
+    `Diametro barra (${dia_disp.toFixed(1)} mm) inferiore al minimo accettabile (${(diam * 0.95).toFixed(1)} mm).`
+  );
 
   // --- Lunghezza ---
   const lungh_pezzo = parseFloat(lungh_raw);     // lunghezza reale del pezzo senza scarto
@@ -155,13 +161,6 @@ export function calcolaTiranti(inputs, T) {
       `ASMUS ${T.setup_secondi.smusso}\n` +
       `ARULL ${T.setup_secondi.rullatura}\n` +
       `AMARC ${tempo_setup_marc}`;
-
-    // Minorazione
-    if (dia_disp < diam) {
-      messages.push(dian <= 24
-        ? '⚠ Minorazione: partenza da diametro medio, verificare assenza testimone'
-        : '⚠ Minorazione su diametro grande: consigliato partire da barra più grossa del medio');
-    }
 
     return {
       ha_tornitura: false,
@@ -293,11 +292,7 @@ export function calcolaTiranti(inputs, T) {
       num_barre, peso_barre,
       // Utility
       qta, qta_x, qta_str,
-      mat, messages: dia_disp < diam ? [
-        dian <= 24
-          ? '⚠ Minorazione: partenza da diametro medio, verificare assenza testimone'
-          : '⚠ Minorazione su diametro grande: consigliato partire da barra più grossa del medio'
-      ] : [],
+      mat, messages: [],
       tempi_gestionale,
     };
   }

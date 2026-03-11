@@ -260,7 +260,7 @@
 
       <!-- TIRANTI: diametro medio necessario (aggiornato dinamicamente) -->
       <div id="medio-display" style="display:none; background:#162216; border:1px solid #4a7; border-radius:6px; padding:8px 12px; margin-bottom:6px; color:#8f8;">
-        <span id="medio-label">Diametro medio:</span> <strong id="medio-val">--</strong> mm<span id="medio-suffix"></span>
+        Diametro medio necessario: <strong id="medio-val">--</strong> mm<span id="medio-suffix"></span>
       </div>
 
       <!-- TIRANTI: barra a diametro medio disponibile? -->
@@ -556,6 +556,24 @@
         <div class="toggle-group">
           <button class="toggle-btn active" data-group="marcatura_complessa" data-val="OFF">OFF</button>
           <button class="toggle-btn"        data-group="marcatura_complessa" data-val="ON">ON</button>
+        </div>
+      </div>
+
+      <!-- MINORATO (tutti tranne dadi)
+           Riduce il diametro medio usato nei calcoli di tornitura/rullatura.
+           Utile quando si parte da una barra già al diametro medio ridotto. -->
+      <div id="row-minorato" class="form-group" style="display:none">
+        <label>Minorato</label>
+        <div class="toggle-group">
+          <button class="toggle-btn active" data-group="minorato" data-val="OFF">OFF</button>
+          <button class="toggle-btn"        data-group="minorato" data-val="ON">ON</button>
+        </div>
+      </div>
+      <!-- Appare solo se minorato = ON -->
+      <div id="minorato-group" style="display:none">
+        <div class="form-group">
+          <label>Riduzione diametro medio (mm)</label>
+          <input type="number" id="riduzione_medio" value="0.4" step="0.1" min="0">
         </div>
       </div>
 
@@ -863,9 +881,13 @@ function mostraCalcolatore(prodotto) {
   show('medio-display',      isTiranti);                // info diametro medio: solo tiranti
   show('row-dia-disponibile', isTiranti);               // toggle barra disponibile: solo tiranti
   show('row-marcatura-complessa', isTiranti || isPrigionieri || isDadi || isOcchio); // marcatura complessa: tiranti, prigionieri, dadi, occhio
+  show('row-minorato',           !isDadi);                    // minorato: tutti tranne dadi
 
   // Per i dadi calcola subito l'altezza di default
   if (isDadi) aggiornaAltezzaDado();
+  // Nascondi sempre i gruppi condizionali al reset
+  document.getElementById('minorato-group').style.display = 'none';
+
   // Per i tiranti resetta il toggle a SI e aggiorna il display medio
   if (isTiranti) {
     document.querySelectorAll('.toggle-btn[data-group="dia_disponibile"]')
@@ -960,14 +982,19 @@ document.querySelectorAll('.toggle-btn').forEach(btn => {
         const medioVal = parseFloat(document.getElementById('medio-val').textContent);
         const input = document.getElementById('dia_disp');
         if (!isNaN(medioVal)) {
-          input.min = (medioVal + 0.1).toFixed(1);
-          input.placeholder = medioVal.toFixed(1);
+          input.placeholder = medioVal.toFixed(2);
           if (!input.value || parseFloat(input.value) <= medioVal) {
             input.value = '';
           }
         }
         aggiornaDiffLabel();
       }
+    }
+    // minorato: ON → mostra campo riduzione; aggiorna display medio
+    if (group === 'minorato') {
+      document.getElementById('minorato-group').style.display =
+        btn.dataset.val === 'ON' ? 'block' : 'none';
+      aggiornaMedio();
     }
   });
 });
@@ -979,22 +1006,16 @@ document.querySelectorAll('.toggle-btn').forEach(btn => {
 function aggiornaMedio() {
   if (prodottoCorrente !== 'tiranti') return;
   try {
-    const diam = getDiametroMedio(T, parseDia(getStr('dia')), getStr('passo'));
-    document.getElementById('medio-val').textContent = diam.toFixed(1);
+    const diam_raw = getDiametroMedio(T, parseDia(getStr('dia')), getStr('passo'));
+    const minorato = getToggleVal('minorato') === 'ON';
+    const riduzione = minorato ? getNum('riduzione_medio', 0.4) : 0;
+    const diam_eff = diam_raw - riduzione;
+    document.getElementById('medio-val').textContent = diam_eff.toFixed(2);
+    document.getElementById('medio-suffix').textContent = minorato ? ' (minorato)' : '';
     const input = document.getElementById('dia_disp');
-    input.placeholder = diam.toFixed(1);
+    input.placeholder = diam_eff.toFixed(2);
     if (getToggleVal('dia_disponibile') === 'NO') aggiornaDiffLabel();
-    else aggiornaMinorazioneDisplay(diam, NaN);
   } catch(e) { /* dia/passo non ancora disponibili */ }
-}
-
-function aggiornaMinorazioneDisplay(medio, diaDisp) {
-  const suffix = document.getElementById('medio-suffix');
-  if (!isNaN(diaDisp) && diaDisp < medio) {
-    suffix.textContent = ' — modalità minorazione attiva';
-  } else {
-    suffix.textContent = '';
-  }
 }
 
 function aggiornaDiffLabel() {
@@ -1003,7 +1024,6 @@ function aggiornaDiffLabel() {
   if (!isNaN(medio) && !isNaN(val)) {
     document.getElementById('diff-label').textContent =
       `+${(val - medio).toFixed(1)} mm → tornitura necessaria`;
-    aggiornaMinorazioneDisplay(medio, val);
   }
 }
 
@@ -1013,6 +1033,7 @@ document.getElementById('dia_disp').addEventListener('input', () => {
   if (prodottoCorrente === 'tiranti' && getToggleVal('dia_disponibile') === 'NO')
     aggiornaDiffLabel();
 });
+document.getElementById('riduzione_medio').addEventListener('input', aggiornaMedio);
 
 
 // ─── DEFAULT COSTO MATERIALI ──────────────────────────────────
@@ -1179,8 +1200,11 @@ window.calcola = async function() {
       const dia_raw  = getStr('dia');
       const passo    = getStr('passo');
       const diam     = getDiametroMedio(T, parseDia(dia_raw), passo);
+      const minorato = getToggleVal('minorato') === 'ON';
+      const riduzione = minorato ? getNum('riduzione_medio', 0.4) : 0;
+      const medio_override = minorato ? diam - riduzione : 0;
       const diaIsNO  = getToggleVal('dia_disponibile') === 'NO';
-      const diaDisp  = diaIsNO ? getNum('dia_disp', diam) : diam;
+      const diaDisp  = diaIsNO ? getNum('dia_disp', medio_override || diam) : (medio_override || diam);
 
       R = calcolaTiranti({
         dia_raw, passo,
@@ -1199,6 +1223,7 @@ window.calcola = async function() {
         BARRA_GIUSTA:       diaIsNO ? getToggle('barra_giusta') : false,
         lungh_barra:        getNum('lungh_barra', 3000),
         marcatura_complessa: getToggle('marcatura_complessa'),
+        medio_override,
       }, T);
       if (getToggle('trattamento')) {
         const tratt = Math.max(R.peso * getNum('prezzo_kg', 1.2), getNum('forfait', 400) / R.qta);
@@ -1209,6 +1234,9 @@ window.calcola = async function() {
 
     } else if (prodottoCorrente === 'prigionieri') {
       // ── Prigionieri ───────────────────────────────────────
+      const _diam_p  = getDiametroMedio(T, parseDia(getStr('dia')), getStr('passo'));
+      const _min_p   = getToggleVal('minorato') === 'ON';
+      const medio_override = _min_p ? _diam_p - getNum('riduzione_medio', 0.4) : 0;
       R = calcolaPrigionieri({
         tipo:               getToggleVal('tipo_prig'),
         dia_raw:            getStr('dia'),
@@ -1228,6 +1256,7 @@ window.calcola = async function() {
         BARRA_GIUSTA:       getToggle('barra_giusta'),
         lungh_barra:        getNum('lungh_barra', 3000),
         marcatura_complessa: getToggle('marcatura_complessa'),
+        medio_override,
       }, T, TP);
       if (getToggle('trattamento')) {
         const tratt = Math.max(R.peso * getNum('prezzo_kg', 1.2), getNum('forfait', 400) / R.qta);
@@ -1294,6 +1323,9 @@ window.calcola = async function() {
     } else if (prodottoCorrente === 'tiranti_occhio') {
       // ── Tiranti a Occhio — import dinamico ───────────────
       const { calcolaTirantiOcchio } = await import('./moduli/tiranti_occhio.js');
+      const _diam_o  = getDiametroMedio(T, parseDia(getStr('dia')), getStr('passo'));
+      const _min_o   = getToggleVal('minorato') === 'ON';
+      const medio_override = _min_o ? _diam_o - getNum('riduzione_medio', 0.4) : 0;
       R = calcolaTirantiOcchio({
         tipo:               getToggleVal('tipo_occhio'),
         dia_raw:            getStr('dia'),
@@ -1309,6 +1341,7 @@ window.calcola = async function() {
         dia_foro_custom:    getNum('dia_foro_custom', 0),
         dia_disp:           getNum('dia_disp', 50),
         STAMPAGGIO:         getToggle('stampaggio_occhio'),
+        medio_override,
       }, T);
       if (getToggle('trattamento')) {
         const tratt = Math.max(R.peso * getNum('prezzo_kg', 1.2), getNum('forfait', 400) / R.qta);
@@ -1321,6 +1354,9 @@ window.calcola = async function() {
     // ── Viti ─────────────────────────────────────────────
     if (prodottoCorrente === 'viti') {
       const { calcolaViti } = await import('./moduli/viti.js');
+      const _diam_v  = getDiametroMedio(T, parseDia(getStr('dia')), getStr('passo'));
+      const _min_v   = getToggleVal('minorato') === 'ON';
+      const medio_override = _min_v ? _diam_v - getNum('riduzione_medio', 0.4) : 0;
       R = calcolaViti({
         tipo:               getToggleVal('tipo_vite'),
         dia_raw:            getStr('dia'),
@@ -1341,6 +1377,7 @@ window.calcola = async function() {
         TRATTAMENTO:        getToggle('trattamento_vite'),
         costo_bonifica_kg:  getNum('costo_bonifica_kg', 1.20),
         forfait_bonifica:   getNum('forfait_bonifica', 400),
+        medio_override,
       }, T, TV);
     }
 

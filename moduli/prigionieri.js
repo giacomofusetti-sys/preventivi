@@ -111,6 +111,7 @@ export function calcolaPrigionieri(inputs, TC, TP) {
     dia_disp,
     FANTINA, BARRA_GIUSTA, lungh_barra,
     marcatura_complessa,
+    medio_override = 0,
   } = inputs;
 
   const co1 = TC.costi_base.co1;
@@ -125,8 +126,13 @@ export function calcolaPrigionieri(inputs, TC, TP) {
 
   // --- Diametri ---
   const dia  = parseDia(dia_raw);
-  const diam = getDiametroMedio(TC, dia, passo);   // diametro medio filetto
-  const dian = getDiametroNominale(TC, dia);        // diametro nominale
+  const diam = medio_override > 0 ? medio_override : getDiametroMedio(TC, dia, passo);
+  const dian = getDiametroNominale(TC, dia);
+
+  // Validazione: la barra non può essere inferiore al 95% del diametro medio effettivo
+  if (dia_disp < diam * 0.95) throw new Error(
+    `Diametro barra (${dia_disp.toFixed(1)} mm) inferiore al minimo accettabile (${(diam * 0.95).toFixed(1)} mm).`
+  );
 
   // Diametro parte liscia (se alleggerita, altrimenti = nominale)
   const dian_liscia = (parte_liscia > 0) ? parte_liscia : dian;
@@ -253,14 +259,6 @@ export function calcolaPrigionieri(inputs, TC, TP) {
       `AMARC ${tempo_setup_marc}`;
   }
 
-  // Minorazione
-  const messages = [];
-  if (dia_disp < diam) {
-    messages.push(dian <= 24
-      ? '⚠ Minorazione: partenza da diametro medio, verificare assenza testimone'
-      : '⚠ Minorazione su diametro grande: consigliato partire da barra più grossa del medio');
-  }
-
   return {
     // Costi
     mat_cost, bonifica, attrez,
@@ -283,7 +281,7 @@ export function calcolaPrigionieri(inputs, TC, TP) {
     num_barre, peso_barre,
     // Utility
     qta, qta_x, qta_str, tipo, mat,
-    messages,
+    messages: [],
     tempi_gestionale,
   };
 }

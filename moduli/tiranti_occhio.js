@@ -179,6 +179,7 @@ export function calcolaTirantiOcchio(inputs, T) {
     dia_foro_custom,     // 0 = usa tabella
     dia_disp,
     STAMPAGGIO,
+    medio_override = 0,
   } = inputs;
 
   const co1 = T.costi_base.co1;
@@ -193,8 +194,13 @@ export function calcolaTirantiOcchio(inputs, T) {
 
   // --- Diametri ---
   const dia  = parseDia(dia_raw);
-  const diam = getDiametroMedio(T, dia, passo);   // diametro medio filetto (mm)
-  const dian = getDiametroNominale(T, dia);        // diametro nominale (mm)
+  const diam = medio_override > 0 ? medio_override : getDiametroMedio(T, dia, passo);
+  const dian = getDiametroNominale(T, dia);
+
+  // Validazione: la barra non può essere inferiore al 95% del diametro medio effettivo
+  if (dia_disp < diam * 0.95) throw new Error(
+    `Diametro barra (${dia_disp.toFixed(1)} mm) inferiore al minimo accettabile (${(diam * 0.95).toFixed(1)} mm).`
+  );
 
   // --- Geometria testa e foro ---
   const testa = getDiaTesta(tipo, dian, dia_testa_custom);
@@ -338,11 +344,7 @@ export function calcolaTirantiOcchio(inputs, T) {
     STAMPAGGIO,
     // Utility
     qta, qta_x, qta_str, tipo, mat,
-    messages: dia_disp < diam ? [
-      dian <= 24
-        ? '⚠ Minorazione: partenza da diametro medio, verificare assenza testimone'
-        : '⚠ Minorazione su diametro grande: consigliato partire da barra più grossa del medio'
-    ] : [],
+    messages: [],
     tempi_gestionale,
   };
 }
