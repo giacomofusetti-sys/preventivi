@@ -394,19 +394,8 @@ export function calcolaViti(inp, T, TV) {
            ?? lookup(TV.chiavi_pollici_l, String(dia));
     } else if (tipo === '5931') {
       s_rif = lookup(TV.chiavi_cava_metriche, String(dia));
-      // per la cava, il limite è il diametro testa
-      const dk = lookup(TV.diametri_testa_cava, String(dia));
-      if (dk && dia_disp < dk) throw new Error(
-        `Diametro barra (${dia_disp} mm) inferiore al diametro testa (${dk} mm). Per fresare serve un tondo più grosso.`
-      );
     }
-    if ((tipo === '5737' || tipo === '5739') && s_rif) {
-      const spigolo = s_rif * 1.154;
-      const spigolo_min = spigolo * 0.95;
-      if (dia_disp < spigolo_min) throw new Error(
-        `Diametro barra (${dia_disp} mm) inferiore al minimo accettabile (${spigolo_min.toFixed(1)} mm). Per fresare serve un tondo più grosso.`
-      );
-    }
+    // Nota: rimosso blocco errore per dia_disp < spigolo/testa — modalità minorazione consentita
   }
 
   // Materiali solo-fresa
@@ -636,7 +625,11 @@ export function calcolaViti(inp, T, TV) {
     mod_peso: 1,
     peso_lotto_completo: qta_x > 0 ? peso * qta : null,
     qta_str: null,
-    messages: [],
+    messages: dia_disp < medio ? [
+      dian <= 24
+        ? '⚠ Minorazione: partenza da diametro medio, verificare assenza testimone'
+        : '⚠ Minorazione su diametro grande: consigliato partire da barra più grossa del medio'
+    ] : [],
     BARRA_GIUSTA: false,
 
     // Flag attivi (per UI)

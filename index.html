@@ -260,7 +260,7 @@
 
       <!-- TIRANTI: diametro medio necessario (aggiornato dinamicamente) -->
       <div id="medio-display" style="display:none; background:#162216; border:1px solid #4a7; border-radius:6px; padding:8px 12px; margin-bottom:6px; color:#8f8;">
-        Diametro medio necessario: <strong id="medio-val">--</strong> mm
+        <span id="medio-label">Diametro medio:</span> <strong id="medio-val">--</strong> mm<span id="medio-suffix"></span>
       </div>
 
       <!-- TIRANTI: barra a diametro medio disponibile? -->
@@ -982,10 +982,19 @@ function aggiornaMedio() {
     const diam = getDiametroMedio(T, parseDia(getStr('dia')), getStr('passo'));
     document.getElementById('medio-val').textContent = diam.toFixed(1);
     const input = document.getElementById('dia_disp');
-    input.min = (diam + 0.1).toFixed(1);
     input.placeholder = diam.toFixed(1);
     if (getToggleVal('dia_disponibile') === 'NO') aggiornaDiffLabel();
+    else aggiornaMinorazioneDisplay(diam, NaN);
   } catch(e) { /* dia/passo non ancora disponibili */ }
+}
+
+function aggiornaMinorazioneDisplay(medio, diaDisp) {
+  const suffix = document.getElementById('medio-suffix');
+  if (!isNaN(diaDisp) && diaDisp < medio) {
+    suffix.textContent = ' — modalità minorazione attiva';
+  } else {
+    suffix.textContent = '';
+  }
 }
 
 function aggiornaDiffLabel() {
@@ -994,6 +1003,7 @@ function aggiornaDiffLabel() {
   if (!isNaN(medio) && !isNaN(val)) {
     document.getElementById('diff-label').textContent =
       `+${(val - medio).toFixed(1)} mm → tornitura necessaria`;
+    aggiornaMinorazioneDisplay(medio, val);
   }
 }
 

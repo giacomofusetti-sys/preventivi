@@ -338,7 +338,11 @@ export function calcolaTirantiOcchio(inputs, T) {
     STAMPAGGIO,
     // Utility
     qta, qta_x, qta_str, tipo, mat,
-    messages: [],
+    messages: dia_disp < diam ? [
+      dian <= 24
+        ? '⚠ Minorazione: partenza da diametro medio, verificare assenza testimone'
+        : '⚠ Minorazione su diametro grande: consigliato partire da barra più grossa del medio'
+    ] : [],
     tempi_gestionale,
   };
 }

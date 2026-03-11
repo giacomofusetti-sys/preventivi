@@ -253,6 +253,14 @@ export function calcolaPrigionieri(inputs, TC, TP) {
       `AMARC ${tempo_setup_marc}`;
   }
 
+  // Minorazione
+  const messages = [];
+  if (dia_disp < diam) {
+    messages.push(dian <= 24
+      ? '⚠ Minorazione: partenza da diametro medio, verificare assenza testimone'
+      : '⚠ Minorazione su diametro grande: consigliato partire da barra più grossa del medio');
+  }
+
   return {
     // Costi
     mat_cost, bonifica, attrez,
@@ -275,6 +283,7 @@ export function calcolaPrigionieri(inputs, TC, TP) {
     num_barre, peso_barre,
     // Utility
     qta, qta_x, qta_str, tipo, mat,
+    messages,
     tempi_gestionale,
   };
 }

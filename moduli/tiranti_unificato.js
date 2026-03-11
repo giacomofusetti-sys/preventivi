@@ -156,6 +156,13 @@ export function calcolaTiranti(inputs, T) {
       `ARULL ${T.setup_secondi.rullatura}\n` +
       `AMARC ${tempo_setup_marc}`;
 
+    // Minorazione
+    if (dia_disp < diam) {
+      messages.push(dian <= 24
+        ? '⚠ Minorazione: partenza da diametro medio, verificare assenza testimone'
+        : '⚠ Minorazione su diametro grande: consigliato partire da barra più grossa del medio');
+    }
+
     return {
       ha_tornitura: false,
       // Costi
@@ -286,7 +293,11 @@ export function calcolaTiranti(inputs, T) {
       num_barre, peso_barre,
       // Utility
       qta, qta_x, qta_str,
-      mat, messages: [],
+      mat, messages: dia_disp < diam ? [
+        dian <= 24
+          ? '⚠ Minorazione: partenza da diametro medio, verificare assenza testimone'
+          : '⚠ Minorazione su diametro grande: consigliato partire da barra più grossa del medio'
+      ] : [],
       tempi_gestionale,
     };
   }
