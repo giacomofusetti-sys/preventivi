@@ -64,12 +64,13 @@ function calcolaLunghFiletto(tipo, dia, lungh, filetto_override, TV) {
 
 // ─── DATI TESTA ───────────────────────────────────────────────
 
-function getDatiTesta(tipo, dia, mat, TV) {
+function getDatiTesta(tipo, dia, mat, chiave_tipo, TV) {
   const key = String(dia);
   if (tipo === '5737' || tipo === '5739') {
     const s    = lookup(TV.chiavi_metriche, key)
-              ?? lookup(TV.chiavi_pollici_p, key)
-              ?? lookup(TV.chiavi_pollici_l, key);
+              ?? (chiave_tipo === 'l'
+                  ? lookup(TV.chiavi_pollici_l, key)
+                  : lookup(TV.chiavi_pollici_p, key));
     const h    = lookup(TV.altezze_testa_esagonale, key);
     if (!s || !h) throw new Error(`Testa esagonale non trovata per dia ${dia}`);
     const lato = s / 1.732;
@@ -397,8 +398,9 @@ export function calcolaViti(inp, T, TV) {
     let s_rif = null;
     if (tipo === '5737' || tipo === '5739') {
       s_rif = lookup(TV.chiavi_metriche, String(dia))
-           ?? lookup(TV.chiavi_pollici_p, String(dia))
-           ?? lookup(TV.chiavi_pollici_l, String(dia));
+           ?? (chiave_tipo === 'l'
+               ? lookup(TV.chiavi_pollici_l, String(dia))
+               : lookup(TV.chiavi_pollici_p, String(dia)));
     } else if (tipo === '5931') {
       s_rif = lookup(TV.chiavi_cava_metriche, String(dia));
       const dk = lookup(TV.diametri_testa_cava, String(dia));
@@ -430,7 +432,7 @@ export function calcolaViti(inp, T, TV) {
   const lungh_liscia = filet > 0 ? lungh - filet : 0;
 
   // ── Dati testa ───────────────────────────────────────────
-  const dati_testa = getDatiTesta(tipo, dia, mat, TV);
+  const dati_testa = getDatiTesta(tipo, dia, mat, chiave_tipo, TV);
   const h_testa    = dati_testa.h ?? dati_testa.hc ?? 0;
 
   // ── Peso materiale ────────────────────────────────────────

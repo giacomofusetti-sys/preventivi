@@ -874,7 +874,8 @@ function mostraCalcolatore(prodotto) {
   show('row-tipo-occhio',   isOcchio);                  // tipo 6058/libero: solo occhio
   show('row-stampaggio-occhio', isOcchio);              // fresatura/stampaggio testa: solo occhio
   show('row-uni',           isDadi);                    // tipo UNI dado: solo dadi
-  show('row-chiave-tipo',   isDadi);                    // serie chiave: solo dadi
+  show('row-chiave-tipo',   isDadi || isViti);            // serie chiave: dadi + viti pollici
+  aggiornaChiaveTipo();
   show('row-dia-disp-dadi', isDadi);                    // barra grezza dadi: solo dadi
   show('row-stampaggio',    isDadi);                    // fresatura/stampaggio: solo dadi
   show('row-trattamento',   isDadi || isTiranti || isPrigionieri || isOcchio); // trattamento termico: tutti tranne viti
@@ -1027,6 +1028,18 @@ function aggiornaDiffLabel() {
   }
 }
 
+// ─── CHIAVE PESANTE/LEGGERA (VITI POLLICI) ───────────────────
+// Per le viti, mostra il toggle solo quando il diametro è in pollici.
+// Per i dadi resta sempre visibile (gestito da mostraCalcolatore).
+function aggiornaChiaveTipo() {
+  if (prodottoCorrente !== 'viti') return;
+  const sel = document.getElementById('dia');
+  const opt = sel.options[sel.selectedIndex];
+  const isPollici = opt && opt.parentElement.label === 'Pollici';
+  document.getElementById('row-chiave-tipo').style.display = isPollici ? '' : 'none';
+}
+
+document.getElementById('dia').addEventListener('change', aggiornaChiaveTipo);
 document.getElementById('dia').addEventListener('change', aggiornaMedio);
 document.getElementById('passo').addEventListener('change', aggiornaMedio);
 document.getElementById('dia_disp').addEventListener('input', () => {
