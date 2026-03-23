@@ -113,7 +113,8 @@ function calcolaSviluppoTesta(tipo, dati_testa, area_tondo) {
 // ─── TORNITURA ────────────────────────────────────────────────
 
 function calcolaTornitura(tipo, dian, medio, dia_disp, dia_parte_liscia,
-                           filet, lungh, mat, STAMPAGGIO, dati_testa, TV) {
+                           filet, lungh, mat, STAMPAGGIO, dati_testa,
+                           materiale_speciale, TV, T) {
   const differenza_fil    = dia_disp - medio;
   const differenza_liscia = dia_disp - dia_parte_liscia;
   const lungh_liscia      = filet > 0 ? lungh - filet : 0;
@@ -169,12 +170,23 @@ function calcolaTornitura(tipo, dian, medio, dia_disp, dia_parte_liscia,
   // Caso semplice: solo filetto su pezzo corto, gambo già a misura — nessun minimo
   if ((tipo === '5737' || tipo === '5931') && lungh < 350 && pldt_base === 0) {
     tempo = (filet / div) * Math.ceil(differenza_fil / 3) + 12;
-    return tempo <= 0 ? 0 : tempo;
+    if (tempo <= 0) return 0;
+    if (mat === 'altro') {
+      const k = T.materiali_speciali_k[materiale_speciale];
+      if (!k) throw new Error('Specifica un materiale_speciale valido per "altro" (F53, 660, 718)');
+      tempo *= k;
+    }
+    return tempo;
   }
 
   // Caso generale (tornitura parte liscia o pezzo lungo): minimo 90s
   if (tempo <= 0) return 0;
   tempo = Math.max(tempo, 90);
+  if (mat === 'altro') {
+    const k = T.materiali_speciali_k[materiale_speciale];
+    if (!k) throw new Error('Specifica un materiale_speciale valido per "altro" (F53, 660, 718)');
+    tempo *= k;
+  }
   return tempo;
 }
 
@@ -220,10 +232,15 @@ function calcolaBrocciatura(dian, mat, tipo, STAMPAGGIO, materiale_speciale, TV)
 
 // ─── FRESATURA TESTA ─────────────────────────────────────────
 
-function calcolaFresaturaTesta(dian, mat, tipo, TV) {
+function calcolaFresaturaTesta(dian, mat, tipo, materiale_speciale, TV, T) {
   // Solo per 5737/5739 con FRESA, o mai per 5931 (usa brocciatura)
   let t = tierValue(TV.tempi_fresatura_testa, dian) ?? 0;
   if (MAT_INOX.includes(mat)) t *= 2;
+  if (mat === 'altro') {
+    const k = T.materiali_speciali_k[materiale_speciale];
+    if (!k) throw new Error('Specifica un materiale_speciale valido per "altro" (F53, 660, 718)');
+    t *= k;
+  }
   return t;
 }
 
@@ -261,6 +278,8 @@ function calcolaTempoRullatura(dian, filet, mat, TV) {
   for (const r of TV.rullatura_viti.moltiplicatori_lunghezza) {
     if (filet >= r.da && filet < r.a) { t *= r.mult; break; }
   }
+
+  if (mat === 'altro') t *= 1.5;
 
   return t;
 }
@@ -497,7 +516,8 @@ export function calcolaViti(inp, T, TV) {
   if (differenza_fil > 0 || !STAMPAGGIO) {
     t_torn = calcolaTornitura(
       tipo, dian, medio, dia_disp, dpl,
-      filet, lungh, mat, STAMPAGGIO, dati_testa, TV
+      filet, lungh, mat, STAMPAGGIO, dati_testa,
+      materiale_speciale, TV, T
     );
     if (t_torn > 0) {
       const tc = t_torn * co;
@@ -508,7 +528,7 @@ export function calcolaViti(inp, T, TV) {
   // ── Fresatura testa (5737/5739 con FRESA) ─────────────────
   let t_fresa = 0, fresa_fin = 0;
   if (!STAMPAGGIO && (tipo === '5737' || tipo === '5739')) {
-    t_fresa  = calcolaFresaturaTesta(dian, mat, tipo, TV);
+    t_fresa  = calcolaFresaturaTesta(dian, mat, tipo, materiale_speciale, TV, T);
     const minimo = 1.62;
     let fc = t_fresa * co;
     if (fc < minimo) fc = minimo;
