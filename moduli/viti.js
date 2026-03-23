@@ -216,7 +216,7 @@ function calcolaTempoStampaggio(dian, TV) {
 
 // ─── BROCCIATURA ─────────────────────────────────────────────
 
-function calcolaBrocciatura(dian, mat, tipo, STAMPAGGIO, materiale_speciale, TV) {
+function calcolaBrocciatura(dian, mat, tipo, STAMPAGGIO, materiale_speciale, TV, T) {
   // La brocciatura serve per le 5931 quando:
   // - con FRESA (qualsiasi materiale)
   // - con STAMPAGGIO su inox/altro (cava sempre brocciata)
@@ -225,8 +225,11 @@ function calcolaBrocciatura(dian, mat, tipo, STAMPAGGIO, materiale_speciale, TV)
   if (!serve) return 0;
 
   let t = tierValue(TV.tempi_brocciatura, dian) ?? 0;
-  const k = { F53: 2, '660': 3, '718': 4 }[materiale_speciale] ?? 1;
-  t *= k;
+  if (mat === 'altro') {
+    const k = T.materiali_speciali_k[materiale_speciale];
+    if (!k) throw new Error('Specifica un materiale_speciale valido per "altro" (F53, 660, 718)');
+    t *= k;
+  }
   return t * 0.018; // costo diretto (come nel Python)
 }
 
@@ -538,7 +541,7 @@ export function calcolaViti(inp, T, TV) {
   // ── Brocciatura (5931 sempre; 5931 inox/altro anche stampata) ──
   let brocc_c = 0, brocc_fin = 0;
   if (tipo === '5931') {
-    brocc_c  = calcolaBrocciatura(dian, mat, tipo, STAMPAGGIO, materiale_speciale, TV);
+    brocc_c  = calcolaBrocciatura(dian, mat, tipo, STAMPAGGIO, materiale_speciale, TV, T);
     brocc_fin = brocc_c * qta < 10 ? 10 / qta : brocc_c;
   }
 
