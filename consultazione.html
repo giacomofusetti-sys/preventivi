@@ -1,0 +1,860 @@
+<!DOCTYPE html>
+<!--
+  ╔══════════════════════════════════════════════════════════════╗
+  ║  PREVENTIVI — Consultazione Tabelle                          ║
+  ║  consultazione.html — Pannello di sola lettura               ║
+  ╠══════════════════════════════════════════════════════════════╣
+  ║  Mostra tutte le tabelle da cui il programma pesca i dati.   ║
+  ║  Nessun calcolo, solo consultazione rapida.                  ║
+  ║  Carica i JSON da tabelle/ come il programma principale.     ║
+  ╚══════════════════════════════════════════════════════════════╝
+-->
+<html lang="it">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Preventivi — Consultazione Tabelle</title>
+  <link rel="stylesheet" href="stile.css">
+  <style>
+    /* ── Stili specifici per la pagina consultazione ──────────
+         Usa le variabili di stile.css (--bg, --panel, --border,
+         --accent, --text, --muted, --mono, --sans).
+         ─────────────────────────────────────────────────────── */
+
+    .consult-wrap {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 16px 20px 60px;
+    }
+
+    /* ── Navigazione laterale (sidebar) ────────────────────── */
+    .consult-nav {
+      position: fixed;
+      top: 76px; /* sotto l'header sticky (padding 18×2 + h1 ~22 + border 2) */
+      left: 0;
+      width: 220px;
+      height: calc(100vh - 76px);
+      overflow-y: auto;
+      background: var(--bg);
+      border-right: 1px solid var(--border);
+      padding: 16px 0;
+      z-index: 50;
+      scrollbar-width: thin;
+      scrollbar-color: var(--border-bright) transparent;
+    }
+    .consult-nav a {
+      display: block;
+      padding: 6px 16px;
+      color: var(--muted);
+      text-decoration: none;
+      font-family: var(--mono);
+      font-size: 11px;
+      line-height: 1.4;
+      transition: color .15s, background .15s;
+      border-left: 2px solid transparent;
+    }
+    .consult-nav a:hover {
+      color: var(--text);
+      background: var(--panel);
+    }
+    .consult-nav a.nav-section {
+      color: var(--green);
+      font-weight: 700;
+      font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: 1.5px;
+      margin-top: 16px;
+      padding-bottom: 4px;
+      pointer-events: none;
+    }
+    .consult-nav a.nav-active {
+      color: var(--text);
+      border-left-color: var(--accent);
+      background: #161400;
+    }
+
+    .consult-body {
+      margin-left: 220px;
+    }
+
+    /* ── Sezioni ───────────────────────────────────────────── */
+    .t-section {
+      margin-bottom: 36px;
+      scroll-margin-top: 86px;
+    }
+    .t-section-title {
+      font-family: var(--sans);
+      font-size: 16px;
+      font-weight: 700;
+      color: var(--accent);
+      padding: 10px 0 6px;
+      border-bottom: 1px solid var(--border);
+      margin-bottom: 14px;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+    }
+    .t-group-title {
+      font-family: var(--mono);
+      font-size: 10px;
+      font-weight: 700;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 1.5px;
+      margin: 20px 0 8px;
+    }
+    .t-note {
+      font-family: var(--mono);
+      font-size: 10px;
+      color: var(--muted);
+      margin: 4px 0 10px;
+      letter-spacing: 0.5px;
+    }
+
+    /* ── Tabelle ───────────────────────────────────────────── */
+    .t-table-wrap {
+      overflow-x: auto;
+      margin-bottom: 16px;
+      border: 1px solid var(--border);
+    }
+    table.t-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-family: var(--mono);
+      font-size: 12px;
+      font-variant-numeric: tabular-nums;
+    }
+    .t-table th {
+      background: var(--panel);
+      color: var(--green);
+      font-family: var(--mono);
+      font-size: 9px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 1.5px;
+      padding: 8px 12px;
+      text-align: left;
+      border-bottom: 1px solid var(--border);
+      position: sticky;
+      top: 0;
+      z-index: 2;
+    }
+    .t-table td {
+      padding: 5px 12px;
+      border-bottom: 1px solid #1a1a1a;
+      color: var(--text);
+      font-size: 12px;
+    }
+    .t-table tbody tr:hover td { background: #161400; }
+    .t-table td.num { text-align: right; }
+    .t-table th.num { text-align: right; }
+
+    /* Colonna diametro evidenziata */
+    .t-table td.dia-col {
+      color: var(--accent);
+      font-weight: 700;
+    }
+
+    /* ── Griglia a 2 colonne per tabelle piccole ──────────── */
+    .t-grid-2 {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+    }
+
+    /* ── Filtro ricerca ───────────────────────────────────── */
+    .search-bar {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      background: var(--panel);
+      border: 1px solid var(--border-bright);
+      padding: 10px 16px;
+      margin-bottom: 20px;
+    }
+    .search-bar input {
+      flex: 1;
+      background: transparent;
+      border: none;
+      color: var(--text);
+      font-family: var(--mono);
+      font-size: 13px;
+      outline: none;
+      letter-spacing: 0.5px;
+    }
+    .search-bar input::placeholder { color: var(--muted); }
+    .search-icon { color: var(--muted); font-size: 16px; }
+
+    /* ── Back button ──────────────────────────────────────── */
+    .consult-back {
+      display: inline-block;
+      margin-bottom: 16px;
+      background: none;
+      border: 1px solid var(--border-bright);
+      color: var(--muted);
+      font-family: var(--mono);
+      font-size: 10px;
+      padding: 6px 12px;
+      cursor: pointer;
+      letter-spacing: 1px;
+      text-decoration: none;
+      transition: all .15s;
+    }
+    .consult-back:hover {
+      color: var(--accent);
+      border-color: var(--accent);
+    }
+
+    /* ── Header mini-stat ─────────────────────────────────── */
+    .stat-bar {
+      display: flex;
+      gap: 24px;
+      flex-wrap: wrap;
+      margin-bottom: 24px;
+      padding: 12px 16px;
+      background: var(--panel);
+      border: 1px solid var(--border);
+    }
+    .stat-item {
+      font-family: var(--mono);
+      font-size: 10px;
+      color: var(--muted);
+      letter-spacing: 1px;
+    }
+    .stat-item strong {
+      color: var(--accent);
+      font-weight: 700;
+    }
+
+    /* ── Responsive ───────────────────────────────────────── */
+    @media (max-width: 900px) {
+      .consult-nav { display: none; }
+      .consult-body { margin-left: 0; }
+      .t-grid-2 { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="logo-mark">⬡</div>
+  <div>
+    <h1 id="header-title">Consultazione Tabelle</h1>
+    <span id="header-sub">Riferimenti per il calcolo preventivi</span>
+  </div>
+  <div class="header-right" id="header-right">v1.0</div>
+</header>
+
+<div class="consult-wrap">
+
+  <!-- Sidebar navigazione -->
+  <nav class="consult-nav" id="sidebar">
+    <a class="nav-section">Comune</a>
+    <a href="#sec-diametri-medi">Diametri medi</a>
+    <a href="#sec-diametri-pollici">Diametri medi pollici</a>
+    <a href="#sec-nominali-pollici">Nominali pollici</a>
+    <a href="#sec-materiali">Materiali e densità</a>
+    <a href="#sec-costi-base">Costi base</a>
+    <a href="#sec-taglio">Taglio</a>
+    <a href="#sec-smusso">Smusso</a>
+    <a href="#sec-rullatura">Rullatura</a>
+    <a href="#sec-bonifica">Bonifica 42CD4</a>
+    <a href="#sec-mod-peso">Modificatore peso</a>
+    <a href="#sec-setup">Setup (approntamento)</a>
+
+    <a class="nav-section">Dadi</a>
+    <a href="#sec-dadi-chiavi">Chiavi esagonali</a>
+    <a href="#sec-dadi-altezze">Altezze 5588 / 5589</a>
+    <a href="#sec-dadi-tempi">Tempi lavorazione</a>
+    <a href="#sec-dadi-setup">Setup dadi</a>
+
+    <a class="nav-section">Prigionieri</a>
+    <a href="#sec-prig-radice">Radice 5911</a>
+    <a href="#sec-prig-filetto">Filetto 5909/5911</a>
+    <a href="#sec-prig-rullatura">Rullatura prigionieri</a>
+    <a href="#sec-prig-taglio">Taglio prigionieri</a>
+
+    <a class="nav-section">Viti</a>
+    <a href="#sec-viti-teste">Teste esagonali e cave</a>
+    <a href="#sec-viti-filetto-5737">Filetto 5737</a>
+    <a href="#sec-viti-filetto-5931">Filetto 5931</a>
+    <a href="#sec-viti-tempi">Tempi viti</a>
+    <a href="#sec-viti-rullatura">Rullatura viti</a>
+  </nav>
+
+  <div class="consult-body">
+
+    <a class="consult-back" href="index.html">← Torna al calcolatore</a>
+
+    <div class="search-bar">
+      <span class="search-icon">🔍</span>
+      <input type="text" id="searchInput" placeholder="Cerca nelle tabelle (es. M24, 5588, inox, chiave...)">
+    </div>
+
+    <div class="stat-bar" id="stat-bar"></div>
+
+    <div id="tables-container">
+      <p style="color:#555; text-align:center; padding:40px 0;">Caricamento tabelle…</p>
+    </div>
+
+  </div><!-- .consult-body -->
+</div><!-- .consult-wrap -->
+
+
+<script>
+// ─── Caricamento JSON ─────────────────────────────────────────
+Promise.all([
+  fetch('./tabelle/comune.json').then(r => r.json()),
+  fetch('./tabelle/dadi.json').then(r => r.json()),
+  fetch('./tabelle/prigionieri.json').then(r => r.json()),
+  fetch('./tabelle/viti.json').then(r => r.json()),
+]).then(([T, TD, TP, TV]) => {
+  renderAll(T, TD, TP, TV);
+}).catch(e => {
+  document.getElementById('tables-container').innerHTML =
+    `<p style="color:#f66; text-align:center;">Errore caricamento tabelle: ${e.message}</p>`;
+});
+
+
+// ─── Helpers ──────────────────────────────────────────────────
+
+function h(text) { // escape HTML
+  return String(text).replace(/&/g,'&amp;').replace(/</g,'&lt;');
+}
+
+function section(id, title) {
+  return `<div class="t-section" id="${id}"><div class="t-section-title">▎ ${h(title)}</div>`;
+}
+
+function groupTitle(t, note) {
+  let html = `<div class="t-group-title">${h(t)}</div>`;
+  if (note) html += `<div class="t-note">${h(note)}</div>`;
+  return html;
+}
+
+function tableWrap(inner) {
+  return `<div class="t-table-wrap"><table class="t-table">${inner}</table></div>`;
+}
+
+// Formatta un numero per la visualizzazione
+function fmt(v, dec) {
+  if (v === null || v === undefined) return '—';
+  if (typeof v === 'string') return v;
+  return dec !== undefined ? v.toFixed(dec) : String(v);
+}
+
+// Genera una tabella chiave-valore semplice da un oggetto flat
+function kvTable(obj, keyLabel, valLabel, keyClass) {
+  let rows = '';
+  for (const [k, v] of Object.entries(obj)) {
+    rows += `<tr><td class="${keyClass || 'dia-col'}">${h(k)}</td><td class="num">${fmt(v)}</td></tr>`;
+  }
+  return tableWrap(`<thead><tr><th>${h(keyLabel)}</th><th class="num">${h(valLabel)}</th></tr></thead><tbody>${rows}</tbody>`);
+}
+
+// Tabella tier (fino_a → valore)
+function tierTable(arr, valField, valLabel, unit) {
+  let rows = '';
+  for (const r of arr) {
+    rows += `<tr><td class="num">≤ ${fmt(r.fino_a)}</td><td class="num">${fmt(r[valField])}${unit ? ' ' + unit : ''}</td></tr>`;
+  }
+  return tableWrap(`<thead><tr><th class="num">Ø fino a</th><th class="num">${h(valLabel)}</th></tr></thead><tbody>${rows}</tbody>`);
+}
+
+
+// ─── Render principale ───────────────────────────────────────
+
+function renderAll(T, TD, TP, TV) {
+  const c = document.getElementById('tables-container');
+  let html = '';
+
+  // ══════════════════════════════════════════════════════════
+  // COMUNE
+  // ══════════════════════════════════════════════════════════
+
+  // --- Diametri medi metrici ---
+  html += section('sec-diametri-medi', 'Diametri medi — Metrici');
+  html += `<div class="t-note">Diametro medio del filetto in base a diametro e passo (G = grosso, F = fine)</div>`;
+  {
+    let rows = '';
+    for (const [dia, passi] of Object.entries(T.diametri_medi_metrici)) {
+      rows += `<tr><td class="dia-col">M${dia}</td><td class="num">${fmt(passi.G)}</td><td class="num">${fmt(passi.F)}</td></tr>`;
+    }
+    html += tableWrap(`<thead><tr><th>Diametro</th><th class="num">Grosso (G)</th><th class="num">Fine (F)</th></tr></thead><tbody>${rows}</tbody>`);
+  }
+  html += '</div>';
+
+  // --- Diametri medi pollici ---
+  html += section('sec-diametri-pollici', 'Diametri medi — Pollici');
+  {
+    const allPassi = new Set();
+    for (const passi of Object.values(T.diametri_medi_pollici)) {
+      for (const p of Object.keys(passi)) allPassi.add(p);
+    }
+    const passiArr = [...allPassi].sort();
+    let hdr = '<th>Diametro</th>';
+    for (const p of passiArr) hdr += `<th class="num">${h(p)}</th>`;
+    let rows = '';
+    for (const [dia, passi] of Object.entries(T.diametri_medi_pollici)) {
+      const label = decodePollici(dia);
+      rows += `<tr><td class="dia-col">${h(label)}</td>`;
+      for (const p of passiArr) {
+        rows += `<td class="num">${passi[p] !== undefined ? fmt(passi[p]) : '—'}</td>`;
+      }
+      rows += '</tr>';
+    }
+    html += tableWrap(`<thead><tr>${hdr}</tr></thead><tbody>${rows}</tbody>`);
+  }
+  html += '</div>';
+
+  // --- Diametri nominali pollici ---
+  html += section('sec-nominali-pollici', 'Diametri nominali — Pollici');
+  html += `<div class="t-note">Conversione codice pollici → diametro nominale in mm</div>`;
+  {
+    let rows = '';
+    for (const [k, v] of Object.entries(T.diametri_nominali_pollici)) {
+      rows += `<tr><td class="dia-col">${h(decodePollici(k))}</td><td class="num">${fmt(v, 2)} mm</td></tr>`;
+    }
+    html += tableWrap(`<thead><tr><th>Codice</th><th class="num">Nominale (mm)</th></tr></thead><tbody>${rows}</tbody>`);
+  }
+  html += '</div>';
+
+  // --- Materiali ---
+  html += section('sec-materiali', 'Materiali — Costi e Densità');
+  {
+    let rows = '';
+    for (const [mat, costo] of Object.entries(T.costi_materiali)) {
+      const dens = T.densita[mat];
+      rows += `<tr><td>${h(mat)}</td><td class="num">${costo > 0 ? '€ ' + fmt(costo, 2) : 'manuale'}</td><td class="num">${dens !== null ? fmt(dens, 2) : 'manuale'} g/cm³</td></tr>`;
+    }
+    html += tableWrap(`<thead><tr><th>Materiale</th><th class="num">Costo (€/kg)</th><th class="num">Densità</th></tr></thead><tbody>${rows}</tbody>`);
+  }
+  html += groupTitle('Materiali speciali (moltiplicatore tempo)', 'Applicato a "altro" su operazioni di tornitura');
+  {
+    let rows = '';
+    for (const [mat, k] of Object.entries(T.materiali_speciali_k)) {
+      rows += `<tr><td>${h(mat)}</td><td class="num">×${k}</td></tr>`;
+    }
+    html += tableWrap(`<thead><tr><th>Materiale</th><th class="num">Moltiplicatore</th></tr></thead><tbody>${rows}</tbody>`);
+  }
+  html += '</div>';
+
+  // --- Costi base ---
+  html += section('sec-costi-base', 'Costi base (€/secondo)');
+  html += `<div class="t-note">co1 = diametri &lt; 45 mm — co2 = diametri ≥ 45 mm</div>`;
+  {
+    let rows = '';
+    rows += `<tr><td>co1 (piccoli)</td><td class="num">€ ${fmt(T.costi_base.co1, 3)}/s</td></tr>`;
+    rows += `<tr><td>co2 (grandi ≥45mm)</td><td class="num">€ ${fmt(T.costi_base.co2, 3)}/s</td></tr>`;
+    html += tableWrap(`<thead><tr><th>Parametro</th><th class="num">Valore</th></tr></thead><tbody>${rows}</tbody>`);
+  }
+  html += '</div>';
+
+  // --- Taglio ---
+  html += section('sec-taglio', 'Taglio — Costi diretti');
+  html += '<div class="t-grid-2">';
+  html += '<div>' + groupTitle('Standard') + tierTable(T.taglio.standard, 'costo', 'Costo (€)', '€') + '</div>';
+  html += '<div>' + groupTitle('Inox / Altro') + tierTable(T.taglio.inox_altro, 'costo', 'Costo (€)', '€') + '</div>';
+  html += '</div></div>';
+
+  // --- Smusso ---
+  html += section('sec-smusso', 'Smusso — Tempi base');
+  html += '<div class="t-grid-2">';
+  html += '<div>' + groupTitle('Standard') + tierTable(T.smusso.standard, 'secondi', 'Tempo (s)', 's') + '</div>';
+  html += '<div>' + groupTitle('Inox / Altro') + tierTable(T.smusso.inox_altro, 'secondi', 'Tempo (s)', 's') + '</div>';
+  html += '</div>';
+  html += groupTitle('Moltiplicatori lunghezza', 'Applicati al tempo smusso per pezzi lunghi');
+  {
+    let rows = '';
+    for (const r of T.smusso.moltiplicatori_lunghezza) {
+      rows += `<tr><td class="num">${r.da}–${r.a} mm</td><td class="num">×${fmt(r.mult)}</td></tr>`;
+    }
+    html += tableWrap(`<thead><tr><th class="num">Lunghezza</th><th class="num">Moltiplicatore</th></tr></thead><tbody>${rows}</tbody>`);
+  }
+  html += '</div>';
+
+  // --- Rullatura ---
+  html += section('sec-rullatura', 'Rullatura — Divisori (tempo = lungh_fil / divisore)');
+  html += '<div class="t-grid-2">';
+  html += '<div>' + groupTitle('Standard') + tierTable(T.rullatura.standard, 'divisore', 'Divisore', '') + '</div>';
+  html += '<div>' + groupTitle('Inox / Altro') + tierTable(T.rullatura.inox_altro, 'divisore', 'Divisore', '') + '</div>';
+  html += '</div>';
+  html += groupTitle('Minimi rullatura (secondi)');
+  {
+    let rows = '';
+    for (const r of T.rullatura.minimi) {
+      rows += `<tr><td class="num">${r.dian_da}–${r.dian_a} mm</td><td class="num">${r.minimo} s</td></tr>`;
+    }
+    html += tableWrap(`<thead><tr><th class="num">Range Ø nominale</th><th class="num">Minimo</th></tr></thead><tbody>${rows}</tbody>`);
+  }
+  html += '</div>';
+
+  // --- Bonifica ---
+  html += section('sec-bonifica', 'Bonifica 42CD4');
+  html += `<div class="t-note">Soglia: Ø ≤ 42mm = "piccolo", altrimenti "grande". Lungh ≤ Ø×10 = "corto", altrimenti "lungo".</div>`;
+  {
+    let rows = '';
+    for (const [k, v] of Object.entries(T.bonifica_42CD4)) {
+      rows += `<tr><td>${h(k.replace(/_/g, ' '))}</td><td class="num">×${fmt(v.moltiplicatore)}</td><td class="num">€ ${fmt(v.minimo_lotto)}</td></tr>`;
+    }
+    html += tableWrap(`<thead><tr><th>Caso</th><th class="num">Moltiplicatore</th><th class="num">Min. lotto (€)</th></tr></thead><tbody>${rows}</tbody>`);
+  }
+  html += '</div>';
+
+  // --- Modificatore peso ---
+  html += section('sec-mod-peso', 'Modificatore peso');
+  html += `<div class="t-note">Coefficiente applicato al peso per coprire sfridi e tolleranze. Basato sul peso totale del lotto.</div>`;
+  {
+    let rows = '';
+    for (const r of T.modificatore_peso) {
+      rows += `<tr><td class="num">≥ ${r.totale_da} kg</td><td class="num">${fmt(r.coefficiente, 3)}</td></tr>`;
+    }
+    html += tableWrap(`<thead><tr><th class="num">Peso totale da</th><th class="num">Coefficiente</th></tr></thead><tbody>${rows}</tbody>`);
+  }
+  html += '</div>';
+
+  // --- Setup ---
+  html += section('sec-setup', 'Setup — Tempi approntamento (comune)');
+  {
+    let rows = '';
+    for (const [k, v] of Object.entries(T.setup_secondi)) {
+      rows += `<tr><td>${h(k.replace(/_/g, ' '))}</td><td class="num">${v} s</td><td class="num">${(v/60).toFixed(0)} min</td></tr>`;
+    }
+    html += tableWrap(`<thead><tr><th>Operazione</th><th class="num">Secondi</th><th class="num">Minuti</th></tr></thead><tbody>${rows}</tbody>`);
+  }
+  html += '</div>';
+
+
+  // ══════════════════════════════════════════════════════════
+  // DADI
+  // ══════════════════════════════════════════════════════════
+
+  // --- Chiavi ---
+  html += section('sec-dadi-chiavi', 'Dadi — Chiavi esagonali');
+  html += '<div class="t-grid-2">';
+  html += '<div>' + groupTitle('Metriche') + kvTable(TD.chiavi_metriche, 'Diametro', 'Chiave (mm)') + '</div>';
+  html += '<div>' + groupTitle('Pollici — Pesante (P)') + kvTable(TD.chiavi_pollici_p, 'Diametro', 'Chiave (mm)') + '</div>';
+  html += '</div>';
+  html += groupTitle('Pollici — Leggera (L)');
+  html += kvTable(TD.chiavi_pollici_l, 'Diametro', 'Chiave (mm)');
+  html += '</div>';
+
+  // --- Altezze ---
+  html += section('sec-dadi-altezze', 'Dadi — Altezze');
+  html += `<div class="t-note">UNI 5587 (alto) = altezza pari al diametro nominale (non in tabella). 5588 e 5589 da tabella.</div>`;
+  html += '<div class="t-grid-2">';
+  html += '<div>' + groupTitle('UNI 5588 (medio)') + kvTable(TD.altezze_5588, 'Diametro', 'Altezza (mm)') + '</div>';
+  html += '<div>' + groupTitle('UNI 5589 (basso)') + kvTable(TD.altezze_5589, 'Diametro', 'Altezza (mm)') + '</div>';
+  html += '</div></div>';
+
+  // --- Tempi dadi ---
+  html += section('sec-dadi-tempi', 'Dadi — Tempi lavorazione');
+  html += groupTitle('Taglio', 'Inox: ×2, Altro: ×3');
+  html += tierTable(TD.tempi_taglio, 'secondi', 'Tempo (s)', 's');
+  html += groupTitle('Stampaggio', 'Inox: ×2, Altro: ×3');
+  html += tierTable(TD.tempi_stampaggio, 'secondi', 'Tempo (s)', 's');
+
+  html += '<div class="t-grid-2"><div>';
+  html += groupTitle('Tornitura — Moltiplicatori', 'tempo = (altezza+3) × moltiplicatore');
+  {
+    const m = TD.moltiplicatori_tornitura;
+    let rows = '';
+    rows += `<tr><td>Standard (Ø &lt; ${m.soglia_grande})</td><td class="num">×${m.standard_piccolo}</td></tr>`;
+    rows += `<tr><td>Standard (Ø ≥ ${m.soglia_grande})</td><td class="num">×${m.standard_grande}</td></tr>`;
+    rows += `<tr><td>Inox (Ø &lt; ${m.soglia_grande})</td><td class="num">×${m.inox_piccolo}</td></tr>`;
+    rows += `<tr><td>Inox (Ø ≥ ${m.soglia_grande})</td><td class="num">×${m.inox_grande}</td></tr>`;
+    rows += `<tr><td>Altro (Ø &lt; ${m.soglia_grande})</td><td class="num">×${m.altro_piccolo}</td></tr>`;
+    rows += `<tr><td>Altro (Ø ≥ ${m.soglia_grande})</td><td class="num">×${m.altro_grande}</td></tr>`;
+    html += tableWrap(`<thead><tr><th>Caso</th><th class="num">Moltiplicatore</th></tr></thead><tbody>${rows}</tbody>`);
+  }
+  html += '</div><div>';
+  html += groupTitle('Fresatura — Moltiplicatori', 'tempo = (altezza+3) × moltiplicatore');
+  {
+    const m = TD.moltiplicatori_fresatura;
+    let rows = '';
+    rows += `<tr><td>Standard</td><td class="num">×${m.standard}</td></tr>`;
+    rows += `<tr><td>Inox</td><td class="num">×${m.inox}</td></tr>`;
+    rows += `<tr><td>Altro</td><td class="num">×${m.altro}</td></tr>`;
+    html += tableWrap(`<thead><tr><th>Materiale</th><th class="num">Moltiplicatore</th></tr></thead><tbody>${rows}</tbody>`);
+  }
+  html += '</div></div>';
+  html += '</div>';
+
+  // --- Setup dadi ---
+  html += section('sec-dadi-setup', 'Dadi — Setup');
+  {
+    let rows = '';
+    for (const [k, v] of Object.entries(TD.setup_secondi)) {
+      rows += `<tr><td>${h(k.replace(/_/g, ' '))}</td><td class="num">${v} s</td><td class="num">${(v/60).toFixed(0)} min</td></tr>`;
+    }
+    html += tableWrap(`<thead><tr><th>Operazione</th><th class="num">Secondi</th><th class="num">Minuti</th></tr></thead><tbody>${rows}</tbody>`);
+  }
+  html += '</div>';
+
+
+  // ══════════════════════════════════════════════════════════
+  // PRIGIONIERI
+  // ══════════════════════════════════════════════════════════
+
+  html += section('sec-prig-radice', 'Prigionieri — Radice (m) UNI 5911');
+  html += `<div class="t-note">5909: radice = diametro nominale. 5911: da tabella (o Ø×${TP.radice_5911_grandi.moltiplicatore} per Ø ≥ ${TP.radice_5911_grandi.soglia})</div>`;
+  html += kvTable(TP.radice_5911, 'Diametro', 'Radice (mm)');
+  html += '</div>';
+
+  html += section('sec-prig-filetto', 'Prigionieri — Filetto (b) 5909/5911');
+  html += `<div class="t-note">Per Ø > ${TP.filetto_grandi_formula.soglia}: formula ${TP.filetto_grandi_formula.formula}</div>`;
+  {
+    let rows = '';
+    for (const [dia, val] of Object.entries(TP.filetto_5909_5911)) {
+      if (typeof val === 'number') {
+        rows += `<tr><td class="dia-col">M${dia}</td><td class="num">${val}</td><td>—</td><td>—</td><td>—</td></tr>`;
+      } else if (val.soglia2 !== undefined) {
+        rows += `<tr><td class="dia-col">M${dia}</td><td class="num">${val.corto} (≤${val.soglia1})</td><td class="num">${val.medio} (≤${val.soglia2})</td><td class="num">${val.lungo} (>${val.soglia2})</td><td class="num">${val.soglia1}/${val.soglia2}</td></tr>`;
+      } else {
+        rows += `<tr><td class="dia-col">M${dia}</td><td class="num">${val.corto} (≤${val.soglia})</td><td>—</td><td class="num">${val.lungo} (>${val.soglia})</td><td class="num">${val.soglia}</td></tr>`;
+      }
+    }
+    html += tableWrap(`<thead><tr><th>Diametro</th><th class="num">Corto</th><th class="num">Medio</th><th class="num">Lungo</th><th class="num">Soglie (mm)</th></tr></thead><tbody>${rows}</tbody>`);
+  }
+  html += '</div>';
+
+  html += section('sec-prig-rullatura', 'Prigionieri — Rullatura');
+  html += '<div class="t-grid-2">';
+  html += '<div>' + groupTitle('Standard');
+  html += renderPrigRullatura(TP.rullatura_standard);
+  html += '</div><div>' + groupTitle('Inox / Altro');
+  html += renderPrigRullatura(TP.rullatura_inox_altro);
+  html += '</div></div></div>';
+
+  html += section('sec-prig-taglio', 'Prigionieri — Taglio');
+  html += '<div class="t-grid-2">';
+  html += '<div>' + groupTitle('Standard') + tierTable(TP.taglio.standard, 'costo', 'Costo (€)', '€') + '</div>';
+  html += '<div>' + groupTitle('Inox / Altro') + tierTable(TP.taglio.inox_altro, 'costo', 'Costo (€)', '€') + '</div>';
+  html += '</div></div>';
+
+
+  // ══════════════════════════════════════════════════════════
+  // VITI
+  // ══════════════════════════════════════════════════════════
+
+  html += section('sec-viti-teste', 'Viti — Dati testa');
+
+  // Altezze testa esagonale
+  html += groupTitle('Altezze testa esagonale (5737 / 5739)');
+  {
+    let rows = '';
+    for (const [k, v] of Object.entries(TV.altezze_testa_esagonale)) {
+      const label = isNaN(parseFloat(k)) ? k + '"' : 'M' + k;
+      rows += `<tr><td class="dia-col">${h(label)}</td><td class="num">${fmt(v, 1)}</td></tr>`;
+    }
+    html += tableWrap(`<thead><tr><th>Diametro</th><th class="num">Altezza (mm)</th></tr></thead><tbody>${rows}</tbody>`);
+  }
+
+  // Testa cava
+  html += groupTitle('Testa cava (5931) — Diametro, altezza, chiave, profondità');
+  {
+    // Collect all keys across all cava tables
+    const allKeys = new Set([
+      ...Object.keys(TV.diametri_testa_cava),
+      ...Object.keys(TV.altezze_testa_cava || {}),
+      ...Object.keys(TV.chiavi_cava_metriche),
+      ...Object.keys(TV.profondita_cava),
+    ]);
+    let rows = '';
+    for (const k of allKeys) {
+      const label = isNaN(parseFloat(k)) ? k + '"' : 'M' + k;
+      rows += `<tr>
+        <td class="dia-col">${h(label)}</td>
+        <td class="num">${fmt(TV.diametri_testa_cava[k])}</td>
+        <td class="num">${fmt(TV.altezze_testa_cava?.[k] ?? parseFloat(k))}</td>
+        <td class="num">${fmt(TV.chiavi_cava_metriche[k])}</td>
+        <td class="num">${fmt(TV.profondita_cava[k])}</td>
+      </tr>`;
+    }
+    html += tableWrap(`<thead><tr><th>Diametro</th><th class="num">Ø testa</th><th class="num">Altezza</th><th class="num">Chiave cava</th><th class="num">Profondità</th></tr></thead><tbody>${rows}</tbody>`);
+  }
+  html += '</div>';
+
+  // --- Filetto 5737 ---
+  html += section('sec-viti-filetto-5737', 'Viti — Lunghezze filetto 5737');
+  html += `<div class="t-note">5739: tutta filettata (filetto = lunghezza). 5737: da tabella per fasce di lunghezza.</div>`;
+  {
+    let rows = '';
+    for (const [dia, t] of Object.entries(TV.lunghezze_filetto_5737)) {
+      const label = isNaN(parseFloat(dia)) ? dia + '"' : 'M' + dia;
+      if (t.soglia1 !== undefined) {
+        rows += `<tr><td class="dia-col">${h(label)}</td><td class="num">${t.corto}</td><td class="num">${t.medio}</td><td class="num">${t.lungo}</td><td class="num">${t.soglia1} / ${t.soglia2}</td></tr>`;
+      } else if (t.corto !== undefined) {
+        rows += `<tr><td class="dia-col">${h(label)}</td><td class="num">${t.corto}</td><td>—</td><td class="num">${t.lungo}</td><td class="num">${t.soglia}</td></tr>`;
+      } else {
+        rows += `<tr><td class="dia-col">${h(label)}</td><td>—</td><td class="num">${t.medio}</td><td class="num">${t.lungo}</td><td class="num">${t.soglia}</td></tr>`;
+      }
+    }
+    html += tableWrap(`<thead><tr><th>Diametro</th><th class="num">Corto</th><th class="num">Medio</th><th class="num">Lungo</th><th class="num">Soglie (mm)</th></tr></thead><tbody>${rows}</tbody>`);
+  }
+  html += '</div>';
+
+  // --- Filetto 5931 ---
+  html += section('sec-viti-filetto-5931', 'Viti — Lunghezze filetto 5931');
+  html += `<div class="t-note">Se lungh > soglia → filetto = valore "lungo". Altrimenti filetto = lunghezza pezzo.</div>`;
+  {
+    let rows = '';
+    for (const [dia, t] of Object.entries(TV.lunghezze_filetto_5931)) {
+      const label = isNaN(parseFloat(dia)) ? dia + '"' : 'M' + dia;
+      rows += `<tr><td class="dia-col">${h(label)}</td><td class="num">${t.lungo}</td><td class="num">${t.soglia}</td></tr>`;
+    }
+    html += tableWrap(`<thead><tr><th>Diametro</th><th class="num">Filetto lungo</th><th class="num">Soglia (mm)</th></tr></thead><tbody>${rows}</tbody>`);
+  }
+  html += '</div>';
+
+  // --- Tempi viti ---
+  html += section('sec-viti-tempi', 'Viti — Tempi lavorazione');
+
+  html += groupTitle('Stampaggio');
+  html += tierTable(TV.tempi_stampaggio, 'secondi', 'Tempo (s)', 's');
+
+  html += '<div class="t-grid-2">';
+  html += '<div>' + groupTitle('Smusso — Standard') + tierTable(TV.tempi_smusso_viti.standard, 'secondi', 'Tempo (s)', 's') + '</div>';
+  html += '<div>' + groupTitle('Smusso — Inox/Altro') + tierTable(TV.tempi_smusso_viti.inox_altro, 'secondi', 'Tempo (s)', 's') + '</div>';
+  html += '</div>';
+
+  html += '<div class="t-grid-2">';
+  html += '<div>' + groupTitle('Sbavatura — Standard') + tierTable(TV.tempi_sbavatura.standard, 'secondi', 'Tempo (s)', 's') + '</div>';
+  html += '<div>' + groupTitle('Sbavatura — Inox/Altro') + tierTable(TV.tempi_sbavatura.inox_altro, 'secondi', 'Tempo (s)', 's') + '</div>';
+  html += '</div>';
+
+  html += groupTitle('Brocciatura (5931)');
+  html += tierTable(TV.tempi_brocciatura, 'secondi', 'Tempo (s)', 's');
+
+  html += groupTitle('Fresatura testa');
+  html += tierTable(TV.tempi_fresatura_testa, 'secondi', 'Tempo (s)', 's');
+
+  html += groupTitle('Setup viti');
+  {
+    let rows = '';
+    for (const [k, v] of Object.entries(TV.setup_secondi)) {
+      rows += `<tr><td>${h(k.replace(/_/g, ' '))}</td><td class="num">${v} s</td><td class="num">${(v/60).toFixed(0)} min</td></tr>`;
+    }
+    html += tableWrap(`<thead><tr><th>Operazione</th><th class="num">Secondi</th><th class="num">Minuti</th></tr></thead><tbody>${rows}</tbody>`);
+  }
+  html += '</div>';
+
+  // --- Rullatura viti ---
+  html += section('sec-viti-rullatura', 'Viti — Rullatura');
+  html += groupTitle('Minimi rullatura');
+  {
+    let rows = '';
+    for (const r of TV.rullatura_viti.minimi) {
+      rows += `<tr><td class="num">${r.dian_da}–${r.dian_a} mm</td><td class="num">${r.minimo} s</td></tr>`;
+    }
+    html += tableWrap(`<thead><tr><th class="num">Range Ø nominale</th><th class="num">Minimo (s)</th></tr></thead><tbody>${rows}</tbody>`);
+  }
+  html += groupTitle('Moltiplicatori lunghezza rullatura');
+  {
+    let rows = '';
+    for (const r of TV.rullatura_viti.moltiplicatori_lunghezza) {
+      rows += `<tr><td class="num">${r.da}–${r.a} mm</td><td class="num">×${fmt(r.mult)}</td></tr>`;
+    }
+    html += tableWrap(`<thead><tr><th class="num">Lunghezza filetto</th><th class="num">Moltiplicatore</th></tr></thead><tbody>${rows}</tbody>`);
+  }
+  html += groupTitle('Raddrizzatura', 'Attiva se TRATTAMENTO ON e lungh > Ø×' + TV.raddrizzatura.soglia_lunghezza_mult);
+  html += tierTable(TV.raddrizzatura.tiers, 'divisore', 'Divisore', '');
+  html += groupTitle('Modificatori qtà materiale (pezzi extra sfrido)');
+  {
+    let rows = '';
+    for (const r of TV.modificatori_quantita_materiale) {
+      rows += `<tr><td class="num">${r.dian_da}–${r.dian_a} mm</td><td class="num">+${r.mod} pz</td></tr>`;
+    }
+    html += tableWrap(`<thead><tr><th class="num">Range Ø nominale</th><th class="num">Pezzi extra</th></tr></thead><tbody>${rows}</tbody>`);
+  }
+  html += '</div>';
+
+
+  c.innerHTML = html;
+
+  // Stat bar
+  const numTables = c.querySelectorAll('table').length;
+  document.getElementById('stat-bar').innerHTML =
+    `<div class="stat-item"><strong>${numTables}</strong> tabelle</div>
+     <div class="stat-item"><strong>4</strong> file JSON (comune, dadi, prigionieri, viti)</div>
+     <div class="stat-item"><strong>${Object.keys(T.diametri_medi_metrici).length}</strong> diametri metrici</div>
+     <div class="stat-item"><strong>${Object.keys(T.diametri_medi_pollici).length}</strong> diametri pollici</div>`;
+
+  // Highlight attivo nella sidebar
+  setupScrollSpy();
+  setupSearch();
+}
+
+
+// ─── Helpers per rendering ────────────────────────────────────
+
+function decodePollici(code) {
+  const MAP = {
+    '5/16':'5/16"','3/8':'3/8"','7/16':'7/16"','1/2':'1/2"','9/16':'9/16"',
+    '5/8':'5/8"','3/4':'3/4"','7/8':'7/8"',
+    '1000':'1"','1108':'1 1/8"','1104':'1 1/4"','1308':'1 3/8"',
+    '1102':'1 1/2"','1508':'1 5/8"','1304':'1 3/4"','1708':'1 7/8"',
+    '2000':'2"','2104':'2 1/4"','2102':'2 1/2"','2304':'2 3/4"',
+    '3000':'3"','3104':'3 1/4"'
+  };
+  return MAP[code] || code;
+}
+
+function renderPrigRullatura(arr) {
+  let rows = '';
+  for (const r of arr) {
+    const bLabel = r.b_a >= 9000 ? '> prev.' : '≤ ' + r.b_a;
+    rows += `<tr><td class="num">≤ ${r.dian_a}</td><td class="num">${bLabel}</td><td class="num">${r.secondi} s</td></tr>`;
+  }
+  return tableWrap(`<thead><tr><th class="num">Ø nom. fino a</th><th class="num">b fino a</th><th class="num">Tempo</th></tr></thead><tbody>${rows}</tbody>`);
+}
+
+
+// ─── Scroll spy per sidebar ──────────────────────────────────
+
+function setupScrollSpy() {
+  const links = document.querySelectorAll('.consult-nav a[href^="#"]');
+  const sections = [];
+  links.forEach(a => {
+    const el = document.getElementById(a.getAttribute('href').slice(1));
+    if (el) sections.push({ link: a, el });
+  });
+
+  function update() {
+    const scrollY = window.scrollY + 100;
+    let active = null;
+    for (const s of sections) {
+      if (s.el.offsetTop <= scrollY) active = s;
+    }
+    links.forEach(a => a.classList.remove('nav-active'));
+    if (active) active.link.classList.add('nav-active');
+  }
+
+  window.addEventListener('scroll', update, { passive: true });
+  update();
+}
+
+
+// ─── Ricerca ─────────────────────────────────────────────────
+
+function setupSearch() {
+  const input = document.getElementById('searchInput');
+  const sections = document.querySelectorAll('.t-section');
+
+  input.addEventListener('input', () => {
+    const q = input.value.trim().toLowerCase();
+    if (!q) {
+      sections.forEach(s => s.style.display = '');
+      // Show all rows
+      document.querySelectorAll('.t-table tr[style]').forEach(r => r.style.display = '');
+      return;
+    }
+
+    sections.forEach(sec => {
+      const text = sec.textContent.toLowerCase();
+      sec.style.display = text.includes(q) ? '' : 'none';
+    });
+  });
+}
+</script>
+</body>
+</html>

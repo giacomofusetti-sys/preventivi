@@ -108,6 +108,17 @@
       <div class="product-desc">UNI 5737 / 5739 / 5931<br>con stampaggio o fresatura</div>
     </button>
 
+    <!-- Bottone consultazione tabelle: apre una pagina separata di sola lettura
+         con tutte le tabelle da cui il programma pesca i dati.
+         onclick con window.location evita che venga catturato dal listener
+         dei product-btn (non ha data-product). -->
+    <button class="product-btn" onclick="window.location.href='consultazione.html'"
+            style="border-style:dashed;">
+      <div class="product-icon" style="color:var(--muted);">📋</div>
+      <div class="product-name">Tabelle</div>
+      <div class="product-desc">Consultazione dati di riferimento<br>(chiavi, diametri, tempi…)</div>
+    </button>
+
   </div>
 </div><!-- fine #product-selector -->
 
