@@ -8,7 +8,7 @@ import {
   parseDia, getDiametroMedio, getDiametroNominale, getDensita,
   calcolaPeso, getCostoMateriale,
   calcolaTempoRullatura, rullaturaFin,
-  calcolaMarcatura, calcolaBonifica,
+  calcolaMarcatura,
   getModPeso, setupCosto, parseQta
 } from '../lib/calcolo_comune.js';
 
@@ -279,10 +279,6 @@ export function calcolaTirantiOcchio(inputs, T) {
   // --- Attrezzatura (inox / altro) ---
   const attrez = MAT_INOX.includes(mat) ? 0.6 : 0;
 
-  // --- Bonifica ---
-  // Usiamo peso_mat (spezzone se STAMP, grezzo altrimenti)
-  const bonifica = calcolaBonifica(peso_mat, qta, dian, lungh, mat, T);
-
   // --- Totali ---
   const costo_lav = STAMPAGGIO
     ? ta_costo + st_costo + to_costo + fr_costo + ru_costo + marc_fin + attrez
@@ -290,7 +286,7 @@ export function calcolaTirantiOcchio(inputs, T) {
     : ta_costo + to_costo + fr_costo + ru_costo + marc_fin + attrez
       + setup_taglio + setup_torn + setup_fres + setup_rull;
 
-  const costo_tot = mat_cost + bonifica + costo_lav;
+  const costo_tot = mat_cost + costo_lav;
 
   // --- Modificatore peso ---
   const q_peso               = qta_x > 0 ? qta_x : qta;
@@ -327,7 +323,7 @@ export function calcolaTirantiOcchio(inputs, T) {
 
   return {
     // Costi
-    mat_cost, bonifica, attrez,
+    mat_cost, attrez,
     ta_costo, st_costo, to_costo, fr_costo, ru_costo, marc_fin,
     setup_taglio, setup_stamp: setup_stamp_fin, setup_torn, setup_fres, setup_rull,
     costo_lav, costo_tot,

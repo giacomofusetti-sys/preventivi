@@ -9,7 +9,7 @@ import {
   calcolaTempoTaglio, modulaCostoTaglio, taglioFin,
   calcolaTempoSmusso, smussoCosto, smussoFin,
   calcolaTempoRullatura, rullaturaFin,
-  calcolaMarcatura, calcolaBonifica,
+  calcolaMarcatura,
   getModPeso, setupCosto, parseQta
 } from '../lib/calcolo_comune.js';
 
@@ -66,9 +66,6 @@ export function calcolaTiranti(inputs, T) {
   // --- Marcatura ---
   const marc_fin = calcolaMarcatura(dian, qta, T);
 
-  // --- Bonifica ---
-  const bonifica = calcolaBonifica(peso, qta, dian, lungh, mat, T);
-
   // --- Setup (approntamento macchina) ---
   const setup_taglio = setupCosto(T.setup_secondi.taglio,    co1, qta);
   const setup_smusso = setupCosto(T.setup_secondi.smusso,    co1, qta);
@@ -77,7 +74,7 @@ export function calcolaTiranti(inputs, T) {
   // --- Totali ---
   const costo_lav = taglio_fin + smusso_fin + rulla_fin + marc_fin
                   + setup_taglio + setup_smusso + setup_rull;
-  const costo_tot = mat_cost + bonifica + costo_lav;
+  const costo_tot = mat_cost + costo_lav;
 
   // --- Peso con modificatore ---
   const q_peso              = qta_x > 0 ? qta_x : qta;
@@ -97,7 +94,7 @@ export function calcolaTiranti(inputs, T) {
 
   return {
     // Costi unitari
-    mat_cost, bonifica,
+    mat_cost,
     taglio_fin, smusso_fin, rulla_fin, marc_fin,
     setup_taglio, setup_smusso, setup_rull,
     costo_lav, costo_tot,

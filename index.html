@@ -1088,6 +1088,17 @@ document.getElementById('mat').addEventListener('change', function() {
   document.getElementById('costo-mat-hint').textContent = def.hint ? `— ${def.hint}` : '';
   // Mostra il gruppo "altro" solo se mat = "altro"
   document.getElementById('altro-group').style.display = v === 'altro' ? 'block' : 'none';
+
+  // Auto-accensione toggle trattamento su materiali bonificabili
+  const isViti = prodottoCorrente === 'viti';
+  if (v === '42CD4' || (v === 'B16' && isViti)) {
+    const group = isViti ? 'trattamento_vite' : 'trattamento';
+    document.querySelectorAll(`.toggle-btn[data-group="${group}"]`)
+      .forEach(b => b.classList.toggle('active', b.dataset.val === 'ON'));
+    // Mostra i campi dipendenti (prezzo kg / forfait)
+    const panel = isViti ? 'trattamento-vite-group' : 'trattamento-group';
+    document.getElementById(panel).style.display = 'block';
+  }
 });
 
 
@@ -1486,7 +1497,6 @@ function renderResults(R) {
   } else if (isPrig) {
     righe = [
       { label: '🟢 Materiale',   val: R.mat_cost,   sub: `peso grezzo: ${r(R.peso, 3)} kg` },
-      ...(R.bonifica     > 0 ? [{ label: '🔥 Bonifica',      val: R.bonifica,     sub: '' }] : []),
       ...(R.trattamento  > 0 ? [{ label: '🌡 Trattamento',   val: R.trattamento,  sub: '' }] : []),
       ...(R.attrez       > 0 ? [{ label: '🔧 Attrezzatura',  val: R.attrez,       sub: '' }] : []),
       ...(!R.FANTINA  ? [{ label: '✂ Taglio',     val: R.ta_costo,  sub: `setup: €${r(R.setup_taglio)}` }] : []),
@@ -1497,7 +1507,6 @@ function renderResults(R) {
   } else if (isTornito) {
     righe = [
       { label: '🟢 Materiale',   val: R.mat_cost,   sub: `peso grezzo: ${r(R.peso, 3)} kg` },
-      ...(R.bonifica     > 0 ? [{ label: '🔥 Bonifica',      val: R.bonifica,     sub: '' }] : []),
       ...(R.trattamento  > 0 ? [{ label: '🌡 Trattamento',   val: R.trattamento,  sub: '' }] : []),
       ...(R.attrez       > 0 ? [{ label: '🔧 Attrezzatura',  val: R.attrez,       sub: '' }] : []),
       ...(!R.FANTINA && R.tempo_ta !== null
@@ -1509,7 +1518,7 @@ function renderResults(R) {
   } else if (isViti) {
     righe = [
       { label: '🟢 Materiale',   val: R.mat_cost_plus, sub: `peso grezzo: ${r(R.peso, 3)} kg (+${R.mod_qta} pz mat.)` },
-      ...(R.bonifica     > 0 ? [{ label: '🔥 Bonifica',     val: R.bonifica,     sub: '' }] : []),
+      ...(R.bonifica     > 0 ? [{ label: '🌡 Trattamento',  val: R.bonifica,     sub: '' }] : []),
       ...(R.attrezzatura > 0 ? [{ label: '🔧 Attrezzatura', val: R.attrezzatura, sub: '' }] : []),
       { label: '✂ Taglio',       val: R.ta,             sub: `setup: €${r(R.setup_taglio)}` },
       ...(R.ha_smusso  ? [{ label: '⟋ Smusso',     val: R.smusso_fin, sub: `setup: €${r(R.setup_smusso)}` }] : []),
@@ -1525,7 +1534,6 @@ function renderResults(R) {
   } else if (isOcchio) {
     righe = [
       { label: '🟢 Materiale',   val: R.mat_cost,   sub: `peso: ${r(R.peso, 3)} kg` },
-      ...(R.bonifica     > 0 ? [{ label: '🔥 Bonifica',      val: R.bonifica,     sub: '' }] : []),
       ...(R.trattamento  > 0 ? [{ label: '🌡 Trattamento',   val: R.trattamento,  sub: '' }] : []),
       ...(R.attrez       > 0 ? [{ label: '🔧 Attrezzatura',  val: R.attrez,       sub: '' }] : []),
       { label: '✂ Taglio',       val: R.ta_costo,   sub: `setup: €${r(R.setup_taglio)}` },
@@ -1539,7 +1547,6 @@ function renderResults(R) {
     // Tiranti semplici
     righe = [
       { label: '🟢 Materiale',   val: R.mat_cost,    sub: `peso: ${r(R.peso, 3)} kg` },
-      ...(R.bonifica    > 0 ? [{ label: '🔥 Bonifica',     val: R.bonifica,    sub: '' }] : []),
       ...(R.trattamento > 0 ? [{ label: '🌡 Trattamento',  val: R.trattamento, sub: '' }] : []),
       { label: '✂ Taglio',       val: R.taglio_fin,  sub: `setup: €${r(R.setup_taglio)}` },
       { label: '⟋ Smusso',       val: R.smusso_fin,  sub: `setup: €${r(R.setup_smusso)}` },
@@ -1747,7 +1754,6 @@ function renderResults(R) {
       <div class="cost-summary">
         Lavorazione: <strong>€${r(R.costo_lav ?? R.lavorazione)}</strong>&nbsp;&nbsp;|&nbsp;&nbsp;
         Materiale: <strong>€${r(isViti ? R.mat_cost_plus : R.mat_cost)}</strong>
-        ${R.bonifica     > 0 ? `&nbsp;&nbsp;|&nbsp;&nbsp;Bonifica: <strong>€${r(R.bonifica)}</strong>` : ''}
         ${R.tratta       > 0 ? `&nbsp;&nbsp;|&nbsp;&nbsp;Trattamento: <strong>€${r(R.tratta)}</strong>` : ''}
         ${R.trattamento  > 0 ? `&nbsp;&nbsp;|&nbsp;&nbsp;Trattamento: <strong>€${r(R.trattamento)}</strong>` : ''}
       </div>
@@ -1779,7 +1785,6 @@ function renderResults(R) {
       ${!isDadi && !isPrig && !isOcchio && !isViti && !isTornito ? bar('Smusso',    R.smusso_fin + R.setup_smusso, 'smusso') : ''}
       ${!isDadi && !isPrig && !isOcchio && !isViti ? bar('Rullatura', R.rulla_fin + R.setup_rull, 'rull') : ''}
       ${bar('Marcatura', R.marc_fin + (R.setup_marc || 0), 'marc')}
-      ${R.bonifica     > 0 ? bar('Bonifica',    R.bonifica,    'bonif') : ''}
       ${R.tratta       > 0 ? bar('Trattamento', R.tratta,      'bonif') : ''}
       ${R.trattamento  > 0 ? bar('Trattamento', R.trattamento, 'bonif') : ''}
     </div>

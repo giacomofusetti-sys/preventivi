@@ -7,7 +7,7 @@ import {
   MAT_INOX,
   parseDia, getDiametroMedio, getDiametroNominale, getDensita,
   calcolaPeso, getCostoMateriale,
-  calcolaMarcatura, calcolaBonifica, getModPeso, setupCosto, parseQta
+  calcolaMarcatura, getModPeso, setupCosto, parseQta
 } from '../lib/calcolo_comune.js';
 
 // --- RADICE (m) ---------------------------------------------
@@ -219,13 +219,10 @@ export function calcolaPrigionieri(inputs, TC, TP) {
   // --- Attrezzatura ---
   const attrez = MAT_INOX.includes(mat) ? 0.6 : 0;
 
-  // --- Bonifica ---
-  const bonifica = calcolaBonifica(peso_grezzo, qta, dian, lungh, mat, TC);
-
   // --- Totali ---
   const costo_lav = ta_costo + to_costo + ru_costo + marc_fin + setup_marc + attrez
                   + setup_taglio + setup_torn + setup_rull;
-  const costo_tot = mat_cost + bonifica + costo_lav;
+  const costo_tot = mat_cost + costo_lav;
 
   // --- Modificatore peso ---
   const q_peso              = qta_x > 0 ? qta_x : qta;
@@ -261,7 +258,7 @@ export function calcolaPrigionieri(inputs, TC, TP) {
 
   return {
     // Costi
-    mat_cost, bonifica, attrez,
+    mat_cost, attrez,
     ta_costo, to_costo, ru_costo, marc_fin, setup_marc,
     setup_taglio, setup_torn, setup_rull,
     costo_lav, costo_tot,

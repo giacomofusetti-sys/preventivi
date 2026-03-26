@@ -12,7 +12,7 @@ import {
   calcolaTempoTaglio, modulaCostoTaglio, taglioFin,
   calcolaTempoSmusso, smussoCosto, smussoFin,
   calcolaTempoRullatura, rullaturaFin,
-  calcolaMarcatura, calcolaBonifica,
+  calcolaMarcatura,
   getModPeso, setupCosto, parseQta
 } from '../lib/calcolo_comune.js';
 
@@ -130,9 +130,8 @@ export function calcolaTiranti(inputs, T) {
     const t_rull    = calcolaTempoRullatura(dian, lung_fil, passo, mat, T);
     const rulla_fin = rullaturaFin(t_rull, co1, co2, dian, qta);
 
-    // Marcatura e bonifica
+    // Marcatura
     const { costo: marc_fin, setup: setup_marc, tempo: tempo_marc, tempo_setup: tempo_setup_marc } = calcolaMarcatura(dian, lungh_pezzo, qta, co1, marcatura_complessa);
-    const bonifica = calcolaBonifica(peso, qta, dian, lungh, mat, T);
 
     // Setup
     const setup_taglio = setupCosto(T.setup_secondi.taglio,    co1, qta);
@@ -142,7 +141,7 @@ export function calcolaTiranti(inputs, T) {
     // Totali
     const costo_lav = taglio_fin + smusso_fin + rulla_fin + marc_fin + setup_marc
                     + setup_taglio + setup_smusso + setup_rull;
-    const costo_tot = mat_cost + bonifica + costo_lav;
+    const costo_tot = mat_cost + costo_lav;
 
     // Peso con modificatore
     const q_peso              = qta_x > 0 ? qta_x : qta;
@@ -165,7 +164,7 @@ export function calcolaTiranti(inputs, T) {
     return {
       ha_tornitura: false,
       // Costi
-      mat_cost, bonifica,
+      mat_cost,
       taglio_fin, smusso_fin, rulla_fin, marc_fin, setup_marc,
       setup_taglio, setup_smusso, setup_rull,
       costo_lav, costo_tot,
@@ -232,15 +231,14 @@ export function calcolaTiranti(inputs, T) {
     const rulla_fin = rullaturaFin(t_rull, co1, co2, dian, qta);
     const setup_rull = setupCosto(T.setup_secondi.rullatura, co1, qta);
 
-    // Marcatura, attrezzatura, bonifica
+    // Marcatura, attrezzatura
     const { costo: marc_fin, setup: setup_marc, tempo: tempo_marc, tempo_setup: tempo_setup_marc } = calcolaMarcatura(dian, lungh_pezzo, qta, co1, marcatura_complessa);
     const attrez   = MAT_INOX.includes(mat) ? 0.6 : 0;
-    const bonifica = calcolaBonifica(peso_grezzo, qta, dian, lungh, mat, T);
 
     // Totali
     const costo_lav = taglio_fin + torni_fin + rulla_fin + marc_fin + setup_marc + attrez
                     + setup_taglio + setup_torn + setup_rull;
-    const costo_tot = mat_cost + bonifica + costo_lav;
+    const costo_tot = mat_cost + costo_lav;
 
     // Peso con modificatore
     const q_peso              = qta_x > 0 ? qta_x : qta;
@@ -276,7 +274,7 @@ export function calcolaTiranti(inputs, T) {
     return {
       ha_tornitura: true,
       // Costi
-      mat_cost, bonifica, attrez,
+      mat_cost, attrez,
       taglio_fin, torni_fin, rulla_fin, marc_fin, setup_marc,
       setup_taglio, setup_torn, setup_rull,
       costo_lav, costo_tot,

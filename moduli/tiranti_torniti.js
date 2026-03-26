@@ -8,7 +8,7 @@ import {
   calcolaPeso, getCostoMateriale,
   calcolaTempoTaglio, modulaCostoTaglio, taglioFin,
   calcolaTempoRullatura, rullaturaFin,
-  calcolaMarcatura, calcolaBonifica,
+  calcolaMarcatura,
   getModPeso, setupCosto, parseQta
 } from '../lib/calcolo_comune.js';
 
@@ -166,13 +166,10 @@ export function calcolaTirantiTorniti(inputs, T) {
   // --- Attrezzatura (solo inox/altro) ---
   const attrez = (mat === 'inox' || mat === 'altro') ? 0.6 : 0;
 
-  // --- Bonifica ---
-  const bonifica = calcolaBonifica(peso_grezzo, qta, dian, lungh, mat, T);
-
   // --- Totali ---
   const costo_lav = taglio_fin_val + torni_fin_val + rulla_fin + marc_fin + attrez
                   + setup_taglio + setup_torn + setup_rull;
-  const costo_tot = mat_cost + bonifica + costo_lav;
+  const costo_tot = mat_cost + costo_lav;
 
   // --- Peso con modificatore ---
   const q_peso              = qta_x > 0 ? qta_x : qta;
@@ -201,7 +198,7 @@ export function calcolaTirantiTorniti(inputs, T) {
 
   return {
     // Costi
-    mat_cost, bonifica, attrez,
+    mat_cost, attrez,
     taglio_fin: taglio_fin_val,
     torni_fin: torni_fin_val,
     rulla_fin, marc_fin,
