@@ -4,7 +4,7 @@
 // ============================================================
 
 import {
-  parseDia, getDiametroMedio, getDiametroNominale, getDensita,
+  parseDia, parseExpr, getDiametroMedio, getDiametroNominale, getDensita,
   calcolaPeso, getCostoMateriale,
   calcolaTempoTaglio, modulaCostoTaglio, taglioFin,
   calcolaTempoRullatura, rullaturaFin,
@@ -99,7 +99,7 @@ export function calcolaTirantiTorniti(inputs, T) {
   const dian = getDiametroNominale(T, dia);        // diametro nominale
 
   // --- Lunghezza ---
-  const lungh = parseFloat(lungh_raw) + 5;
+  const lungh = parseExpr(lungh_raw) + 5;
 
   // --- Densità ---
   const dens = getDensita(T, mat, dens_altro);

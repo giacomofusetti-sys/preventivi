@@ -8,6 +8,7 @@
 import {
   MAT_INOX,
   parseDia,
+  parseExpr,
   getDiametroNominale,
   getDiametroMedio,
   calcolaPeso,
@@ -168,7 +169,7 @@ function calcolaTornitura(tipo, dian, medio, dia_disp, dia_parte_liscia,
   if (tempo > 0) tempo += 15;
 
   // Caso semplice: solo filetto su pezzo corto, gambo già a misura — nessun minimo
-  if ((tipo === '5737' || tipo === '5931') && lungh < 350 && pldt_base === 0) {
+  if ((tipo === '5737' || tipo === '5931') && lungh < 350 && pldt_base === 0 && differenza_fil <= 0) {
     tempo = (filet / div) * Math.ceil(differenza_fil / 3) + 12;
     if (tempo <= 0) return 0;
     if (mat === 'altro') {
@@ -402,9 +403,9 @@ export function calcolaViti(inp, T, TV) {
   const dian = getDiametroNominale(T, dia);
   const medio_raw = getDiametroMedio(T, dia, passo);
   const medio = medio_override > 0 ? medio_override : medio_raw;
-  const lungh = parseFloat(lungh_raw);
+  const lungh = parseExpr(lungh_raw);
   const qta   = parseQta(qta_raw);
-  const dia_disp = parseFloat(dia_disp_raw) || dian;
+  const dia_disp = parseExpr(dia_disp_raw) || dian;
   const dpl   = dia_parte_liscia > 0 ? dia_parte_liscia : dian;
 
   if (isNaN(lungh) || lungh <= 0) throw new Error('Lunghezza non valida');

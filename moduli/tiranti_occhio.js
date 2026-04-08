@@ -5,7 +5,7 @@
 
 import {
   MAT_INOX,
-  parseDia, getDiametroMedio, getDiametroNominale, getDensita,
+  parseDia, parseExpr, getDiametroMedio, getDiametroNominale, getDensita,
   calcolaPeso, getCostoMateriale,
   calcolaTempoRullatura, rullaturaFin,
   calcolaMarcatura,
@@ -207,7 +207,7 @@ export function calcolaTirantiOcchio(inputs, T) {
   const foro  = getDiaForo(dia, dian, dia_foro_custom);
 
   // --- Lunghezze ---
-  const lungh      = parseFloat(lungh_raw) + 5;  // lunghezza gambo + sovrametallo
+  const lungh      = parseExpr(lungh_raw) + 5;  // lunghezza gambo + sovrametallo
   const lungh_g    = lungh - dian;                // lunghezza da rullare (gambo - nominale)
   const lungh_tot  = (lungh - testa / 2) + testa; // lunghezza tondo di partenza
 

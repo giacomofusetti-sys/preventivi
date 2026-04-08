@@ -7,7 +7,7 @@
 
 import {
   MAT_INOX,
-  parseDia, getDiametroMedio, getDiametroNominale, getDensita,
+  parseDia, parseExpr, getDiametroMedio, getDiametroNominale, getDensita,
   calcolaPeso, getCostoMateriale,
   calcolaTempoTaglio, modulaCostoTaglio, taglioFin,
   calcolaTempoSmusso, smussoCosto, smussoFin,
@@ -95,7 +95,7 @@ export function calcolaTiranti(inputs, T) {
   );
 
   // --- Lunghezza ---
-  const lungh_pezzo = parseFloat(lungh_raw);     // lunghezza reale del pezzo senza scarto
+  const lungh_pezzo = parseExpr(lungh_raw);     // lunghezza reale del pezzo senza scarto
   const lungh       = lungh_pezzo + 5;           // lunghezza con scarto, solo per calcolo peso/taglio
 
   // --- Densità ---

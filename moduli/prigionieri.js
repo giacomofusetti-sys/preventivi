@@ -5,7 +5,7 @@
 
 import {
   MAT_INOX,
-  parseDia, getDiametroMedio, getDiametroNominale, getDensita,
+  parseDia, parseExpr, getDiametroMedio, getDiametroNominale, getDensita,
   calcolaPeso, getCostoMateriale,
   calcolaMarcatura, getModPeso, setupCosto, parseQta
 } from '../lib/calcolo_comune.js';
@@ -138,7 +138,7 @@ export function calcolaPrigionieri(inputs, TC, TP) {
   const dian_liscia = (parte_liscia > 0) ? parte_liscia : dian;
 
   // --- Lunghezza ---
-  const lungh = parseFloat(lungh_raw) + 5;
+  const lungh = parseExpr(lungh_raw) + 5;
 
   // --- Radice e filetto ---
   const m_rad = getRadice(TP, tipo, dia, m1);
