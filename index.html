@@ -740,7 +740,7 @@
 import { calcolaTiranti }     from './moduli/tiranti_unificato.js';
 import { calcolaDadi }        from './moduli/dadi.js';
 import { calcolaPrigionieri } from './moduli/prigionieri.js';
-import { parseDia, getDiametroMedio } from './lib/calcolo_comune.js';
+import { parseDia, parseExpr, getDiametroMedio } from './lib/calcolo_comune.js';
 // tiranti_occhio.js viene importato dinamicamente in calcola()
 // per evitare che un file mancante blocchi l'intera applicazione
 
@@ -1181,7 +1181,7 @@ document.querySelectorAll('.toggle-btn[data-group="uni"]').forEach(btn => {
 
 // Legge un numero; se il campo è vuoto/invalido restituisce il default
 function getNum(id, def = 0) {
-  const v = parseFloat(document.getElementById(id)?.value);
+  const v = parseExpr(document.getElementById(id)?.value);
   return isNaN(v) ? def : v;
 }
 
