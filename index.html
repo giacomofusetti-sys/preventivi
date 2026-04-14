@@ -1804,7 +1804,8 @@ function renderResults(R) {
         <div class="cost-row"><div class="cost-row-label">Filetto</div><div class="cost-row-value">${r(R.filet, 1)} mm</div></div>
         ${R.lungh_liscia > 0 ? `<div class="cost-row"><div class="cost-row-label">Parte liscia</div><div class="cost-row-value">${r(R.lungh_liscia, 1)} mm</div></div>` : ''}
         <div class="cost-row"><div class="cost-row-label">Altezza testa</div><div class="cost-row-value">${r(R.h_testa, 1)} mm</div></div>
-        <div class="cost-row"><div class="cost-row-label">Spezzone</div><div class="cost-row-value">${r(R.lungh_spezzone, 1)} mm</div></div>
+        <div class="cost-row"><div class="cost-row-label">Sviluppo testa</div><div class="cost-row-value">${r(R.sviluppo_testa, 2)} mm</div></div>
+        <div class="cost-row"><div class="cost-row-label">Lunghezza spezzone</div><div class="cost-row-value">${r(R.lungh_spezzone, 2)} mm</div></div>
         <div class="cost-row"><div class="cost-row-label">Peso finito</div><div class="cost-row-value">${r(R.peso_fin, 3)} kg</div></div>
       </div>
     </div>` : '';

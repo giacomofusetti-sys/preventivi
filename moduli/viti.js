@@ -566,13 +566,13 @@ export function calcolaViti(inp, T, TV) {
   // Spezzone = lungh_gambo + altezza_testa + 5 (scarto)
   const area_tondo = Math.PI * (dia_disp / 2) ** 2;
 
-  let lungh_spezzone;
-  if (STAMPAGGIO) {
-    const sviluppo = calcolaSviluppoTesta(tipo, dati_testa, area_tondo);
-    lungh_spezzone = sviluppo + lungh + 5;
-  } else {
-    lungh_spezzone = lungh + h_testa + 5;
-  }
+  // Sviluppo testa: lunghezza di barra che "diventa" la testa dopo stampaggio.
+  // Calcolato sempre (anche in FRESA, dove non si usa per lo spezzone ma resta
+  // un dato informativo utile per confronti).
+  const sviluppo_testa = calcolaSviluppoTesta(tipo, dati_testa, area_tondo);
+  const lungh_spezzone = STAMPAGGIO
+    ? sviluppo_testa + lungh + 5
+    : lungh + h_testa + 5;
 
   const peso = calcolaPeso(dia_disp, lungh_spezzone, dens);
 
@@ -731,7 +731,7 @@ export function calcolaViti(inp, T, TV) {
     tipo, mat, dian, medio, dia_disp,
 
     // Geometria
-    filet, lungh_liscia, lungh_spezzone,
+    filet, lungh_liscia, lungh_spezzone, sviluppo_testa,
     h_testa,
     peso, peso_fin,
     mod_qta,
