@@ -200,12 +200,154 @@
           <button class="toggle-btn active" data-group="tipo_vite" data-val="5737">5737 — Esag. gambo</button>
           <button class="toggle-btn"        data-group="tipo_vite" data-val="5739">5739 — Esag. tutta fil.</button>
           <button class="toggle-btn"        data-group="tipo_vite" data-val="5931">5931 — Cava (brugola)</button>
+          <button class="toggle-btn"        data-group="tipo_vite" data-val="speciale">Speciale</button>
         </div>
       </div>
 
       <div id="row-dia-disp-viti" class="form-group" style="display:none">
         <label>Diametro barra di partenza (mm)</label>
         <input type="text" inputmode="decimal" id="dia_disp_viti" value="30">
+      </div>
+
+      <!-- VITE SPECIALE: selettore tipologia testa + campi geometrici -->
+      <div id="row-testa-speciale" class="form-group" style="display:none">
+        <label>Tipo testa speciale</label>
+        <div class="toggle-group toggle-group-wrap">
+          <button class="toggle-btn active" data-group="tipo_testa_speciale" data-val="esagonale">Esagonale</button>
+          <button class="toggle-btn"        data-group="tipo_testa_speciale" data-val="troncoconica">Tronco-conica</button>
+          <button class="toggle-btn"        data-group="tipo_testa_speciale" data-val="cilindrica">Cilindrica</button>
+          <button class="toggle-btn"        data-group="tipo_testa_speciale" data-val="quadrata">Quadrata</button>
+          <button class="toggle-btn"        data-group="tipo_testa_speciale" data-val="prismatica">Prismatica</button>
+          <button class="toggle-btn"        data-group="tipo_testa_speciale" data-val="troncopiramidale">Tronco-piram.</button>
+          <button class="toggle-btn"        data-group="tipo_testa_speciale" data-val="tcei">Tonda c/ cava es.</button>
+          <button class="toggle-btn"        data-group="tipo_testa_speciale" data-val="bombata">Bombata</button>
+        </div>
+      </div>
+
+      <div id="speciale-params" style="display:none">
+        <div class="spec-fields" data-spec="esagonale">
+          <div class="form-row">
+            <div class="form-group">
+              <label>Chiave (mm)</label>
+              <input type="number" id="spec_es_chiave" step="0.1" min="0" value="0">
+            </div>
+            <div class="form-group">
+              <label>Altezza testa (mm)</label>
+              <input type="number" id="spec_es_altezza" step="0.1" min="0" value="0">
+            </div>
+          </div>
+        </div>
+
+        <div class="spec-fields" data-spec="troncoconica" style="display:none">
+          <div class="form-row">
+            <div class="form-group">
+              <label>Raggio maggiore (mm)</label>
+              <input type="number" id="spec_tc_rmagg" step="0.1" min="0" value="0">
+            </div>
+            <div class="form-group">
+              <label>Raggio minore (mm)</label>
+              <input type="number" id="spec_tc_rmin" step="0.1" min="0" value="0">
+            </div>
+            <div class="form-group">
+              <label>Altezza conica (mm)</label>
+              <input type="number" id="spec_tc_altezza" step="0.1" min="0" value="0">
+            </div>
+          </div>
+        </div>
+
+        <div class="spec-fields" data-spec="cilindrica" style="display:none">
+          <div class="form-row">
+            <div class="form-group">
+              <label>Raggio base (mm)</label>
+              <input type="number" id="spec_cil_raggio" step="0.1" min="0" value="0">
+            </div>
+            <div class="form-group">
+              <label>Altezza testa (mm)</label>
+              <input type="number" id="spec_cil_altezza" step="0.1" min="0" value="0">
+            </div>
+          </div>
+        </div>
+
+        <div class="spec-fields" data-spec="quadrata" style="display:none">
+          <div class="form-row">
+            <div class="form-group">
+              <label>Lato (mm)</label>
+              <input type="number" id="spec_qu_lato" step="0.1" min="0" value="0">
+            </div>
+            <div class="form-group">
+              <label>Altezza testa (mm)</label>
+              <input type="number" id="spec_qu_altezza" step="0.1" min="0" value="0">
+            </div>
+          </div>
+        </div>
+
+        <div class="spec-fields" data-spec="prismatica" style="display:none">
+          <div class="form-row">
+            <div class="form-group">
+              <label>Lunghezza testa (mm)</label>
+              <input type="number" id="spec_pr_lungh" step="0.1" min="0" value="0">
+            </div>
+            <div class="form-group">
+              <label>Larghezza testa (mm)</label>
+              <input type="number" id="spec_pr_largh" step="0.1" min="0" value="0">
+            </div>
+            <div class="form-group">
+              <label>Altezza testa (mm)</label>
+              <input type="number" id="spec_pr_altezza" step="0.1" min="0" value="0">
+            </div>
+          </div>
+        </div>
+
+        <div class="spec-fields" data-spec="troncopiramidale" style="display:none">
+          <div class="form-row">
+            <div class="form-group">
+              <label>Lato base minore (mm)</label>
+              <input type="number" id="spec_tp_lato_min" step="0.1" min="0" value="0">
+            </div>
+            <div class="form-group">
+              <label>Lato base maggiore (mm)</label>
+              <input type="number" id="spec_tp_lato_mag" step="0.1" min="0" value="0">
+            </div>
+            <div class="form-group">
+              <label>Altezza testa (mm)</label>
+              <input type="number" id="spec_tp_altezza" step="0.1" min="0" value="0">
+            </div>
+          </div>
+        </div>
+
+        <div class="spec-fields" data-spec="tcei" style="display:none">
+          <div class="form-row">
+            <div class="form-group">
+              <label>Diametro testa (mm)</label>
+              <input type="number" id="spec_tcei_diam" step="0.1" min="0" value="0">
+            </div>
+            <div class="form-group">
+              <label>Altezza testa (mm)</label>
+              <input type="number" id="spec_tcei_altezza" step="0.1" min="0" value="0">
+            </div>
+            <div class="form-group">
+              <label>Chiave esagonale (mm)</label>
+              <input type="number" id="spec_tcei_chiave" step="0.1" min="0" value="0">
+            </div>
+            <div class="form-group">
+              <label>Profondità cava (mm)</label>
+              <input type="number" id="spec_tcei_prof" step="0.1" min="0" value="0">
+            </div>
+          </div>
+        </div>
+
+        <div class="spec-fields" data-spec="bombata" style="display:none">
+          <div class="form-row">
+            <div class="form-group">
+              <label>Raggio base (mm)</label>
+              <input type="number" id="spec_bo_raggio" step="0.1" min="0" value="0">
+            </div>
+            <div class="form-group">
+              <label>Altezza calotta (mm)</label>
+              <input type="number" id="spec_bo_altezza" step="0.1" min="0" value="0">
+            </div>
+          </div>
+        </div>
       </div>
 
       <!-- TIPO PRIGIONIERO (solo modulo prigionieri)
@@ -877,6 +1019,10 @@ function mostraCalcolatore(prodotto) {
   show('row-filetto-vite',  isViti);
   show('row-dpl-vite',      isViti);
   show('row-dia-disp-viti', isViti);
+  // Il blocco testa speciale dipende anche da tipo_vite — gestito
+  // dal toggle handler; qui lo nascondiamo al reset.
+  show('row-testa-speciale', false);
+  show('speciale-params',    false);
   show('row-prigioniero',   isTiranti);                 // opzione prigioniero: solo tiranti
   show('row-fantina',       isPrigionieri);             // fantina: prigionieri (tiranti: gestito da toggle)
   show('row-barra-giusta',  isPrigionieri);             // barra giusta: prigionieri (tiranti: gestito da toggle)
@@ -974,6 +1120,25 @@ document.querySelectorAll('.toggle-btn').forEach(btn => {
     if (group === 'trattamento_vite') {
       document.getElementById('trattamento-vite-group').style.display =
         btn.dataset.val === 'ON' ? 'block' : 'none';
+    }
+    // viti: tipo_vite = speciale → mostra blocco testa speciale
+    // e nasconde il toggle chiave pesante/leggera (non serve)
+    if (group === 'tipo_vite') {
+      const isSpec = btn.dataset.val === 'speciale';
+      document.getElementById('row-testa-speciale').style.display = isSpec ? 'block' : 'none';
+      document.getElementById('speciale-params').style.display    = isSpec ? 'block' : 'none';
+      if (isSpec) {
+        document.getElementById('row-chiave-tipo').style.display = 'none';
+      } else {
+        // ripristina la visibilità gestita da aggiornaChiaveTipo (solo per pollici)
+        aggiornaChiaveTipo();
+      }
+    }
+    // viti speciale: cambia tipologia testa → mostra solo i campi di quella tipologia
+    if (group === 'tipo_testa_speciale') {
+      document.querySelectorAll('#speciale-params .spec-fields').forEach(el => {
+        el.style.display = el.dataset.spec === btn.dataset.val ? 'block' : 'none';
+      });
     }
     // viti: fresa = mostra dia_disp_viti, filetto, dpl
     if (group === 'lav_vite') {
@@ -1392,8 +1557,9 @@ window.calcola = async function() {
       const _diam_v  = getDiametroMedio(T, parseDia(getStr('dia')), getStr('passo'));
       const _min_v   = getToggleVal('minorato') === 'ON';
       const medio_override = _min_v ? _diam_v - getNum('riduzione_medio', 0.4) : 0;
-      R = calcolaViti({
-        tipo:               getToggleVal('tipo_vite'),
+      const _tipo_vite = getToggleVal('tipo_vite');
+      const _inp = {
+        tipo:               _tipo_vite,
         dia_raw:            getStr('dia'),
         passo:              getStr('passo'),
         lungh_raw:          getNum('lungh', 100),
@@ -1413,7 +1579,33 @@ window.calcola = async function() {
         costo_bonifica_kg:  getNum('costo_bonifica_kg', 1.20),
         forfait_bonifica:   getNum('forfait_bonifica', 400),
         medio_override,
-      }, T, TV);
+      };
+      // Vite speciale: raccogli tipo testa + parametri geometrici
+      if (_tipo_vite === 'speciale') {
+        _inp.tipo_testa_speciale = getToggleVal('tipo_testa_speciale');
+        _inp.spec_es_chiave    = getNum('spec_es_chiave',    0);
+        _inp.spec_es_altezza   = getNum('spec_es_altezza',   0);
+        _inp.spec_tc_rmagg     = getNum('spec_tc_rmagg',     0);
+        _inp.spec_tc_rmin      = getNum('spec_tc_rmin',      0);
+        _inp.spec_tc_altezza   = getNum('spec_tc_altezza',   0);
+        _inp.spec_cil_raggio   = getNum('spec_cil_raggio',   0);
+        _inp.spec_cil_altezza  = getNum('spec_cil_altezza',  0);
+        _inp.spec_qu_lato      = getNum('spec_qu_lato',      0);
+        _inp.spec_qu_altezza   = getNum('spec_qu_altezza',   0);
+        _inp.spec_pr_lungh     = getNum('spec_pr_lungh',     0);
+        _inp.spec_pr_largh     = getNum('spec_pr_largh',     0);
+        _inp.spec_pr_altezza   = getNum('spec_pr_altezza',   0);
+        _inp.spec_tp_lato_min  = getNum('spec_tp_lato_min',  0);
+        _inp.spec_tp_lato_mag  = getNum('spec_tp_lato_mag',  0);
+        _inp.spec_tp_altezza   = getNum('spec_tp_altezza',   0);
+        _inp.spec_tcei_diam    = getNum('spec_tcei_diam',    0);
+        _inp.spec_tcei_altezza = getNum('spec_tcei_altezza', 0);
+        _inp.spec_tcei_chiave  = getNum('spec_tcei_chiave',  0);
+        _inp.spec_tcei_prof    = getNum('spec_tcei_prof',    0);
+        _inp.spec_bo_raggio    = getNum('spec_bo_raggio',    0);
+        _inp.spec_bo_altezza   = getNum('spec_bo_altezza',   0);
+      }
+      R = calcolaViti(_inp, T, TV);
     }
 
     renderResults(R);

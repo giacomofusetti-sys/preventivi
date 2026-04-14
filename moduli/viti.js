@@ -33,7 +33,8 @@ function tierValue(tiers, value, field = 'secondi') {
 
 function calcolaLunghFiletto(tipo, dia, lungh, filetto_override, TV) {
   if (filetto_override > 0) return filetto_override;
-  if (tipo === '5739') return lungh; // tutta filettata
+  if (tipo === '5739')    return lungh; // tutta filettata
+  if (tipo === 'speciale') return lungh; // default: tutta filettata (override se specificato)
 
   const key = String(dia);
 
@@ -99,13 +100,88 @@ function getDatiTesta(tipo, dia, mat, chiave_tipo, TV) {
   throw new Error(`Tipo vite non riconosciuto: ${tipo}`);
 }
 
+// ─── DATI TESTA SPECIALE (formule volumetriche) ──────────────
+// Per la modalità "vite speciale": l'utente sceglie una delle 8
+// tipologie e fornisce i parametri geometrici manuali. Il volume
+// testa è calcolato direttamente, senza lookup su tabelle.
+function getDatiTestaSpeciale(inp) {
+  const t = inp.tipo_testa_speciale;
+  const SQRT3 = Math.sqrt(3);
+  // Area esagono regolare dato il lato: (3√3/2) × lato²
+  const areaEsag = (lato) => (3 * SQRT3 / 2) * lato * lato;
+
+  if (t === 'esagonale') {
+    const chiave = inp.spec_es_chiave;
+    const h      = inp.spec_es_altezza;
+    const lato   = chiave / SQRT3;
+    const vol_testa = areaEsag(lato) * h;
+    return { vol_testa, h_testa: h, tipo_testa: 'speciale', sub: t, s: chiave };
+  }
+
+  if (t === 'troncoconica') {
+    const R = inp.spec_tc_rmagg;
+    const r = inp.spec_tc_rmin;
+    const h = inp.spec_tc_altezza;
+    const vol_testa = (Math.PI * h / 3) * (R*R + R*r + r*r);
+    return { vol_testa, h_testa: h, tipo_testa: 'speciale', sub: t };
+  }
+
+  if (t === 'cilindrica') {
+    const R = inp.spec_cil_raggio;
+    const h = inp.spec_cil_altezza;
+    const vol_testa = Math.PI * R * R * h;
+    return { vol_testa, h_testa: h, tipo_testa: 'speciale', sub: t };
+  }
+
+  if (t === 'quadrata') {
+    const lato = inp.spec_qu_lato;
+    const h    = inp.spec_qu_altezza;
+    const vol_testa = lato * lato * h;
+    return { vol_testa, h_testa: h, tipo_testa: 'speciale', sub: t };
+  }
+
+  if (t === 'prismatica') {
+    const L = inp.spec_pr_lungh;
+    const W = inp.spec_pr_largh;
+    const h = inp.spec_pr_altezza;
+    const vol_testa = L * W * h;
+    return { vol_testa, h_testa: h, tipo_testa: 'speciale', sub: t };
+  }
+
+  if (t === 'troncopiramidale') {
+    const a = inp.spec_tp_lato_min;
+    const A = inp.spec_tp_lato_mag;
+    const h = inp.spec_tp_altezza;
+    const vol_testa = (h / 3) * (A*A + A*a + a*a);
+    return { vol_testa, h_testa: h, tipo_testa: 'speciale', sub: t };
+  }
+
+  if (t === 'tcei') {
+    const dk   = inp.spec_tcei_diam;
+    const h    = inp.spec_tcei_altezza;
+    const ch   = inp.spec_tcei_chiave;
+    const prof = inp.spec_tcei_prof;
+    const vol_cil  = Math.PI * (dk/2) * (dk/2) * h;
+    const lato_c   = ch / SQRT3;
+    const vol_scav = areaEsag(lato_c) * prof;
+    const vol_testa = vol_cil - vol_scav;
+    return { vol_testa, h_testa: h, tipo_testa: 'speciale', sub: t, dk, sc: ch };
+  }
+
+  if (t === 'bombata') {
+    const R = inp.spec_bo_raggio;
+    const h = inp.spec_bo_altezza;
+    const vol_testa = (Math.PI * h / 6) * (3 * R * R + h * h);
+    return { vol_testa, h_testa: h, tipo_testa: 'speciale', sub: t };
+  }
+
+  throw new Error(`Tipo testa speciale non riconosciuto: ${t}`);
+}
+
 // ─── SVILUPPO TESTA (per calcolo spezzone a stampaggio) ───────
 
 function calcolaSviluppoTesta(tipo, dati_testa, area_tondo) {
-  if (tipo === '5737' || tipo === '5739') {
-    return dati_testa.vol_testa / area_tondo;
-  }
-  if (tipo === '5931') {
+  if (tipo === '5737' || tipo === '5739' || tipo === '5931' || tipo === 'speciale') {
     return dati_testa.vol_testa / area_tondo;
   }
   return 0;
@@ -125,7 +201,7 @@ function calcolaTornitura(tipo, dian, medio, dia_disp, dia_parte_liscia,
   let pfdt = 0;
   if (tipo === '5739') {
     pfdt = differenza_fil > 0 ? lungh : 0;
-  } else if (tipo === '5737') {
+  } else if (tipo === '5737' || tipo === 'speciale') {
     pfdt = filet;
   } else if (tipo === '5931') {
     if (filet <= lungh && differenza_fil > 0) pfdt = filet;
@@ -135,7 +211,7 @@ function calcolaTornitura(tipo, dian, medio, dia_disp, dia_parte_liscia,
 
   // Parte liscia da tornire
   let pldt_base = 0;
-  if (tipo === '5737') {
+  if (tipo === '5737' || tipo === 'speciale') {
     pldt_base = differenza_liscia > 0 ? lungh_liscia : 0;
   } else if (tipo === '5931') {
     if (lungh <= filet && differenza_fil <= 0) pldt_base = 0;
@@ -143,15 +219,13 @@ function calcolaTornitura(tipo, dian, medio, dia_disp, dia_parte_liscia,
     else pldt_base = lungh_liscia;
   }
 
-  // Aggiungi tornitura testa per le cave
+  // Aggiungi tornitura testa
   let pldt = pldt_base;
   if (tipo === '5931') {
     const hc = dati_testa.hc ?? 0;
     if (!STAMPAGGIO) {
-      // Con FRESA si torna sempre la testa cava
       pldt += hc;
     } else if (MAT_INOX.includes(mat)) {
-      // Con STAMP su inox/similari si torna ugualmente la testa
       pldt += hc;
     }
   } else if ((tipo === '5737' || tipo === '5739') && !STAMPAGGIO) {
@@ -159,6 +233,9 @@ function calcolaTornitura(tipo, dian, medio, dia_disp, dia_parte_liscia,
     const h = dati_testa.h ?? 0;
     const s = dati_testa.s ?? 0;
     if (dia_disp >= s * 1.154 + 5) pldt += h;
+  } else if (tipo === 'speciale' && !STAMPAGGIO) {
+    // Con FRESA la testa speciale va tornita/fresata dal tondo
+    pldt += dati_testa.h_testa ?? 0;
   }
 
   // Tempi
@@ -169,7 +246,7 @@ function calcolaTornitura(tipo, dian, medio, dia_disp, dia_parte_liscia,
   if (tempo > 0) tempo += 15;
 
   // Caso semplice: solo filetto su pezzo corto, gambo già a misura — nessun minimo
-  if ((tipo === '5737' || tipo === '5931') && lungh < 350 && pldt_base === 0 && differenza_fil <= 0) {
+  if ((tipo === '5737' || tipo === '5931' || tipo === 'speciale') && lungh < 350 && pldt_base === 0 && differenza_fil <= 0) {
     tempo = (filet / div) * Math.ceil(differenza_fil / 3) + 12;
     if (tempo <= 0) return 0;
     if (mat === 'altro') {
@@ -217,12 +294,12 @@ function calcolaTempoStampaggio(dian, TV) {
 
 // ─── BROCCIATURA ─────────────────────────────────────────────
 
-function calcolaBrocciatura(dian, mat, tipo, STAMPAGGIO, materiale_speciale, TV, T) {
-  // La brocciatura serve per le 5931 quando:
-  // - con FRESA (qualsiasi materiale)
-  // - con STAMPAGGIO su inox/altro (cava sempre brocciata)
-  if (tipo !== '5931') return 0;
-  const serve = !STAMPAGGIO || MAT_INOX.includes(mat);
+function calcolaBrocciatura(dian, mat, tipo, STAMPAGGIO, materiale_speciale, TV, T, dati_testa) {
+  // Brocciatura: 5931 con FRESA o con STAMPAGGIO su inox; vite speciale
+  // solo se testa TCEI (tonda con cava esagonale).
+  const isTceiSpec = tipo === 'speciale' && dati_testa?.sub === 'tcei';
+  if (tipo !== '5931' && !isTceiSpec) return 0;
+  const serve = isTceiSpec ? true : (!STAMPAGGIO || MAT_INOX.includes(mat));
   if (!serve) return 0;
 
   let t = tierValue(TV.tempi_brocciatura, dian) ?? 0;
@@ -374,27 +451,29 @@ function getDensitaViti(mat, dens_altro, TV) {
 
 export function calcolaViti(inp, T, TV) {
   const {
-    tipo,             // '5737' | '5739' | '5931'
+    tipo,             // '5737' | '5739' | '5931' | 'speciale'
     dia_raw,
     passo,
     lungh_raw,
     qta_raw,
     qta_x           = 0,
-    mat,              // '42CD4'|'B16'|'B7'|'L7'|'B7M'|'AISI 304'|'AISI 316'|'B8 cl.2'|'B8M cl.2'|'inox'|'altro'
+    mat,
     materiale_speciale = '0',
     dens_altro       = 7.916,
     costo_mat_override = 0,
     dia_disp_raw,
-    TF               = false,   // filettatura totale forzata
+    TF               = false,
     filetto_override = 0,
-    dia_parte_liscia = 0,       // 0 = usa nominale
-    chiave_tipo      = 'p',     // 'p' = pesante, 'l' = leggera (solo 5931 pollici)
+    dia_parte_liscia = 0,
+    chiave_tipo      = 'p',
     STAMPAGGIO       = true,
     TRATTAMENTO      = false,
     costo_bonifica_kg = 1.20,
     forfait_bonifica  = 400,
     medio_override   = 0,
   } = inp;
+
+  const IS_SPECIALE = tipo === 'speciale';
 
   const { co1, co2 } = T.costi_base;
 
@@ -417,7 +496,7 @@ export function calcolaViti(inp, T, TV) {
   );
 
   // Validazione FRESA: dia_disp deve essere >= spigolo/diametro testa
-  if (!STAMPAGGIO) {
+  if (!STAMPAGGIO && !IS_SPECIALE) {
     let s_rif = null;
     if (tipo === '5737' || tipo === '5739') {
       s_rif = lookup(TV.chiavi_metriche, String(dia))
@@ -455,8 +534,33 @@ export function calcolaViti(inp, T, TV) {
   const lungh_liscia = filet > 0 ? lungh - filet : 0;
 
   // ── Dati testa ───────────────────────────────────────────
-  const dati_testa = getDatiTesta(tipo, dia, mat, chiave_tipo, TV);
-  const h_testa    = dati_testa.h ?? dati_testa.hc ?? 0;
+  let dati_testa, h_testa;
+  if (IS_SPECIALE) {
+    dati_testa = getDatiTestaSpeciale(inp);
+    h_testa    = dati_testa.h_testa;
+    if (!(dati_testa.vol_testa > 0) || !(h_testa > 0)) {
+      throw new Error('Parametri testa speciale incompleti o non validi (vol_testa / h_testa ≤ 0)');
+    }
+    // Verifica tondo sufficiente per contenere la testa (solo !STAMPAGGIO)
+    if (!STAMPAGGIO) {
+      const sub = dati_testa.sub;
+      let diag = 0;
+      if (sub === 'esagonale')        diag = (dati_testa.s ?? 0) * 1.154;
+      else if (sub === 'quadrata')    diag = inp.spec_qu_lato * Math.SQRT2;
+      else if (sub === 'prismatica')  diag = Math.hypot(inp.spec_pr_lungh, inp.spec_pr_largh);
+      else if (sub === 'troncopiramidale') diag = inp.spec_tp_lato_mag * Math.SQRT2;
+      else if (sub === 'troncoconica') diag = 2 * inp.spec_tc_rmagg;
+      else if (sub === 'cilindrica')  diag = 2 * inp.spec_cil_raggio;
+      else if (sub === 'tcei')        diag = inp.spec_tcei_diam;
+      else if (sub === 'bombata')     diag = 2 * inp.spec_bo_raggio;
+      if (diag > 0 && dia_disp < diag * 0.95) throw new Error(
+        `Diametro barra (${dia_disp.toFixed(1)} mm) insufficiente a contenere la testa speciale (servono almeno ${(diag * 0.95).toFixed(1)} mm)`
+      );
+    }
+  } else {
+    dati_testa = getDatiTesta(tipo, dia, mat, chiave_tipo, TV);
+    h_testa    = dati_testa.h ?? dati_testa.hc ?? 0;
+  }
 
   // ── Peso materiale ────────────────────────────────────────
   // Spezzone = lungh_gambo + altezza_testa + 5 (scarto)
@@ -529,9 +633,9 @@ export function calcolaViti(inp, T, TV) {
     }
   }
 
-  // ── Fresatura testa (5737/5739 con FRESA) ─────────────────
+  // ── Fresatura testa (5737/5739/speciale con FRESA) ────────
   let t_fresa = 0, fresa_fin = 0;
-  if (!STAMPAGGIO && (tipo === '5737' || tipo === '5739')) {
+  if (!STAMPAGGIO && (tipo === '5737' || tipo === '5739' || IS_SPECIALE)) {
     t_fresa  = calcolaFresaturaTesta(dian, mat, tipo, materiale_speciale, TV, T);
     const minimo = 1.62;
     let fc = t_fresa * co;
@@ -539,10 +643,10 @@ export function calcolaViti(inp, T, TV) {
     fresa_fin = fc * qta < 10 ? 10 / qta : fc;
   }
 
-  // ── Brocciatura (5931 sempre; 5931 inox/altro anche stampata) ──
+  // ── Brocciatura (5931 sempre; 5931 inox anche stampata; speciale solo TCEI) ──
   let brocc_c = 0, brocc_fin = 0;
-  if (tipo === '5931') {
-    brocc_c  = calcolaBrocciatura(dian, mat, tipo, STAMPAGGIO, materiale_speciale, TV, T);
+  if (tipo === '5931' || (tipo === 'speciale' && dati_testa.sub === 'tcei')) {
+    brocc_c  = calcolaBrocciatura(dian, mat, tipo, STAMPAGGIO, materiale_speciale, TV, T, dati_testa);
     brocc_fin = brocc_c * qta < 10 ? 10 / qta : brocc_c;
   }
 

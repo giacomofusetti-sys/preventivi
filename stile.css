@@ -270,6 +270,19 @@ header span {
   font-weight: 700;
 }
 
+/* Variante con wrap su più righe (es. 8 tipologie testa speciale) */
+.toggle-group-wrap {
+  flex-wrap: wrap;
+  gap: 4px;
+}
+.toggle-group-wrap button {
+  flex: 1 1 calc(25% - 4px);
+  padding: 6px 8px;
+  font-size: 10px;
+  letter-spacing: 0.5px;
+  border-right: 1px solid var(--border-bright) !important;
+}
+
 .calc-btn {
   width: 100%;
   padding: 14px;
