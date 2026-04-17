@@ -717,10 +717,36 @@ function renderAll(T, TD, TP, TV) {
   html += '<div>' + groupTitle('Smusso — Inox/Altro') + tierTable(TV.tempi_smusso_viti.inox_altro, 'secondi', 'Tempo (s)', 's') + '</div>';
   html += '</div>';
 
-  html += '<div class="t-grid-2">';
-  html += '<div>' + groupTitle('Sbavatura — Standard') + tierTable(TV.tempi_sbavatura.standard, 'secondi', 'Tempo (s)', 's') + '</div>';
-  html += '<div>' + groupTitle('Sbavatura — Inox/Altro') + tierTable(TV.tempi_sbavatura.inox_altro, 'secondi', 'Tempo (s)', 's') + '</div>';
-  html += '</div>';
+  // Sbavatura — macchine
+  html += groupTitle('Sbavatura — Macchine');
+  {
+    const SB = TV.sbavatura;
+    let rows = '';
+    const macchine = [
+      ['Sbavatrice normale', SB.sbavatrice_normale],
+      ['Ceriotti', SB.ceriotti],
+    ];
+    for (const [nome, m] of macchine) {
+      const dRange = `${m.diametro_min}–${m.diametro_max} mm`;
+      const lMin = m.lunghezza_min != null ? m.lunghezza_min : '—';
+      const lMax = m.lunghezza_max != null ? m.lunghezza_max : '—';
+      const lRange = `${lMin}–${lMax} mm`;
+      rows += `<tr><td>${h(nome)}</td><td class="num">${dRange}</td><td class="num">${lRange}</td><td class="num">${m.tempo_ciclo_min_sec}→${m.tempo_ciclo_max_sec} s</td><td class="num">${m.setup_sec} s</td></tr>`;
+    }
+    rows += `<tr><td>${h('Tornio (fallback)')}</td><td class="num">—</td><td class="num">—</td><td class="num">${SB.tornio.tempo_ciclo_sec} s (fisso)</td><td class="num">${SB.tornio.setup_sec} s</td></tr>`;
+    html += tableWrap(`<thead><tr><th>Macchina</th><th class="num">Ø range</th><th class="num">Lungh. range</th><th class="num">Tempo ciclo</th><th class="num">Setup</th></tr></thead><tbody>${rows}</tbody>`);
+  }
+
+  // Sbavatura — moltiplicatori materiale
+  html += groupTitle('Sbavatura — Moltiplicatori materiale');
+  {
+    const mults = TV.sbavatura.moltiplicatori_materiale;
+    let rows = '';
+    for (const [cat, v] of Object.entries(mults)) {
+      rows += `<tr><td>${h(cat)}</td><td class="num">${fmt(v.min, 1)}→${fmt(v.max, 1)}</td></tr>`;
+    }
+    html += tableWrap(`<thead><tr><th>Categoria</th><th class="num">Molt. min→max</th></tr></thead><tbody>${rows}</tbody>`);
+  }
 
   html += groupTitle('Brocciatura (5931)');
   html += tierTable(TV.tempi_brocciatura, 'secondi', 'Tempo (s)', 's');

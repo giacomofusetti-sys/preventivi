@@ -16,6 +16,8 @@ import {
   setupCosto,
 } from '../lib/calcolo_comune.js';
 
+const MAT_STANDARD = ['42CD4', 'B16', 'B7', 'L7', 'B7M'];
+
 // ─── HELPERS INTERNI ─────────────────────────────────────────
 
 function lookup(table, key) {
@@ -270,11 +272,72 @@ function calcolaTornitura(tipo, dian, medio, dia_disp, dia_parte_liscia,
 
 // ─── SBAVATURA ────────────────────────────────────────────────
 
-function calcolaTempoSbavatura(dian, mat, TV) {
-  const tiers = MAT_INOX.includes(mat)
-    ? TV.tempi_sbavatura.inox_altro
-    : TV.tempi_sbavatura.standard;
-  return tierValue(tiers, dian) ?? 0;
+// Interpolazione lineare con clamp [0,1]
+function interpola(x, x_min, x_max, y_min, y_max) {
+  if (x_max === x_min) return y_min;
+  const t = Math.max(0, Math.min(1, (x - x_min) / (x_max - x_min)));
+  return y_min + t * (y_max - y_min);
+}
+
+const NOMI_DISPLAY_SBAV = {
+  sbavatrice_normale: 'Sbavatrice normale',
+  ceriotti: 'Ceriotti',
+  tornio: 'Tornio',
+};
+
+// lungh = lunghezza sottotesta (non "lungh_pezzo": la variabile nel modulo si chiama "lungh")
+function calcolaSbavatura(dian, lungh, mat, qta, co, TV) {
+  const cfg = TV.sbavatura;
+  const mults = cfg.moltiplicatori_materiale;
+
+  // Classificazione materiale
+  let categoria;
+  if (MAT_INOX.includes(mat))        categoria = 'inox';
+  else if (MAT_STANDARD.includes(mat)) categoria = 'standard';
+  else                                 categoria = 'altro';
+
+  const macchine_sbav = ['sbavatrice_normale', 'ceriotti'];
+  const candidati = [];
+
+  for (const nome of macchine_sbav) {
+    const m = cfg[nome];
+    // Compatibilità dimensionale
+    if (dian < m.diametro_min || dian > m.diametro_max) continue;
+    if (m.lunghezza_min != null && lungh < m.lunghezza_min) continue;
+    if (m.lunghezza_max != null && lungh > m.lunghezza_max) continue;
+
+    const tempo_base = interpola(dian, m.diametro_min, m.diametro_max,
+                                  m.tempo_ciclo_min_sec, m.tempo_ciclo_max_sec);
+    const mult_mat = mults[categoria];
+    const mult = interpola(dian, m.diametro_min, m.diametro_max,
+                           mult_mat.min, mult_mat.max);
+    const tempo_ciclo = tempo_base * mult;
+    const costo_totale = (m.setup_sec + tempo_ciclo * qta) * co;
+
+    candidati.push({
+      macchina: nome,
+      nome_display: NOMI_DISPLAY_SBAV[nome],
+      tempo_ciclo_sec: tempo_ciclo,
+      setup_sec: m.setup_sec,
+      costo_totale,
+    });
+  }
+
+  // Fallback: tornio
+  if (candidati.length === 0) {
+    const t = cfg.tornio;
+    return {
+      macchina: 'tornio',
+      nome_display: NOMI_DISPLAY_SBAV.tornio,
+      tempo_ciclo_sec: t.tempo_ciclo_sec,
+      setup_sec: t.setup_sec,
+      costo_totale: (t.setup_sec + t.tempo_ciclo_sec * qta) * co,
+    };
+  }
+
+  // Scegli il candidato con costo minimo
+  candidati.sort((a, b) => a.costo_totale - b.costo_totale);
+  return candidati[0];
 }
 
 // ─── SMUSSO ───────────────────────────────────────────────────
@@ -610,9 +673,10 @@ export function calcolaViti(inp, T, TV) {
   }
 
   // ── Sbavatura ────────────────────────────────────────────
-  let t_sbav = 0, sbav_fin = 0;
+  let t_sbav = 0, sbav_fin = 0, sbav_info = null;
   if (STAMPAGGIO) {
-    t_sbav   = calcolaTempoSbavatura(dian, mat, TV);
+    sbav_info = calcolaSbavatura(dian, lungh, mat, qta, co, TV);
+    t_sbav = sbav_info.tempo_ciclo_sec;
     const sb = t_sbav * co;
     sbav_fin = sb * qta < 10 ? 10 / qta : sb;
   }
@@ -675,7 +739,7 @@ export function calcolaViti(inp, T, TV) {
   const setup_taglio  = setupCosto(S.taglio,    co1, qta);
   const setup_smusso  = ha_smusso ? setupCosto(S.smusso,    co1, qta) : 0;
   const setup_stamp   = STAMPAGGIO ? setupCosto(S.stampaggio, co1, qta) : 0;
-  const setup_sbav    = STAMPAGGIO ? setupCosto(S.sbavatura,  co1, qta) : 0;
+  const setup_sbav    = STAMPAGGIO && sbav_info ? setupCosto(sbav_info.setup_sec, co1, qta) : 0;
   const setup_torn    = t_torn > 0  ? setupCosto(S.tornitura,  co1, qta) : 0;
   const setup_fresa   = t_fresa > 0 ? setupCosto(S.fresatura,  co1, qta) : 0;
   const setup_brocc   = brocc_c > 0 ? setupCosto(S.brocciatura,co1, qta) : 0;
@@ -707,7 +771,7 @@ export function calcolaViti(inp, T, TV) {
   lines.push(`TAGLI ${t_taglio}`);
   if (ha_smusso)   lines.push(`SMUSS ${t_smusso}`);
   if (STAMPAGGIO)  lines.push(`STAM2 ${t_stamp}`);
-  if (STAMPAGGIO)  lines.push(`SBAVA ${t_sbav}`);
+  if (STAMPAGGIO)  lines.push(`SBAVA ${Math.round(t_sbav)}`);
   if (t_torn > 0)  lines.push(`TORN1 ${t_torn}`);
   if (t_fresa > 0) lines.push(`FRESA ${t_fresa}`);
   if (brocc_c > 0) lines.push(`BROCC ${Math.round(brocc_c / 0.018)}`);
@@ -716,7 +780,7 @@ export function calcolaViti(inp, T, TV) {
   lines.push(`ATAGL ${S_tag.taglio}`);
   if (ha_smusso)   lines.push(`ASMUS ${S_tag.smusso}`);
   if (STAMPAGGIO)  lines.push(`ASTA2 ${S_tag.stampaggio}`);
-  if (STAMPAGGIO)  lines.push(`ASBAV ${S_tag.sbavatura}`);
+  if (STAMPAGGIO)  lines.push(`ASBAV ${sbav_info.setup_sec}`);
   if (t_torn > 0)  lines.push(`ATOR1 ${S_tag.tornitura}`);
   if (t_fresa > 0) lines.push(`AFRES ${S_tag.fresatura}`);
   if (brocc_c > 0) lines.push(`ABROC ${S_tag.brocciatura}`);
@@ -748,6 +812,10 @@ export function calcolaViti(inp, T, TV) {
     // Setup
     setup_taglio, setup_smusso, setup_stamp, setup_sbav,
     setup_torn, setup_fresa, setup_brocc, setup_rull, setup_raddr,
+
+    // Sbavatura info
+    sbav_macchina: sbav_info ? sbav_info.nome_display : null,
+    setup_sbav_sec: sbav_info ? sbav_info.setup_sec : 0,
 
     // Tempi (secondi, per gestionale)
     t_taglio, t_smusso, t_stamp, t_sbav,
