@@ -1553,7 +1553,7 @@ window.calcola = async function() {
 
     // ── Viti ─────────────────────────────────────────────
     if (prodottoCorrente === 'viti') {
-      const { calcolaViti } = await import('./moduli/viti.js?v=3');
+      const { calcolaViti } = await import('./moduli/viti.js?v=4');
       const _diam_v  = getDiametroMedio(T, parseDia(getStr('dia')), getStr('passo'));
       const _min_v   = getToggleVal('minorato') === 'ON';
       const medio_override = _min_v ? _diam_v - getNum('riduzione_medio', 0.4) : 0;

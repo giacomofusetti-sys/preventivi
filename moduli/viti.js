@@ -291,10 +291,13 @@ function calcolaSbavatura(dian, lungh, mat, qta, co, TV) {
   const mults = cfg.moltiplicatori_materiale;
 
   // Classificazione materiale
+  console.log('[SBAV DEBUG] mat=', JSON.stringify(mat), 'MAT_INOX=', MAT_INOX, 'MAT_STANDARD=', MAT_STANDARD);
   let categoria;
   if (MAT_INOX.includes(mat))        categoria = 'inox';
   else if (MAT_STANDARD.includes(mat)) categoria = 'standard';
   else                                 categoria = 'altro';
+  const mult_mat_debug = mults[categoria];
+  console.log('[SBAV DEBUG] categoria=', categoria, 'mult_mat=', mult_mat_debug);
 
   const macchine_sbav = ['sbavatrice_normale', 'ceriotti'];
   const candidati = [];
