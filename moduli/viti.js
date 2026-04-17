@@ -323,26 +323,27 @@ function calcolaSbavatura(dian, lungh, mat, qta, co, TV) {
     });
   }
 
-  // Preferenza Ceriotti su piccoli lotti (manuale, ma setup ridotto)
-  const soglia = cfg.soglia_qta_ceriotti;
+  // Selezione macchina a soglia unica
+  const soglia = cfg.soglia_qta_normale;
+  const normale_ok = candidati.find(c => c.macchina === 'sbavatrice_normale');
   const ceriotti_ok = candidati.find(c => c.macchina === 'ceriotti');
-  if (qta <= soglia && ceriotti_ok) return ceriotti_ok;
 
-  // Fallback: tornio
-  if (candidati.length === 0) {
-    const t = cfg.tornio;
-    return {
-      macchina: 'tornio',
-      nome_display: NOMI_DISPLAY_SBAV.tornio,
-      tempo_ciclo_sec: t.tempo_ciclo_sec,
-      setup_sec: t.setup_sec,
-      costo_totale: (t.setup_sec + t.tempo_ciclo_sec * qta) * co,
-    };
+  if (qta < soglia) {
+    if (ceriotti_ok) return ceriotti_ok;
+    if (normale_ok) return normale_ok;
+  } else {
+    if (normale_ok) return normale_ok;
+    if (ceriotti_ok) return ceriotti_ok;
   }
 
-  // Scegli il candidato con costo minimo
-  candidati.sort((a, b) => a.costo_totale - b.costo_totale);
-  return candidati[0];
+  // Fallback: tornio (nessuna sbavatrice compatibile)
+  return {
+    macchina: 'tornio',
+    nome_display: NOMI_DISPLAY_SBAV.tornio,
+    tempo_ciclo_sec: cfg.tornio.tempo_ciclo_sec,
+    setup_sec: cfg.tornio.setup_sec,
+    costo_totale: (cfg.tornio.setup_sec + cfg.tornio.tempo_ciclo_sec * qta) * co,
+  };
 }
 
 // ─── SMUSSO ───────────────────────────────────────────────────
