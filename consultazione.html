@@ -748,6 +748,9 @@ function renderAll(T, TD, TP, TV) {
     html += tableWrap(`<thead><tr><th>Categoria</th><th class="num">Molt. min→max</th></tr></thead><tbody>${rows}</tbody>`);
   }
 
+  html += groupTitle('Sbavatura — Regola preferenza Ceriotti');
+  html += `<div class="t-note">Qta ≤ ${TV.sbavatura.soglia_qta_ceriotti} pz → Ceriotti forzato (se dimensionalmente compatibile)</div>`;
+
   html += groupTitle('Brocciatura (5931)');
   html += tierTable(TV.tempi_brocciatura, 'secondi', 'Tempo (s)', 's');
 

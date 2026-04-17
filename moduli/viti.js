@@ -323,6 +323,11 @@ function calcolaSbavatura(dian, lungh, mat, qta, co, TV) {
     });
   }
 
+  // Preferenza Ceriotti su piccoli lotti (manuale, ma setup ridotto)
+  const soglia = cfg.soglia_qta_ceriotti;
+  const ceriotti_ok = candidati.find(c => c.macchina === 'ceriotti');
+  if (qta <= soglia && ceriotti_ok) return ceriotti_ok;
+
   // Fallback: tornio
   if (candidati.length === 0) {
     const t = cfg.tornio;
