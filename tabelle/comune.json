@@ -9,6 +9,7 @@
     "B7M": 1.65,
     "B16": 2.0,
     "42CD4": 1.6,
+    "A105": 1.2,
     "AISI 304": 4.0,
     "AISI 316": 5.2,
     "B8 cl.2": 4.2,
@@ -22,6 +23,7 @@
     "B7M": 7.85,
     "B16": 7.85,
     "42CD4": 7.85,
+    "A105": 7.85,
     "AISI 304": 8.0,
     "AISI 316": 8.0,
     "B8 cl.2": 8.0,
@@ -568,11 +570,14 @@
     "smusso": 1800,
     "rullatura": 1800,
     "tornitura_normale": 3600,
-    "tornitura_fantina": 7200
+    "tornitura_fantina": 7200,
+    "intestazione": 1667
   },
   "materiali_speciali_k": {
-    "F53": 3,
+    "Nitronic": null,
     "660": 5,
+    "F51": null,
+    "625": null,
     "718": 6
   },
   "degrado_operatore": {
@@ -580,5 +585,32 @@
     "degrado_massimo": 0.5,
     "durata_turno_ore": 8,
     "lavorazioni_applicabili": ["stampaggio", "rullatura"]
+  },
+  "tornitura_controllo": {
+    "parametri_per_materiale": {
+      "A105":      { "Vc": 200, "f": 0.25, "riduzione_diametro": 5 },
+      "42CD4":     { "Vc": 150, "f": 0.25, "riduzione_diametro": 5 },
+      "B7":        { "Vc": 150, "f": 0.25, "riduzione_diametro": 5 },
+      "L7":        { "Vc": 150, "f": 0.25, "riduzione_diametro": 5 },
+      "B16":       { "Vc": 150, "f": 0.25, "riduzione_diametro": 5 },
+      "B7M":       { "Vc": 150, "f": 0.25, "riduzione_diametro": 5 },
+      "AISI 304":  { "Vc": 130, "f": 0.25, "riduzione_diametro": 3.5 },
+      "AISI 316":  { "Vc": 130, "f": 0.25, "riduzione_diametro": 3.5 },
+      "B8 cl.2":   { "Vc": 130, "f": 0.25, "riduzione_diametro": 3.5 },
+      "B8M cl.2":  { "Vc": 130, "f": 0.25, "riduzione_diametro": 3.5 },
+      "inox":      { "Vc": 130, "f": 0.25, "riduzione_diametro": 3.5 },
+      "F51":       { "Vc":  40, "f": 0.17, "riduzione_diametro": 1.5 },
+      "625":       { "Vc":  30, "f": 0.17, "riduzione_diametro": 1.5 },
+      "718":       { "Vc":  30, "f": 0.17, "riduzione_diametro": 1.5 },
+      "660":       { "Vc":  20, "f": 0.17, "riduzione_diametro": 1.5 },
+      "Nitronic":  { "Vc":  20, "f": 0.17, "riduzione_diametro": 1.5 }
+    },
+    "tempo_minimo_secondi": 90,
+    "movimentazione_per_peso": [
+      { "fino_a_kg": 5,    "secondi": 15 },
+      { "fino_a_kg": 12,   "secondi": 25 },
+      { "fino_a_kg": 25,   "secondi": 40 },
+      { "fino_a_kg": null, "secondi": 60 }
+    ]
   }
 }

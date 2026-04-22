@@ -17,7 +17,7 @@ import {
   applicaDegradoOperatore,
 } from '../lib/calcolo_comune.js';
 
-const MAT_STANDARD = ['42CD4', 'B16', 'B7', 'L7', 'B7M'];
+const MAT_STANDARD = ['42CD4', 'B16', 'B7', 'L7', 'B7M', 'A105'];
 
 // ─── HELPERS INTERNI ─────────────────────────────────────────
 
