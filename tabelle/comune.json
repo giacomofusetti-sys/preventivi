@@ -574,5 +574,11 @@
     "F53": 3,
     "660": 5,
     "718": 6
+  },
+  "degrado_operatore": {
+    "tipo_curva": "lineare",
+    "degrado_massimo": 0.5,
+    "durata_turno_ore": 8,
+    "lavorazioni_applicabili": ["stampaggio", "rullatura"]
   }
 }

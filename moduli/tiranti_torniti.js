@@ -9,7 +9,8 @@ import {
   calcolaTempoTaglio, modulaCostoTaglio, taglioFin,
   calcolaTempoRullatura, rullaturaFin,
   calcolaMarcatura,
-  getModPeso, setupCosto, parseQta
+  getModPeso, setupCosto, parseQta,
+  applicaDegradoOperatore,
 } from '../lib/calcolo_comune.js';
 
 // --- TORNITURA ----------------------------------------------
@@ -156,7 +157,8 @@ export function calcolaTirantiTorniti(inputs, T) {
     : setupCosto(T.setup_secondi.tornitura_normale,  co1, qta);
 
   // --- Rullatura ---
-  const t_rull    = calcolaTempoRullatura(dian, lungh, passo, mat, T);
+  let t_rull      = calcolaTempoRullatura(dian, lungh, passo, mat, T);
+  t_rull          = applicaDegradoOperatore(t_rull, qta, T);
   const rulla_fin = rullaturaFin(t_rull, co1, co2, dian, qta);
   const setup_rull = setupCosto(T.setup_secondi.rullatura, co1, qta);
 

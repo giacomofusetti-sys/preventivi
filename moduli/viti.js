@@ -14,6 +14,7 @@ import {
   calcolaPeso,
   parseQta,
   setupCosto,
+  applicaDegradoOperatore,
 } from '../lib/calcolo_comune.js';
 
 const MAT_STANDARD = ['42CD4', 'B16', 'B7', 'L7', 'B7M'];
@@ -679,6 +680,7 @@ export function calcolaViti(inp, T, TV) {
   let t_stamp = 0, stamp_c = 0, stamp_fin = 0;
   if (STAMPAGGIO) {
     t_stamp  = calcolaTempoStampaggio(dian, TV);
+    t_stamp  = applicaDegradoOperatore(t_stamp, qta, T);
     stamp_c  = isInox ? t_stamp * co * 2 : t_stamp * co;
     stamp_fin = stamp_c * qta < 10 ? 10 / qta : stamp_c;
   }
@@ -726,7 +728,8 @@ export function calcolaViti(inp, T, TV) {
   }
 
   // ── Rullatura ─────────────────────────────────────────────
-  const t_rulla  = calcolaTempoRullatura(dian, filet, mat, TV);
+  let t_rulla    = calcolaTempoRullatura(dian, filet, mat, TV);
+  t_rulla        = applicaDegradoOperatore(t_rulla, qta, T);
   const ru_c     = t_rulla * co;
   const rull_fin = ru_c * qta < 10 ? 10 / qta : ru_c;
 

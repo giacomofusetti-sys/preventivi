@@ -9,7 +9,8 @@ import {
   calcolaPeso, getCostoMateriale,
   calcolaTempoRullatura, rullaturaFin,
   calcolaMarcatura,
-  getModPeso, setupCosto, parseQta
+  getModPeso, setupCosto, parseQta,
+  applicaDegradoOperatore,
 } from '../lib/calcolo_comune.js';
 
 // --- DIAMETRO TESTA -----------------------------------------
@@ -245,7 +246,8 @@ export function calcolaTirantiOcchio(inputs, T) {
   const setup_taglio = setupCosto(T.setup_secondi.taglio, co1, qta);
 
   // --- Stampaggio (solo se STAMPAGGIO) ---
-  const tempo_stamp = STAMPAGGIO ? calcolaTempoStampaggio(dian, mat) : 0;
+  let tempo_stamp = STAMPAGGIO ? calcolaTempoStampaggio(dian, mat) : 0;
+  if (STAMPAGGIO) tempo_stamp = applicaDegradoOperatore(tempo_stamp, qta, T);
   const stamp_rate  = dian < 48 ? co1 : co2;
   const st_raw      = STAMPAGGIO ? tempo_stamp * stamp_rate : 0;
   const st_costo    = STAMPAGGIO ? conMinimo(st_raw, qta) : 0;
@@ -269,7 +271,8 @@ export function calcolaTirantiOcchio(inputs, T) {
   const setup_fres = setupCosto(T.setup_secondi.tornitura_normale, co1, qta); // 3600s
 
   // --- Rullatura ---
-  const t_rull    = calcolaTempoRullatura(dian, lungh_g, passo, mat, T);
+  let t_rull      = calcolaTempoRullatura(dian, lungh_g, passo, mat, T);
+  t_rull          = applicaDegradoOperatore(t_rull, qta, T);
   const ru_costo  = rullaturaFin(t_rull, co1, co2, dian, qta);
   const setup_rull = setupCosto(T.setup_secondi.rullatura, co1, qta);
 

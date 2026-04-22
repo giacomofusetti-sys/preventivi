@@ -8,7 +8,8 @@ import {
   parseDia, getDiametroNominale, getDensita,
   calcolaPeso, getCostoMateriale,
   calcolaMarcatura,
-  getModPeso, setupCosto, parseQta
+  getModPeso, setupCosto, parseQta,
+  applicaDegradoOperatore,
 } from '../lib/calcolo_comune.js';
 
 // --- CHIAVE ESAGONALE ---------------------------------------
@@ -206,7 +207,8 @@ export function calcolaDadi(inputs, TC, TD) {
   const setup_fr = !STAMPAGGIO ? setupCosto(TD.setup_secondi.fresatura, coeff, qta) : 0;
 
   // --- Stampaggio ---
-  const tempo_st = STAMPAGGIO ? calcolaTempoStampaggio(dian, mat, TD) : 0;
+  let tempo_st   = STAMPAGGIO ? calcolaTempoStampaggio(dian, mat, TD) : 0;
+  if (STAMPAGGIO) tempo_st = applicaDegradoOperatore(tempo_st, qta, TC);
   const st       = STAMPAGGIO ? conMinimo(tempo_st * coeff, qta) : 0;
   const setup_st = STAMPAGGIO ? setupCosto(TD.setup_secondi.stampaggio, coeff, qta) : 0;
 

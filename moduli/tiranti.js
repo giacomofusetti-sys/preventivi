@@ -10,7 +10,8 @@ import {
   calcolaTempoSmusso, smussoCosto, smussoFin,
   calcolaTempoRullatura, rullaturaFin,
   calcolaMarcatura,
-  getModPeso, setupCosto, parseQta
+  getModPeso, setupCosto, parseQta,
+  applicaDegradoOperatore,
 } from '../lib/calcolo_comune.js';
 
 export function calcolaTiranti(inputs, T) {
@@ -60,7 +61,8 @@ export function calcolaTiranti(inputs, T) {
 
   // --- Rullatura ---
   const lung_fil  = PRIGIONIERO ? (fil_a + fil_b) : lungh;
-  const t_rull    = calcolaTempoRullatura(dian, lung_fil, passo, mat, T);
+  let t_rull      = calcolaTempoRullatura(dian, lung_fil, passo, mat, T);
+  t_rull          = applicaDegradoOperatore(t_rull, qta, T);
   const rulla_fin = rullaturaFin(t_rull, co1, co2, dian, qta);
 
   // --- Marcatura ---

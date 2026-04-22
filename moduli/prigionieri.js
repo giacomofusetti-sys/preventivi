@@ -7,7 +7,8 @@ import {
   MAT_INOX,
   parseDia, parseExpr, getDiametroMedio, getDiametroNominale, getDensita,
   calcolaPeso, getCostoMateriale,
-  calcolaMarcatura, getModPeso, setupCosto, parseQta
+  calcolaMarcatura, getModPeso, setupCosto, parseQta,
+  applicaDegradoOperatore,
 } from '../lib/calcolo_comune.js';
 
 // --- RADICE (m) ---------------------------------------------
@@ -207,7 +208,8 @@ export function calcolaPrigionieri(inputs, TC, TP) {
     : setupCosto(TP.setup_secondi.tornitura_normale, co1, qta);
 
   // --- Rullatura ---
-  const t_rull   = calcolaTempoRullatura(dian, b_fil, mat, TP);
+  let t_rull     = calcolaTempoRullatura(dian, b_fil, mat, TP);
+  t_rull         = applicaDegradoOperatore(t_rull, qta, TC);
   const ru_rate  = dian < 45 ? co1 : co2;
   const ru_raw   = t_rull * ru_rate;
   const ru_costo = ru_raw * qta < 10 ? 10 / qta : ru_raw;
