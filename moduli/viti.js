@@ -765,7 +765,7 @@ export function calcolaViti(inp, T, TV) {
     L_filettata = lungh;
   } else if (tipo === '5737' || tipo === '5931' || tipo === 'speciale') {
     L_liscia    = lungh_liscia;                      // = lungh - filet (se filet>0)
-    L_filettata = STAMPAGGIO ? 0 : filet;
+    L_filettata = filet;
   }
 
   const tornitura_info = calcolaTorniturraViti(
