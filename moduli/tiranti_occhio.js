@@ -11,6 +11,7 @@ import {
   calcolaMarcatura,
   getModPeso, setupCosto, parseQta,
   applicaDegradoOperatore,
+  tempoTornituraBase, tempoMovimentazione,
 } from '../lib/calcolo_comune.js';
 
 // --- DIAMETRO TESTA -----------------------------------------
@@ -77,24 +78,6 @@ function calcolaTaglioCosto(diaz, mat) {
     if (diaz <= 85)  return 1.00;
   }
   throw new Error(`Diametro barra ${diaz} fuori range per taglio`);
-}
-
-// --- TORNITURA ----------------------------------------------
-
-function calcolaTempoTornitura(diam_medio, dia_disp, lungh, mat, materiale_speciale, T) {
-  const differenza = dia_disp - diam_medio;
-  const div = MAT_INOX.includes(mat) ? 3 : 4;
-  const passate = Math.ceil(differenza / 3);
-  let tempo = (lungh / div) * passate;
-
-  if (mat === 'altro') {
-    const k = T.materiali_speciali_k?.[materiale_speciale];
-    if (!k) throw new Error(`Specifica un materiale_speciale valido per "altro" (F53, 660, 718)`);
-    tempo *= k;
-  }
-
-  const minimo = dian => dian < 45 ? 90 : 100;
-  return Math.max(tempo, minimo(diam_medio));
 }
 
 // --- FRESATURA (interpolazione su diametro testa) -----------
@@ -258,7 +241,12 @@ export function calcolaTirantiOcchio(inputs, T) {
     ? setupCosto(SETUP_STAMP_S, co1, qta) : 0;
 
   // --- Tornitura ---
-  const tempo_torn = calcolaTempoTornitura(diam, dia_disp, lungh, mat, materiale_speciale, T);
+  const tempo_torn_ciclo = tempoTornituraBase(
+    dia_disp, diam, lungh, mat, materiale_speciale, T
+  );
+  const mov_norm = tempoMovimentazione(peso_grezzo, 3, T);
+  const tempo_min = T.tornitura_controllo.tempo_minimo_secondi;
+  const tempo_torn = Math.max(tempo_torn_ciclo + mov_norm, tempo_min);
   const to_rate    = dian < 45 ? co1 : co2;
   const to_raw     = tempo_torn * to_rate;
   const to_costo   = conMinimo(to_raw, qta);

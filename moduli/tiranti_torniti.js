@@ -11,40 +11,14 @@ import {
   calcolaMarcatura,
   getModPeso, setupCosto, parseQta,
   applicaDegradoOperatore,
+  tempoTornituraBase, tempoMovimentazione,
 } from '../lib/calcolo_comune.js';
 
-// --- TORNITURA ----------------------------------------------
+// --- TORNITURA (helper di costo) ---------------------------
 
-function calcolaTempoTornitura(diam_medio, dia_disp, lungh, mat, materiale_speciale, T) {
-  const differenza = dia_disp - diam_medio;
-
-  // Divisore in base al materiale
-  const div = (mat === 'inox' || mat === 'altro') ? 3 : 4;
-
-  // Passate necessarie (ogni passata toglie max 3mm di differenza)
-  const passate = Math.ceil(differenza / 3);
-
-  let tempo = (lungh / div) * passate;
-
-  // Moltiplicatore per materiali speciali
-  if (mat === 'altro') {
-    const k = T.materiali_speciali_k[materiale_speciale];
-    if (!k) throw new Error(`Specifica un materiale_speciale valido per "altro" (F53, 660, 718)`);
-    tempo *= k;
-  }
-
-  // Minimo 75 secondi
-  return Math.max(tempo, 90);
-}
-
-function calcolaTempoSportello(dian) {
-  return dian < 45 ? 15 : 25;
-}
-
-function torniFin(tempo_torn, sportello, co1, co2, dian, qta, FANTINA) {
-  const costo_pieno = (tempo_torn + sportello) * (dian < 45 ? co1 : co2);
-  const costo_fantina = (tempo_torn / 2) * co1;
-
+function torniFin(tempo_torn, tempo_torn_fantina, co1, co2, dian, qta, FANTINA) {
+  const costo_pieno   = tempo_torn * (dian < 45 ? co1 : co2);
+  const costo_fantina = tempo_torn_fantina * co1;
   const costo = FANTINA ? costo_fantina : costo_pieno;
   return costo * qta < 10 ? 10 / qta : costo;
 }
@@ -144,13 +118,15 @@ export function calcolaTirantiTorniti(inputs, T) {
   }
 
   // --- Tornitura ---
-  const tempo_torn = calcolaTempoTornitura(diam, dia_disp, lungh, mat, materiale_speciale, T);
-  const sportello  = calcolaTempoSportello(dian);
-
-  const torni_fin_val = torniFin(tempo_torn, sportello, co1, co2, dian, qta, FANTINA);
-
-  const tempo_torn_def     = tempo_torn + sportello;
-  const tempo_torn_fantina = tempo_torn / 2;
+  // Tempo ciclo (senza movimentazione, senza minimo): a un unico diametro target = diam medio.
+  const tempo_torn_ciclo = tempoTornituraBase(
+    dia_disp, diam, lungh, mat, materiale_speciale, T
+  );
+  const mov_norm = tempoMovimentazione(peso_grezzo, 3, T);
+  const tempo_min = T.tornitura_controllo.tempo_minimo_secondi;
+  const tempo_torn         = Math.max(tempo_torn_ciclo + mov_norm, tempo_min);
+  const tempo_torn_fantina = tempo_torn_ciclo / 2;
+  const torni_fin_val = torniFin(tempo_torn, tempo_torn_fantina, co1, co2, dian, qta, FANTINA);
 
   const setup_torn = FANTINA
     ? setupCosto(T.setup_secondi.tornitura_fantina,  co1, qta)
@@ -191,7 +167,7 @@ export function calcolaTirantiTorniti(inputs, T) {
   } else {
     tempi_gestionale =
       `TAGLI ${Math.round(tempo_ta)}\n` +
-      `TORN1 ${Math.round(tempo_torn_def)}\n` +
+      `TORN1 ${Math.round(tempo_torn)}\n` +
       `RULLA ${Math.round(t_rull)}\n` +
       `ATAGL ${T.setup_secondi.taglio}\n` +
       `ATOR1 ${T.setup_secondi.tornitura_normale}\n` +
@@ -207,7 +183,7 @@ export function calcolaTirantiTorniti(inputs, T) {
     setup_taglio, setup_torn, setup_rull,
     costo_lav, costo_tot,
     // Tempi
-    tempo_ta, tempo_torn_def, tempo_torn_fantina, t_rull,
+    tempo_ta, tempo_torn, tempo_torn_fantina, t_rull,
     // Peso
     peso: peso_grezzo, peso_fin, diam, dian,
     peso_principale, peso_principale_reale, peso_lotto_completo,

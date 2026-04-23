@@ -15,30 +15,14 @@ import {
   calcolaMarcatura,
   getModPeso, setupCosto, parseQta,
   applicaDegradoOperatore,
+  tempoTornituraBase, tempoMovimentazione,
 } from '../lib/calcolo_comune.js';
 
 // --- Helper tornitura (da tiranti_torniti.js) ----------------
 
-function calcolaTempoTornitura(diam_medio, dia_disp, lungh, mat, materiale_speciale, T) {
-  const differenza = dia_disp - diam_medio;
-  const div = MAT_INOX.includes(mat) ? 3 : 4;
-  const passate = Math.ceil(differenza / 3);
-  let tempo = (lungh / div) * passate;
-  if (mat === 'altro') {
-    const k = T.materiali_speciali_k[materiale_speciale];
-    if (!k) throw new Error(`Specifica un materiale_speciale valido per "altro" (F53, 660, 718)`);
-    tempo *= k;
-  }
-  return Math.max(tempo, 90);
-}
-
-function calcolaTempoSportello(dian) {
-  return dian < 45 ? 15 : 25;
-}
-
-function torniFin(tempo_torn, sportello, co1, co2, dian, qta, FANTINA) {
-  const costo_pieno   = (tempo_torn + sportello) * (dian < 45 ? co1 : co2);
-  const costo_fantina = (tempo_torn / 2) * co1;
+function torniFin(tempo_torn, tempo_torn_fantina, co1, co2, dian, qta, FANTINA) {
+  const costo_pieno   = tempo_torn * (dian < 45 ? co1 : co2);
+  const costo_fantina = tempo_torn_fantina * co1;
   const costo = FANTINA ? costo_fantina : costo_pieno;
   return costo * qta < 10 ? 10 / qta : costo;
 }
@@ -219,11 +203,15 @@ export function calcolaTiranti(inputs, T) {
     }
 
     // Tornitura
-    const tempo_torn = calcolaTempoTornitura(diam, dia_disp, lungh, mat, materiale_speciale, T);
-    const sportello  = calcolaTempoSportello(dian);
-    const torni_fin  = torniFin(tempo_torn, sportello, co1, co2, dian, qta, FANTINA);
-    const tempo_torn_def     = tempo_torn + sportello;
-    const tempo_torn_fantina = tempo_torn / 2;
+    // Tempo ciclo (senza movimentazione, senza minimo): a un unico diametro target = diam medio.
+    const tempo_torn_ciclo = tempoTornituraBase(
+      dia_disp, diam, lungh, mat, materiale_speciale, T
+    );
+    const mov_norm = tempoMovimentazione(peso_grezzo, 3, T);
+    const tempo_min = T.tornitura_controllo.tempo_minimo_secondi;
+    const tempo_torn         = Math.max(tempo_torn_ciclo + mov_norm, tempo_min);
+    const tempo_torn_fantina = tempo_torn_ciclo / 2;
+    const torni_fin  = torniFin(tempo_torn, tempo_torn_fantina, co1, co2, dian, qta, FANTINA);
     const setup_torn = FANTINA
       ? setupCosto(T.setup_secondi.tornitura_fantina, co1, qta)
       : setupCosto(T.setup_secondi.tornitura_normale, co1, qta);
@@ -265,7 +253,7 @@ export function calcolaTiranti(inputs, T) {
       tempi_gestionale =
         riga_mat + '\n' +
         `TAGLI ${Math.round(tempo_ta)}\n` +
-        `TORN1 ${Math.round(tempo_torn_def)}\n` +
+        `TORN1 ${Math.round(tempo_torn)}\n` +
         `RULLA ${Math.round(t_rull)}\n` +
         `MARCA ${tempo_marc}\n` +
         `ATAGL ${T.setup_secondi.taglio}\n` +
@@ -282,7 +270,7 @@ export function calcolaTiranti(inputs, T) {
       setup_taglio, setup_torn, setup_rull,
       costo_lav, costo_tot,
       // Tempi
-      tempo_ta, tempo_torn_def, tempo_torn_fantina, t_rull,
+      tempo_ta, tempo_torn, tempo_torn_fantina, t_rull,
       tempo_marc, tempo_setup_marc,
       // Peso
       peso: peso_grezzo, peso_fin, diam, dian,
