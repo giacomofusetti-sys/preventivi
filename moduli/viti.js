@@ -306,13 +306,21 @@ function calcolaTorniturraViti(
 
   // Somma e minimo (solo se c'è tornitura)
   const has_tornitura = (A + B + C + E) > 0;
-  const tempo_raw = A + B + C + D_comp + E + mov;
+  const tempo_ciclo_raw = A + B + C + D_comp + E1 + E2;       // SENZA mov
+  const tempo_raw_with_mov = tempo_ciclo_raw + mov;
+  const tempo_min = T.tornitura_controllo.tempo_minimo_secondi;
   const tempo_totale = has_tornitura
-    ? Math.max(tempo_raw, T.tornitura_controllo.tempo_minimo_secondi)
+    ? Math.max(tempo_raw_with_mov, tempo_min)
     : 0;
+  const min_scattato = has_tornitura && (tempo_raw_with_mov < tempo_min);
+  const materiale_key = mat === 'altro' ? materiale_speciale : mat;
 
   return {
+    tempo_ciclo: tempo_ciclo_raw,
+    mov,
     tempo_totale,
+    min_scattato,
+    materiale_key,
     componenti: { A, B, C, D: D_comp, E1, E2, mov },
     has_tornitura,
     has_intestazione: C > 0,

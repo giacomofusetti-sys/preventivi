@@ -187,6 +187,20 @@ export function calcolaPrigionieri(inputs, TC, TP) {
   // Tornitura FANTINA: metà del ciclo (non cambia rispetto a oggi)
   const tempo_torn_fantina = tempo_torn_ciclo / 2;
 
+  // Oggetto diagnostico per UI (pannello dettaglio tornitura)
+  const tornitura_info = {
+    tempo_ciclo:   tempo_torn_ciclo,
+    mov:           mov_norm,
+    tempo_totale:  tempo_torn,
+    min_scattato:  tempo_torn_ciclo + mov_norm < tempo_min,
+    materiale_key: mat === 'altro' ? materiale_speciale : mat,
+    componenti: {
+      fil:    tempo_torn_fil,
+      liscia: tempo_torn_liscia,
+      mov:    mov_norm,
+    },
+  };
+
   const to_rate = dian < 45 ? co1 : co2;
   const to_pieno   = tempo_torn * to_rate;
   const to_fantina = tempo_torn_fantina * co1;
@@ -272,5 +286,8 @@ export function calcolaPrigionieri(inputs, TC, TP) {
     qta, qta_x, qta_str, tipo, mat,
     messages: [],
     tempi_gestionale,
+
+    // Diagnostica tornitura (UI)
+    tornitura_info,
   };
 }

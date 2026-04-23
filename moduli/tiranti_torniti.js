@@ -128,6 +128,19 @@ export function calcolaTirantiTorniti(inputs, T) {
   const tempo_torn_fantina = tempo_torn_ciclo / 2;
   const torni_fin_val = torniFin(tempo_torn, tempo_torn_fantina, co1, co2, dian, qta, FANTINA);
 
+  // Oggetto diagnostico per UI (pannello dettaglio tornitura)
+  const tornitura_info = {
+    tempo_ciclo:   tempo_torn_ciclo,
+    mov:           mov_norm,
+    tempo_totale:  tempo_torn,
+    min_scattato:  tempo_torn_ciclo + mov_norm < tempo_min,
+    materiale_key: mat === 'altro' ? materiale_speciale : mat,
+    componenti: {
+      ciclo: tempo_torn_ciclo,
+      mov:   mov_norm,
+    },
+  };
+
   const setup_torn = FANTINA
     ? setupCosto(T.setup_secondi.tornitura_fantina,  co1, qta)
     : setupCosto(T.setup_secondi.tornitura_normale,  co1, qta);
@@ -195,5 +208,8 @@ export function calcolaTirantiTorniti(inputs, T) {
     qta, qta_x, qta_str,
     mat, messages: [],
     tempi_gestionale,
+
+    // Diagnostica tornitura (UI)
+    tornitura_info,
   };
 }

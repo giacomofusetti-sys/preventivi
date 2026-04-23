@@ -252,6 +252,19 @@ export function calcolaTirantiOcchio(inputs, T) {
   const to_costo   = conMinimo(to_raw, qta);
   const setup_torn = setupCosto(T.setup_secondi.tornitura_normale, co1, qta);
 
+  // Oggetto diagnostico per UI (pannello dettaglio tornitura)
+  const tornitura_info = {
+    tempo_ciclo:   tempo_torn_ciclo,
+    mov:           mov_norm,
+    tempo_totale:  tempo_torn,
+    min_scattato:  tempo_torn_ciclo + mov_norm < tempo_min,
+    materiale_key: mat === 'altro' ? materiale_speciale : mat,
+    componenti: {
+      ciclo: tempo_torn_ciclo,
+      mov:   mov_norm,
+    },
+  };
+
   // --- Fresatura ---
   const tempo_fres = calcolaTempoFresatura(mat, testa);
   const fr_raw     = tempo_fres * co1;
@@ -333,5 +346,8 @@ export function calcolaTirantiOcchio(inputs, T) {
     qta, qta_x, qta_str, tipo, mat,
     messages: [],
     tempi_gestionale,
+
+    // Diagnostica tornitura (UI)
+    tornitura_info,
   };
 }
