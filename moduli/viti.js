@@ -195,21 +195,26 @@ function calcolaSviluppoTesta(tipo, dati_testa, area_tondo) {
 
 // ─── TORNITURA VITI (modello dichiarativo) ───────────────────
 //
-// La tornitura di una vite si compone di 5 tipi di componenti, ciascuno
-// attivato in base al tipo/STAMPAGGIO/materiale:
+// Due rami mutuamente esclusivi:
 //
-//   A — Parte LISCIA del gambo (da dia_disp a dia_parte_liscia)
-//   B — Parte FILETTATA del gambo (da dia_disp a dia_medio)
-//   C — Intestazione del tondo (solo FRESA)
-//   D — Sottotesta (se c'è tornitura gambo)
-//   E — Testa 5931 inox/altro stampata (3 fasi: E1 intestazione + E2 tornitura
-//       laterale + E3 fresatura cava; E3 è gestita altrove)
+// 1) COPIATORE (macchina semiautomatica): si attiva solo se
+//    STAMPAGGIO=true, tipo ∈ {5737, 5931}, NON è 5931 inox/altro,
+//    dia_disp > dia_medio (perno da tornire), dia_disp ≤ dia_parte_liscia
+//    (parte liscia già a misura di stampaggio). Caso tipico: vite mezzo
+//    filetto stampata che richiede solo la riduzione del perno al medio.
+//    Formula classica: (L_filettata/div) × ceil(Δ/3) + 5s offset.
+//    Niente movimentazione, niente minimo 90s. Il moltiplicatore
+//    materiali_speciali_k si applica se mat === 'altro'.
 //
-// Movimentazione sempre, minimo applicato solo se c'è tornitura attiva.
-//
-// Le lunghezze L_liscia e L_filettata sono calcolate dal chiamante in base
-// a tipo + STAMPAGGIO (per 5737/5931 stampati il filetto è stampato e rullato
-// direttamente, quindi L_filettata = 0).
+// 2) CN (controllo numerico): tutti gli altri casi. Composizione di 5
+//    componenti dichiarative:
+//      A — Parte LISCIA del gambo (da dia_disp a dia_parte_liscia)
+//      B — Parte FILETTATA del gambo (da dia_disp a dia_medio)
+//      C — Intestazione del tondo (solo FRESA)
+//      D — Sottotesta (se c'è tornitura gambo)
+//      E — Testa 5931 inox/altro stampata (3 fasi: E1 intestazione + E2
+//          tornitura laterale + E3 fresatura cava gestita altrove)
+//    Più movimentazione; minimo 90s applicato se c'è tornitura attiva.
 
 function calcolaTorniturraViti(
   tipo, dian, dia_medio, dia_disp, dia_parte_liscia,
@@ -243,6 +248,52 @@ function calcolaTorniturraViti(
     }
   }
 
+  const materiale_key = mat === 'altro' ? materiale_speciale : mat;
+
+  // Discriminante ramo E (testa 5931 inox/altro stampata)
+  const is5931InoxAltro =
+    tipo === '5931' &&
+    (mat === 'altro' || MAT_INOX.includes(mat)) &&
+    STAMPAGGIO;
+
+  // Discriminante ramo COPIATORE
+  const is_copiatore =
+    STAMPAGGIO &&
+    (tipo === '5737' || tipo === '5931') &&
+    !is5931InoxAltro &&
+    dia_disp > dia_medio &&
+    dia_disp <= dia_parte_liscia;
+
+  // ─── RAMO COPIATORE ────────────────────────────────────────
+  if (is_copiatore) {
+    const div = MAT_INOX.includes(mat) ? 3 : 4;
+    let tempo_copiatore = (L_filettata / div) * Math.ceil((dia_disp - dia_medio) / 3);
+    tempo_copiatore += 5; // offset fisso 5s (copiatore, no mov, no min)
+
+    if (mat === 'altro') {
+      const k = T.materiali_speciali_k?.[materiale_speciale];
+      if (!k) throw new Error(`Specifica un materiale_speciale valido per "altro"`);
+      tempo_copiatore *= k;
+    }
+
+    return {
+      tempo_ciclo: tempo_copiatore,
+      mov: 0,
+      tempo_totale: tempo_copiatore,
+      min_scattato: false,
+      materiale_key,
+      componenti: { A: 0, B: tempo_copiatore, C: 0, D: 0, E1: 0, E2: 0, mov: 0 },
+      has_tornitura: true,
+      has_intestazione: false,
+      has_testa_5931: false,
+      ha_extensione_testa_ex: false,
+      L_liscia_eff: L_liscia,
+      is_copiatore: true,
+    };
+  }
+
+  // ─── RAMO CN (controllo numerico) ──────────────────────────
+
   // A — tornitura parte liscia (con eventuale estensione per testa esagonale)
   const A = (dia_disp > dia_parte_liscia && L_liscia_eff > 0)
     ? tempoTornituraBase(dia_disp, dia_parte_liscia, L_liscia_eff, mat, materiale_speciale, T)
@@ -261,11 +312,6 @@ function calcolaTorniturraViti(
   // E — procedura testa 5931 inox/altro stampata (3 fasi; E3 fresatura cava è altrove)
   // NOTA: dati_testa.dk include già il +2 per inox/altro (dk_eff). Il diametro
   // "finito" target è dati_testa.dk - 2; la tornitura laterale va da dk a dk-2.
-  const is5931InoxAltro =
-    tipo === '5931' &&
-    (mat === 'altro' || MAT_INOX.includes(mat)) &&
-    STAMPAGGIO;
-
   let E1 = 0, E2 = 0;
   if (is5931InoxAltro) {
     // NOTA: getDatiTesta contiene un workaround storico che per
@@ -313,7 +359,6 @@ function calcolaTorniturraViti(
     ? Math.max(tempo_raw_with_mov, tempo_min)
     : 0;
   const min_scattato = has_tornitura && (tempo_raw_with_mov < tempo_min);
-  const materiale_key = mat === 'altro' ? materiale_speciale : mat;
 
   return {
     tempo_ciclo: tempo_ciclo_raw,
@@ -327,6 +372,7 @@ function calcolaTorniturraViti(
     has_testa_5931: is5931InoxAltro,
     ha_extensione_testa_ex,
     L_liscia_eff,
+    is_copiatore: false,
   };
 }
 
