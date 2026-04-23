@@ -18,7 +18,7 @@ import {
   tempoTornituraBase, tempoMovimentazione,
 } from '../lib/calcolo_comune.js';
 
-// --- Helper tornitura (da tiranti_torniti.js) ----------------
+// --- Helper tornitura ---------------------------------------
 
 function torniFin(tempo_torn, tempo_torn_fantina, co1, co2, dian, qta, FANTINA) {
   const costo_pieno   = tempo_torn * (dian < 45 ? co1 : co2);
@@ -91,7 +91,7 @@ export function calcolaTiranti(inputs, T) {
 
   if (!ha_tornitura) {
     // ══════════════════════════════════════════════════════
-    // PATH SEMPLICE — logica tiranti.js (smusso, no tornitura)
+    // PATH SEMPLICE — smusso, no tornitura
     // ══════════════════════════════════════════════════════
 
     const peso = calcolaPeso(diam, lungh, dens);
@@ -169,7 +169,7 @@ export function calcolaTiranti(inputs, T) {
 
   } else {
     // ══════════════════════════════════════════════════════
-    // PATH TORNITO — logica tiranti_torniti.js (tornitura, no smusso)
+    // PATH TORNITO — tornitura, no smusso
     // ══════════════════════════════════════════════════════
 
     const peso_grezzo = calcolaPeso(dia_disp, lungh, dens);
