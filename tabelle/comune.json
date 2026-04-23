@@ -588,29 +588,30 @@
   },
   "tornitura_controllo": {
     "parametri_per_materiale": {
-      "A105":      { "Vc": 200, "f": 0.25, "riduzione_diametro": 5 },
-      "42CD4":     { "Vc": 150, "f": 0.25, "riduzione_diametro": 5 },
-      "B7":        { "Vc": 150, "f": 0.25, "riduzione_diametro": 5 },
-      "L7":        { "Vc": 150, "f": 0.25, "riduzione_diametro": 5 },
-      "B16":       { "Vc": 150, "f": 0.25, "riduzione_diametro": 5 },
-      "B7M":       { "Vc": 150, "f": 0.25, "riduzione_diametro": 5 },
-      "AISI 304":  { "Vc": 130, "f": 0.25, "riduzione_diametro": 3.5 },
-      "AISI 316":  { "Vc": 130, "f": 0.25, "riduzione_diametro": 3.5 },
-      "B8 cl.2":   { "Vc": 130, "f": 0.25, "riduzione_diametro": 3.5 },
-      "B8M cl.2":  { "Vc": 130, "f": 0.25, "riduzione_diametro": 3.5 },
-      "inox":      { "Vc": 130, "f": 0.25, "riduzione_diametro": 3.5 },
-      "F51":       { "Vc":  40, "f": 0.17, "riduzione_diametro": 1.5 },
-      "625":       { "Vc":  30, "f": 0.17, "riduzione_diametro": 1.5 },
-      "718":       { "Vc":  30, "f": 0.17, "riduzione_diametro": 1.5 },
-      "660":       { "Vc":  20, "f": 0.17, "riduzione_diametro": 1.5 },
-      "Nitronic":  { "Vc":  20, "f": 0.17, "riduzione_diametro": 1.5 }
+      "A105":      { "Vc": 200, "f": 0.25, "riduzione_diametro": 5,   "f_intestazione": 0.10 },
+      "42CD4":     { "Vc": 150, "f": 0.25, "riduzione_diametro": 5,   "f_intestazione": 0.10 },
+      "B7":        { "Vc": 150, "f": 0.25, "riduzione_diametro": 5,   "f_intestazione": 0.10 },
+      "L7":        { "Vc": 150, "f": 0.25, "riduzione_diametro": 5,   "f_intestazione": 0.10 },
+      "B16":       { "Vc": 150, "f": 0.25, "riduzione_diametro": 5,   "f_intestazione": 0.10 },
+      "B7M":       { "Vc": 150, "f": 0.25, "riduzione_diametro": 5,   "f_intestazione": 0.10 },
+      "AISI 304":  { "Vc": 130, "f": 0.25, "riduzione_diametro": 3.5, "f_intestazione": 0.09 },
+      "AISI 316":  { "Vc": 130, "f": 0.25, "riduzione_diametro": 3.5, "f_intestazione": 0.09 },
+      "B8 cl.2":   { "Vc": 130, "f": 0.25, "riduzione_diametro": 3.5, "f_intestazione": 0.09 },
+      "B8M cl.2":  { "Vc": 130, "f": 0.25, "riduzione_diametro": 3.5, "f_intestazione": 0.09 },
+      "inox":      { "Vc": 130, "f": 0.25, "riduzione_diametro": 3.5, "f_intestazione": 0.09 },
+      "F51":       { "Vc":  40, "f": 0.17, "riduzione_diametro": 1.5, "f_intestazione": 0.07 },
+      "625":       { "Vc":  30, "f": 0.17, "riduzione_diametro": 1.5, "f_intestazione": 0.07 },
+      "718":       { "Vc":  30, "f": 0.17, "riduzione_diametro": 1.5, "f_intestazione": 0.07 },
+      "660":       { "Vc":  20, "f": 0.17, "riduzione_diametro": 1.5, "f_intestazione": 0.07 },
+      "Nitronic":  { "Vc":  20, "f": 0.17, "riduzione_diametro": 1.5, "f_intestazione": 0.07 }
     },
     "tempo_minimo_secondi": 90,
+    "giri_intestazione": 1000,
     "movimentazione_per_peso": [
-      { "fino_a_kg": 5,    "secondi": 15 },
-      { "fino_a_kg": 12,   "secondi": 25 },
-      { "fino_a_kg": 25,   "secondi": 40 },
-      { "fino_a_kg": null, "secondi": 60 }
+      { "fino_a_kg": 5,    "secondi": 10 },
+      { "fino_a_kg": 12,   "secondi": 15 },
+      { "fino_a_kg": 25,   "secondi": 22 },
+      { "fino_a_kg": null, "secondi": 30 }
     ]
   }
 }
