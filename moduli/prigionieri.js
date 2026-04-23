@@ -9,6 +9,7 @@ import {
   calcolaPeso, getCostoMateriale,
   calcolaMarcatura, getModPeso, setupCosto, parseQta,
   applicaDegradoOperatore,
+  tempoTornituraBase, tempoMovimentazione,
 } from '../lib/calcolo_comune.js';
 
 // --- RADICE (m) ---------------------------------------------
@@ -64,26 +65,6 @@ function calcolaTaglio(diaz, mat, TP) {
     if (diaz <= r.fino_a) return r.costo;
   }
   throw new Error(`Diametro barra ${diaz} fuori range per taglio`);
-}
-
-// --- TORNITURA ----------------------------------------------
-
-function calcolaTempoTornitura(
-  lungh_fil, lungh_liscia,
-  differenza_fil, differenza_liscia,
-  mat, materiale_speciale, div, T
-) {
-  const t_fil    = (lungh_fil    / div) * Math.ceil(differenza_fil    / 3);
-  const t_liscia = (lungh_liscia / div) * Math.ceil(Math.max(differenza_liscia, 0) / 3);
-  let tempo = t_fil + t_liscia + 20;
-
-  // Materiali speciali
-  if (mat === 'altro') {
-    const k = T.materiali_speciali_k?.[materiale_speciale];
-    if (k) tempo *= k;
-  }
-
-  return Math.max(tempo, 90);
 }
 
 // --- RULLATURA ----------------------------------------------
@@ -185,17 +166,26 @@ export function calcolaPrigionieri(inputs, TC, TP) {
   }
 
   // --- Tornitura ---
-  const div = MAT_INOX.includes(mat) ? 3 : 4;
-  const differenza_fil    = dia_disp - diam;
-  const differenza_liscia = dia_disp - dian_liscia;
-
-  const tempo_torn = calcolaTempoTornitura(
-    lungh_fil, lungh_liscia,
-    differenza_fil, differenza_liscia,
-    mat, materiale_speciale, div, TC
+  // Tempo ciclo di una tornitura normale, senza movimentazione.
+  // Scomposto in parte filettata (target = dia_medio) + parte liscia (target = dian_liscia).
+  const tempo_torn_fil = tempoTornituraBase(
+    dia_disp, diam, lungh_fil, mat, materiale_speciale, TC
   );
+  const tempo_torn_liscia = tempoTornituraBase(
+    dia_disp, dian_liscia, lungh_liscia, mat, materiale_speciale, TC
+  );
+  const tempo_torn_ciclo = tempo_torn_fil + tempo_torn_liscia;
 
-  const tempo_torn_fantina = tempo_torn / 2;
+  // Movimentazione solo per la tornitura normale (fantina: no doppia inversione)
+  const mov_norm = tempoMovimentazione(peso_grezzo, 3, TC);
+
+  const tempo_min = TC.tornitura_controllo.tempo_minimo_secondi;
+
+  // Tornitura NORMALE: ciclo + movimentazione, con minimo
+  const tempo_torn = Math.max(tempo_torn_ciclo + mov_norm, tempo_min);
+
+  // Tornitura FANTINA: metà del ciclo (non cambia rispetto a oggi)
+  const tempo_torn_fantina = tempo_torn_ciclo / 2;
 
   const to_rate = dian < 45 ? co1 : co2;
   const to_pieno   = tempo_torn * to_rate;
