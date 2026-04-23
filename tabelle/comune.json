@@ -571,7 +571,9 @@
     "rullatura": 1800,
     "tornitura_normale": 3600,
     "tornitura_fantina": 7200,
-    "intestazione": 1667
+    "intestazione": 1667,
+    "testa_5931_intestazione": 1800,
+    "testa_5931_tornitura": 1800
   },
   "materiali_speciali_k": {
     "Nitronic": null,

@@ -15,6 +15,9 @@ import {
   parseQta,
   setupCosto,
   applicaDegradoOperatore,
+  tempoTornituraBase,
+  tempoSfacciatura,
+  tempoMovimentazione,
 } from '../lib/calcolo_comune.js';
 
 const MAT_STANDARD = ['42CD4', 'B16', 'B7', 'L7', 'B7M', 'A105'];
@@ -190,85 +193,133 @@ function calcolaSviluppoTesta(tipo, dati_testa, area_tondo) {
   return 0;
 }
 
-// ─── TORNITURA ────────────────────────────────────────────────
+// ─── TORNITURA VITI (modello dichiarativo) ───────────────────
+//
+// La tornitura di una vite si compone di 5 tipi di componenti, ciascuno
+// attivato in base al tipo/STAMPAGGIO/materiale:
+//
+//   A — Parte LISCIA del gambo (da dia_disp a dia_parte_liscia)
+//   B — Parte FILETTATA del gambo (da dia_disp a dia_medio)
+//   C — Intestazione del tondo (solo FRESA)
+//   D — Sottotesta (se c'è tornitura gambo)
+//   E — Testa 5931 inox/altro stampata (3 fasi: E1 intestazione + E2 tornitura
+//       laterale + E3 fresatura cava; E3 è gestita altrove)
+//
+// Movimentazione sempre, minimo applicato solo se c'è tornitura attiva.
+//
+// Le lunghezze L_liscia e L_filettata sono calcolate dal chiamante in base
+// a tipo + STAMPAGGIO (per 5737/5931 stampati il filetto è stampato e rullato
+// direttamente, quindi L_filettata = 0).
 
-function calcolaTornitura(tipo, dian, medio, dia_disp, dia_parte_liscia,
-                           filet, lungh, mat, STAMPAGGIO, dati_testa,
-                           materiale_speciale, TV, T) {
-  const differenza_fil    = dia_disp - medio;
-  const differenza_liscia = dia_disp - dia_parte_liscia;
-  const lungh_liscia      = filet > 0 ? lungh - filet : 0;
-  const div               = MAT_INOX.includes(mat) ? 3 : 4;
-
-  // Parte filettata da tornire
-  let pfdt = 0;
-  if (tipo === '5739') {
-    pfdt = differenza_fil > 0 ? lungh : 0;
-  } else if (tipo === '5737' || tipo === 'speciale') {
-    pfdt = filet;
-  } else if (tipo === '5931') {
-    if (filet <= lungh && differenza_fil > 0) pfdt = filet;
-    else if (lungh <= filet && differenza_fil <= 0) pfdt = 0;
-    else pfdt = lungh;
-  }
-
-  // Parte liscia da tornire
-  let pldt_base = 0;
-  if (tipo === '5737' || tipo === 'speciale') {
-    pldt_base = differenza_liscia > 0 ? lungh_liscia : 0;
-  } else if (tipo === '5931') {
-    if (lungh <= filet && differenza_fil <= 0) pldt_base = 0;
-    else if (differenza_liscia <= 0) pldt_base = 0;
-    else pldt_base = lungh_liscia;
-  }
-
-  // Aggiungi tornitura testa
-  let pldt = pldt_base;
-  if (tipo === '5931') {
-    const hc = dati_testa.hc ?? 0;
-    if (!STAMPAGGIO) {
-      pldt += hc;
-    } else if (MAT_INOX.includes(mat)) {
-      pldt += hc;
-    }
-  } else if ((tipo === '5737' || tipo === '5739') && !STAMPAGGIO) {
-    // Con FRESA si torna la testa esagonale se il tondo è abbastanza grande
-    const h = dati_testa.h ?? 0;
+function calcolaTorniturraViti(
+  tipo, dian, dia_medio, dia_disp, dia_parte_liscia,
+  L_filettata, L_liscia,
+  mat, materiale_speciale,
+  STAMPAGGIO, dati_testa,
+  peso_grezzo,
+  T
+) {
+  // Estensione L_liscia per testa esagonale tornita da tondo grosso:
+  // se il tondo è più largo dello spigolo + 5 mm, il tornio abbassa
+  // anche il lato della testa (non solo il gambo). L'estensione vale
+  // solo per FRESA e per teste esagonali (5737, 5739, speciale-esagonale).
+  let L_liscia_eff = L_liscia;
+  let ha_extensione_testa_ex = false;
+  const testa_esagonale =
+    !STAMPAGGIO && (
+      tipo === '5737' ||
+      tipo === '5739' ||
+      (tipo === 'speciale' && dati_testa.sub === 'esagonale')
+    );
+  if (testa_esagonale) {
     const s = dati_testa.s ?? 0;
-    if (dia_disp >= s * 1.154 + 5) pldt += h;
-  } else if (tipo === 'speciale' && !STAMPAGGIO) {
-    // Con FRESA la testa speciale va tornita/fresata dal tondo
-    pldt += dati_testa.h_testa ?? 0;
-  }
-
-  // Tempi
-  const ttf = (pfdt / div) * Math.ceil(differenza_fil / 3);
-  const ttl = (pldt  / div) * Math.ceil(Math.max(differenza_liscia, 0) / 3);
-
-  let tempo = ttf + ttl;
-  if (tempo > 0) tempo += 15;
-
-  // Caso semplice: solo filetto su pezzo corto, gambo già a misura — nessun minimo
-  if ((tipo === '5737' || tipo === '5931' || tipo === 'speciale') && lungh < 350 && pldt_base === 0 && differenza_fil <= 0) {
-    tempo = (filet / div) * Math.ceil(differenza_fil / 3) + 12;
-    if (tempo <= 0) return 0;
-    if (mat === 'altro') {
-      const k = T.materiali_speciali_k[materiale_speciale];
-      if (!k) throw new Error('Specifica un materiale_speciale valido per "altro" (F53, 660, 718)');
-      tempo *= k;
+    const spigolo = s * 1.154;
+    if (s > 0 && dia_disp >= spigolo + 5) {
+      const h_testa_esa = dati_testa.h ?? dati_testa.h_testa ?? 0;
+      if (h_testa_esa > 0) {
+        L_liscia_eff = L_liscia + h_testa_esa;
+        ha_extensione_testa_ex = true;
+      }
     }
-    return tempo;
   }
 
-  // Caso generale (tornitura parte liscia o pezzo lungo): minimo 90s
-  if (tempo <= 0) return 0;
-  tempo = Math.max(tempo, 90);
-  if (mat === 'altro') {
-    const k = T.materiali_speciali_k[materiale_speciale];
-    if (!k) throw new Error('Specifica un materiale_speciale valido per "altro" (F53, 660, 718)');
-    tempo *= k;
+  // A — tornitura parte liscia (con eventuale estensione per testa esagonale)
+  const A = (dia_disp > dia_parte_liscia && L_liscia_eff > 0)
+    ? tempoTornituraBase(dia_disp, dia_parte_liscia, L_liscia_eff, mat, materiale_speciale, T)
+    : 0;
+
+  // B — tornitura parte filettata
+  const B = (dia_disp > dia_medio && L_filettata > 0)
+    ? tempoTornituraBase(dia_disp, dia_medio, L_filettata, mat, materiale_speciale, T)
+    : 0;
+
+  // C — intestazione tondo (solo FRESA)
+  const C = !STAMPAGGIO
+    ? tempoSfacciatura(dia_disp / 2, mat, materiale_speciale, T)
+    : 0;
+
+  // E — procedura testa 5931 inox/altro stampata (3 fasi; E3 fresatura cava è altrove)
+  // NOTA: dati_testa.dk include già il +2 per inox/altro (dk_eff). Il diametro
+  // "finito" target è dati_testa.dk - 2; la tornitura laterale va da dk a dk-2.
+  const is5931InoxAltro =
+    tipo === '5931' &&
+    (mat === 'altro' || MAT_INOX.includes(mat)) &&
+    STAMPAGGIO;
+
+  let E1 = 0, E2 = 0;
+  if (is5931InoxAltro) {
+    // NOTA: getDatiTesta contiene un workaround storico che per
+    // inox/altro restituisce già dk+2 invece del dk nominale.
+    // Qui lo rispettiamo, ma andrebbe ripulito in futuro (backlog).
+    const D_testa_eff = dati_testa.dk ?? 0;       // diametro testa dopo stampaggio (= dk_nominale + 2)
+    const D_testa_fin = D_testa_eff - 2;          // diametro testa finito (= dk_nominale)
+    const h_testa     = dati_testa.hc ?? 0;
+    E1 = tempoSfacciatura(D_testa_fin / 2, mat, materiale_speciale, T);
+    E2 = tempoTornituraBase(D_testa_eff, D_testa_fin, h_testa, mat, materiale_speciale, T);
   }
-  return tempo;
+  const E = E1 + E2;
+
+  // D — sottotesta (solo se c'è tornitura gambo e NON è caso E)
+  let D_comp = 0;
+  if ((A + B) > 0 && !is5931InoxAltro) {
+    let raggio_sottotesta = 0;
+    if (tipo === '5737' || tipo === '5739') {
+      const s = dati_testa.s ?? 0;
+      raggio_sottotesta = (s * 1.154) / 2;
+    } else if (tipo === '5931') {
+      const dk = dati_testa.dk ?? 0;
+      raggio_sottotesta = dk / 2;
+    } else if (tipo === 'speciale') {
+      // Per speciale: usa il "diag" caratteristico della sezione testa.
+      const sub = dati_testa.sub;
+      if (sub === 'esagonale')      raggio_sottotesta = ((dati_testa.s ?? 0) * 1.154) / 2;
+      else if (sub === 'tcei')      raggio_sottotesta = ((dati_testa.dk ?? 0)) / 2;
+      // Altre sotto-forme: sottotesta omesso (diag non derivabile in modo uniforme).
+    }
+    if (raggio_sottotesta > 0) {
+      D_comp = tempoSfacciatura(raggio_sottotesta, mat, materiale_speciale, T);
+    }
+  }
+
+  // Movimentazione (×1 per le viti, sul caricatore automatico)
+  const mov = tempoMovimentazione(peso_grezzo, 1, T);
+
+  // Somma e minimo (solo se c'è tornitura)
+  const has_tornitura = (A + B + C + E) > 0;
+  const tempo_raw = A + B + C + D_comp + E + mov;
+  const tempo_totale = has_tornitura
+    ? Math.max(tempo_raw, T.tornitura_controllo.tempo_minimo_secondi)
+    : 0;
+
+  return {
+    tempo_totale,
+    componenti: { A, B, C, D: D_comp, E1, E2, mov },
+    has_tornitura,
+    has_intestazione: C > 0,
+    has_testa_5931: is5931InoxAltro,
+    ha_extensione_testa_ex,
+    L_liscia_eff,
+  };
 }
 
 // ─── SBAVATURA ────────────────────────────────────────────────
@@ -695,19 +746,33 @@ export function calcolaViti(inp, T, TV) {
   }
 
   // ── Tornitura ─────────────────────────────────────────────
-  const differenza_fil    = dia_disp - medio;
-  const differenza_liscia = dia_disp - dpl;
-  let t_torn = 0, torn_fin = 0;
-  if (differenza_fil > 0 || !STAMPAGGIO) {
-    t_torn = calcolaTornitura(
-      tipo, dian, medio, dia_disp, dpl,
-      filet, lungh, mat, STAMPAGGIO, dati_testa,
-      materiale_speciale, TV, T
-    );
-    if (t_torn > 0) {
-      const tc = t_torn * co;
-      torn_fin = tc * qta < 10 ? 10 / qta : tc;
-    }
+  const differenza_fil = dia_disp - medio;
+
+  // Calcolo lunghezze da tornire (in base a tipo + STAMPAGGIO).
+  // Per 5737/5931/speciale stampati, la parte filettata è formata in
+  // stampaggio e rullata direttamente: L_filettata = 0.
+  let L_liscia = 0, L_filettata = 0;
+  if (tipo === '5739') {
+    L_liscia    = 0;
+    L_filettata = lungh;
+  } else if (tipo === '5737' || tipo === '5931' || tipo === 'speciale') {
+    L_liscia    = lungh_liscia;                      // = lungh - filet (se filet>0)
+    L_filettata = STAMPAGGIO ? 0 : filet;
+  }
+
+  const tornitura_info = calcolaTorniturraViti(
+    tipo, dian, medio, dia_disp, dpl,
+    L_filettata, L_liscia,
+    mat, materiale_speciale,
+    STAMPAGGIO, dati_testa,
+    peso,
+    T
+  );
+  const t_torn = tornitura_info.tempo_totale;
+  let torn_fin = 0;
+  if (t_torn > 0) {
+    const tc = t_torn * co;
+    torn_fin = tc * qta < 10 ? 10 / qta : tc;
   }
 
   // ── Fresatura testa (5737/5739/speciale con FRESA) ────────
@@ -754,7 +819,14 @@ export function calcolaViti(inp, T, TV) {
   const setup_smusso  = ha_smusso ? setupCosto(S.smusso,    co1, qta) : 0;
   const setup_stamp   = STAMPAGGIO ? setupCosto(S.stampaggio, co1, qta) : 0;
   const setup_sbav    = STAMPAGGIO && sbav_info ? setupCosto(sbav_info.setup_sec, co1, qta) : 0;
-  const setup_torn    = t_torn > 0  ? setupCosto(S.tornitura,  co1, qta) : 0;
+  const setup_torn    = tornitura_info.has_tornitura ? setupCosto(S.tornitura, co1, qta) : 0;
+  const setup_intestazione = tornitura_info.has_intestazione
+    ? setupCosto(T.setup_secondi.intestazione, co1, qta)
+    : 0;
+  const setup_testa_5931 = tornitura_info.has_testa_5931
+    ? setupCosto(T.setup_secondi.testa_5931_intestazione, co1, qta) +
+      setupCosto(T.setup_secondi.testa_5931_tornitura,    co1, qta)
+    : 0;
   const setup_fresa   = t_fresa > 0 ? setupCosto(S.fresatura,  co1, qta) : 0;
   const setup_brocc   = brocc_c > 0 ? setupCosto(S.brocciatura,co1, qta) : 0;
   const setup_rull    = setupCosto(S.rullatura,  co1, qta);
@@ -765,7 +837,8 @@ export function calcolaViti(inp, T, TV) {
                     + torn_fin + fresa_fin + brocc_fin
                     + rull_fin + raddr_fin + marc_fin + attrezzatura
                     + setup_taglio + setup_smusso + setup_stamp + setup_sbav
-                    + setup_torn + setup_fresa + setup_brocc
+                    + setup_torn + setup_intestazione + setup_testa_5931
+                    + setup_fresa + setup_brocc
                     + setup_rull + setup_raddr;
 
   const totale = mat_cost_plus + lavorazione + bonifica;
@@ -825,7 +898,8 @@ export function calcolaViti(inp, T, TV) {
 
     // Setup
     setup_taglio, setup_smusso, setup_stamp, setup_sbav,
-    setup_torn, setup_fresa, setup_brocc, setup_rull, setup_raddr,
+    setup_torn, setup_intestazione, setup_testa_5931,
+    setup_fresa, setup_brocc, setup_rull, setup_raddr,
 
     // Sbavatura info
     sbav_macchina: sbav_info ? sbav_info.nome_display : null,
@@ -865,5 +939,8 @@ export function calcolaViti(inp, T, TV) {
     ha_brocc:  brocc_c > 0,
     ha_raddr:  raddr_c > 0,
     ha_bonifica: TRATTAMENTO,
+
+    // Diagnostica tornitura
+    tornitura_info,
   };
 }
