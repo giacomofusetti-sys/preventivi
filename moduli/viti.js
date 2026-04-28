@@ -910,11 +910,11 @@ export function calcolaViti(inp, T, TV) {
   const S_tag = TV.setup_secondi;
   const lines = [];
   lines.push(`TAGLI ${t_taglio}`);
-  if (ha_smusso)   lines.push(`SMUSS ${t_smusso}`);
-  if (STAMPAGGIO)  lines.push(`STAM2 ${t_stamp}`);
+  if (ha_smusso)   lines.push(`SMUSS ${Math.round(t_smusso)}`);
+  if (STAMPAGGIO)  lines.push(`STAM2 ${Math.round(t_stamp)}`);
   if (STAMPAGGIO)  lines.push(`SBAVA ${Math.round(t_sbav)}`);
-  if (t_torn > 0)  lines.push(`TORN1 ${t_torn}`);
-  if (t_fresa > 0) lines.push(`FRESA ${t_fresa}`);
+  if (t_torn > 0)  lines.push(`TORN1 ${Math.round(t_torn)}`);
+  if (t_fresa > 0) lines.push(`FRESA ${Math.round(t_fresa)}`);
   if (brocc_c > 0) lines.push(`BROCC ${Math.round(brocc_c / 0.018)}`);
   lines.push(`RULLA ${Math.round(t_rulla)}`);
   if (raddr_c > 0) lines.push(`RADDR ${Math.round(raddr_c / 0.016)}`);
