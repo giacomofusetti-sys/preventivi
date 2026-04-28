@@ -1643,6 +1643,118 @@ function r(n, d = 2) {
 //   5. Card barre: (solo con BARRA_GIUSTA)
 //   6. Card tempi: secondi per voce + stringa gestionale
 //   7. Card peso: peso singolo, lotto, modificatore
+
+// ── Helper: preview tooltip su hover della card Tornitura ─────
+function renderTornPreview(info) {
+  const c = info.componenti || {};
+  const parts = [];
+  if ('A' in c) {
+    if (c.A > 0)  parts.push(`A ${Math.round(c.A)}`);
+    if (c.B > 0)  parts.push(`B ${Math.round(c.B)}`);
+    if (c.C > 0)  parts.push(`C ${Math.round(c.C)}`);
+    if ((c.D ?? 0) > 0)  parts.push(`D ${Math.round(c.D)}`);
+    if ((c.E1 ?? 0) > 0) parts.push(`E1 ${Math.round(c.E1)}`);
+    if ((c.E2 ?? 0) > 0) parts.push(`E2 ${Math.round(c.E2)}`);
+  } else if ('fil' in c) {
+    if (c.fil > 0)    parts.push(`fil ${Math.round(c.fil)}`);
+    if (c.liscia > 0) parts.push(`liscia ${Math.round(c.liscia)}`);
+  } else if ('ciclo' in c) {
+    if (c.ciclo > 0) parts.push(`ciclo ${Math.round(c.ciclo)}`);
+  }
+  if (info.mov > 0) parts.push(`mov ${Math.round(info.mov)}`);
+  parts.push(`tot ${Math.round(info.tempo_totale)}`);
+  if (info.min_scattato) parts.push('<strong>min 90</strong>');
+  return parts.join(' · ');
+}
+
+// ── Helper: pannello dettagliato mostrato al click ────────────
+function renderTornDetail(info, T) {
+  const c = info.componenti || {};
+  const mat_key = info.materiale_key;
+  const p = T?.tornitura_controllo?.parametri_per_materiale?.[mat_key];
+  const row = (label, val, extraClass = '') =>
+    `<div class="cost-row"><div class="cost-row-label">${label}</div><div class="cost-row-value${extraClass ? ' ' + extraClass : ''}">${val}</div></div>`;
+
+  // Componenti (in base allo schema del modulo)
+  let compRows = '';
+  if ('A' in c) {
+    if (c.A > 0)         compRows += row('Parte liscia', Math.round(c.A) + ' s');
+    if (c.B > 0)         compRows += row('Parte filettata', Math.round(c.B) + ' s');
+    if (c.C > 0)         compRows += row('Intestazione tondo', Math.round(c.C) + ' s');
+    if ((c.D ?? 0) > 0)  compRows += row('Sottotesta', Math.round(c.D) + ' s');
+    if ((c.E1 ?? 0) > 0) compRows += row('Testa 5931 · intestazione', Math.round(c.E1) + ' s');
+    if ((c.E2 ?? 0) > 0) compRows += row('Testa 5931 · tornitura laterale', Math.round(c.E2) + ' s');
+  } else if ('fil' in c) {
+    if (c.fil > 0)    compRows += row('Parte filettata', Math.round(c.fil) + ' s');
+    if (c.liscia > 0) compRows += row('Parte liscia', Math.round(c.liscia) + ' s');
+  } else if ('ciclo' in c) {
+    if (c.ciclo > 0) compRows += row('Tornitura gambo (ciclo)', Math.round(c.ciclo) + ' s');
+  }
+  if (!compRows) compRows = row('Nessuna componente attiva', '—');
+
+  // Parametri materiale (letti da T.tornitura_controllo)
+  const paramRows = p
+    ? row('Materiale', mat_key) +
+      row('Vc', p.Vc + ' m/min') +
+      row('Avanzamento f', p.f + ' mm/giro') +
+      row('Riduzione per passata', p.riduzione_diametro + ' mm') +
+      row('f intestazione', p.f_intestazione + ' mm/giro')
+    : row('Materiale', mat_key + ' (parametri non trovati)');
+
+  // Calcolo tempo
+  let calcRows =
+    row('Tempo ciclo (somma componenti)', Math.round(info.tempo_ciclo) + ' s') +
+    row('Movimentazione', Math.round(info.mov) + ' s');
+  if (info.min_scattato) {
+    const minV = T?.tornitura_controllo?.tempo_minimo_secondi ?? 90;
+    calcRows += row('Minimo applicato', minV + ' s');
+  }
+  calcRows += row('Tempo totale', Math.round(info.tempo_totale) + ' s', 'accent');
+
+  // Piazzamenti (solo per viti, che hanno has_intestazione/has_testa_5931)
+  let setupRows = '';
+  if ('has_intestazione' in info || 'has_testa_5931' in info) {
+    setupRows = row('Tornitura normale', (T?.setup_secondi?.tornitura_normale ?? 3600) + ' s');
+    if (info.has_intestazione) {
+      setupRows += row('Intestazione', (T?.setup_secondi?.intestazione ?? 1667) + ' s');
+    }
+    if (info.has_testa_5931) {
+      const s5 = (T?.setup_secondi?.testa_5931_intestazione ?? 1800)
+               + (T?.setup_secondi?.testa_5931_tornitura    ?? 1800);
+      setupRows += row('Testa 5931 (2 piazzamenti)', s5 + ' s');
+    }
+  } else {
+    setupRows = row('Tornitura normale', (T?.setup_secondi?.tornitura_normale ?? 3600) + ' s');
+  }
+
+  return `
+    <div class="breakdown-title">▎ Dettaglio tornitura</div>
+    <div class="breakdown-subtitle">Componenti</div>
+    <div class="cost-grid">${compRows}</div>
+    <div class="breakdown-subtitle">Parametri materiale</div>
+    <div class="cost-grid">${paramRows}</div>
+    <div class="breakdown-subtitle">Calcolo tempo</div>
+    <div class="cost-grid">${calcRows}</div>
+    <div class="breakdown-subtitle">Piazzamenti (approntamento, s)</div>
+    <div class="cost-grid">${setupRows}</div>
+  `;
+}
+
+// ── Helper: riscrive la card Tornitura con hover+click se info presente ─
+function upgradeTornCell(html, R) {
+  if (!R || !R.tornitura_info) return html;
+  const info = R.tornitura_info;
+  const star = info.min_scattato
+    ? '<span class="min-scattato-mark" title="Minimo 90s applicato">*</span>'
+    : '';
+  const preview = renderTornPreview(info);
+  // Match della card 'Tornitura' pulita (non 'Torn. fantina' né 'Tornitura (fantina)')
+  return html.replace(
+    /<div class="tempo-cell"><div class="tc-label">Tornitura<\/div><div class="tc-val">(\d+)<span class="tc-unit"> s<\/span><\/div><\/div>/,
+    (_m, n) => `<div class="tempo-cell tempo-cell--info" data-torn-detail><div class="tc-label">Tornitura</div><div class="tc-val">${n}<span class="tc-unit"> s</span>${star}</div><div class="torn-preview">${preview}</div></div>`
+  );
+}
+
 function renderResults(R) {
   const panel     = document.getElementById('results');
   const isTornito = R.ha_tornitura === true;
@@ -1934,6 +2046,11 @@ function renderResults(R) {
       <div class="tempo-cell"><div class="tc-label">A.Marcatura</div><div class="tc-val">${R.tempo_setup_marc}<span class="tc-unit"> s</span></div></div>`;
   }
 
+  // ── Post-elaborazione: upgrade della card Tornitura se il modulo espone tornitura_info
+  tempiGridHTML = upgradeTornCell(tempiGridHTML, R);
+  // Salva R per il listener del pannello dettaglio tornitura (click handler globale)
+  window._lastResult = R;
+
   // ── Costruzione HTML finale ───────────────────────────────
   // Tutto viene scritto in panel.innerHTML in un solo assegnamento.
   // Le variabili HTML costruite sopra (gridHTML, barreHTML, ecc.)
@@ -1995,6 +2112,7 @@ function renderResults(R) {
     <div class="result-card">
       <div class="breakdown-title">▎ Tempi (secondi per pezzo)</div>
       <div class="tempi-grid">${tempiGridHTML}</div>
+      <div class="torn-detail-panel" hidden id="torn-detail-panel"></div>
       <div class="gestionale-wrap">
         <div class="gestionale-title">▎ Per il gestionale</div>
         <div style="display:flex;align-items:flex-start;gap:10px">
@@ -2074,6 +2192,41 @@ function renderResults(R) {
     }
   });
 }
+
+// ── Listener globale: pannello dettaglio tornitura ────────────
+// Attaccato una sola volta al document. Gestisce toggle apertura/chiusura
+// della card Tornitura (classe .tempo-cell--info) e il pannello inline
+// (#torn-detail-panel). Il pannello viene ricostruito dinamicamente
+// leggendo window._lastResult.tornitura_info e T (comune.json).
+document.addEventListener('click', (e) => {
+  const cell    = e.target.closest('.tempo-cell--info[data-torn-detail]');
+  const panel   = document.getElementById('torn-detail-panel');
+  if (!panel) return;
+  const insidePanel = e.target.closest('#torn-detail-panel');
+
+  if (cell) {
+    // Click su una card Tornitura con info
+    if (cell.classList.contains('open')) {
+      cell.classList.remove('open');
+      panel.setAttribute('hidden', '');
+      panel.innerHTML = '';
+      return;
+    }
+    // Chiudi eventuali altre card aperte (normalmente non ce ne sono)
+    document.querySelectorAll('.tempo-cell--info.open').forEach(c => c.classList.remove('open'));
+    const info = window._lastResult?.tornitura_info;
+    if (info && T) {
+      panel.innerHTML = renderTornDetail(info, T);
+      panel.removeAttribute('hidden');
+      cell.classList.add('open');
+    }
+  } else if (!insidePanel) {
+    // Click fuori dal pannello e dalla card → chiudi tutto
+    document.querySelectorAll('.tempo-cell--info.open').forEach(c => c.classList.remove('open'));
+    panel.setAttribute('hidden', '');
+    panel.innerHTML = '';
+  }
+});
 
 </script>
 </body>

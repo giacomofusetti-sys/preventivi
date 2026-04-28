@@ -472,3 +472,72 @@ header span {
   .inputs-panel { border-right: none; border-bottom: 1px solid var(--border); }
   .selector-grid { grid-template-columns: repeat(2, 160px); }
 }
+
+/* ═══ Pannello dettaglio tornitura (hover preview + click panel) ═══ */
+
+.tempo-cell--info {
+  position: relative;
+  cursor: pointer;
+  transition: background 120ms ease;
+}
+.tempo-cell--info:hover { background: #1d1d1d; }
+.tempo-cell--info.open {
+  outline: 1px solid var(--accent);
+  outline-offset: -1px;
+  background: #1d1d1d;
+}
+
+.torn-preview {
+  display: none;
+  position: absolute;
+  bottom: calc(100% + 6px);
+  left: 0; right: 0;
+  background: var(--panel);
+  border: 1px solid var(--border-bright);
+  padding: 6px 9px;
+  font-family: var(--mono);
+  font-size: 10px;
+  color: var(--text);
+  letter-spacing: 0.5px;
+  text-align: left;
+  white-space: nowrap;
+  z-index: 10;
+  pointer-events: none;
+}
+.torn-preview::after {
+  content: '';
+  position: absolute;
+  bottom: -5px; left: 50%;
+  transform: translateX(-50%);
+  border: 5px solid transparent;
+  border-top-color: var(--border-bright);
+}
+.torn-preview strong { color: var(--accent); }
+.tempo-cell--info:hover .torn-preview { display: block; }
+.tempo-cell--info.open .torn-preview { display: none; } /* niente tooltip mentre il pannello è aperto */
+
+.min-scattato-mark {
+  color: var(--accent);
+  font-weight: bold;
+  margin-left: 3px;
+  font-size: 14px;
+}
+
+.torn-detail-panel {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  padding: 16px 18px;
+  margin-top: 14px;
+}
+.torn-detail-panel[hidden] { display: none; }
+.torn-detail-panel .breakdown-subtitle {
+  font-family: var(--mono);
+  font-size: 9px;
+  letter-spacing: 2px;
+  color: var(--muted);
+  text-transform: uppercase;
+  margin-top: 16px;
+  margin-bottom: 8px;
+}
+.torn-detail-panel .breakdown-subtitle:first-of-type { margin-top: 0; }
+.torn-detail-panel .cost-row-value.accent { color: var(--accent); font-weight: bold; }
