@@ -739,6 +739,9 @@ export function calcolaViti(inp, T, TV) {
   const costo_kg    = getCostoMaterialeViti(mat, costo_mat_override, TV);
   const co          = dian < 45 ? co1 : co2;
   const isInox      = MAT_INOX.includes(mat);
+  // Per le 5931 inox/altro stampate la sbavatura viene fatta dentro
+  // l'intestazione testa (ramo E1), quindi NON serve sbavatrice.
+  const is_5931_inox_altro = STAMPAGGIO && tipo === '5931' && (mat === 'altro' || isInox);
 
   // ── Lunghezza filetto ─────────────────────────────────────
   const filet = TF ? lungh : calcolaLunghFiletto(tipo, dia, lungh, filetto_override, TV);
@@ -822,8 +825,10 @@ export function calcolaViti(inp, T, TV) {
   }
 
   // ── Sbavatura ────────────────────────────────────────────
+  // Per 5931 inox/altro stampate, la sbavatura della testa è già
+  // inclusa nell'intestazione del ramo E (E1), quindi qui salta.
   let t_sbav = 0, sbav_fin = 0, sbav_info = null;
-  if (STAMPAGGIO) {
+  if (STAMPAGGIO && !is_5931_inox_altro) {
     sbav_info = calcolaSbavatura(dian, lungh, mat, qta, co, TV);
     t_sbav = sbav_info.tempo_ciclo_sec;
     const sb = t_sbav * co;
@@ -904,7 +909,15 @@ export function calcolaViti(inp, T, TV) {
   const setup_smusso  = ha_smusso ? setupCosto(S.smusso,    co1, qta) : 0;
   const setup_stamp   = STAMPAGGIO ? setupCosto(S.stampaggio, co1, qta) : 0;
   const setup_sbav    = STAMPAGGIO && sbav_info ? setupCosto(sbav_info.setup_sec, co1, qta) : 0;
-  const setup_torn    = tornitura_info.has_tornitura ? setupCosto(S.tornitura, co1, qta) : 0;
+  // Setup tornitura: 1800s sul copiatore (semiautomatico), 3600s sul CN
+  const setup_torn    = tornitura_info.has_tornitura
+    ? setupCosto(
+        tornitura_info.is_copiatore
+          ? T.setup_secondi.setup_copiatore
+          : S.tornitura,
+        co1, qta
+      )
+    : 0;
   const setup_intestazione = tornitura_info.has_intestazione
     ? setupCosto(T.setup_secondi.intestazione, co1, qta)
     : 0;
@@ -943,7 +956,7 @@ export function calcolaViti(inp, T, TV) {
   lines.push(`TAGLI ${t_taglio}`);
   if (ha_smusso)   lines.push(`SMUSS ${Math.round(t_smusso)}`);
   if (STAMPAGGIO)  lines.push(`STAM2 ${Math.round(t_stamp)}`);
-  if (STAMPAGGIO)  lines.push(`SBAVA ${Math.round(t_sbav)}`);
+  if (STAMPAGGIO && sbav_info) lines.push(`SBAVA ${Math.round(t_sbav)}`);
   if (t_torn > 0)  lines.push(`TORN1 ${Math.round(t_torn)}`);
   if (t_fresa > 0) lines.push(`FRESA ${Math.round(t_fresa)}`);
   if (brocc_c > 0) lines.push(`BROCC ${Math.round(brocc_c / 0.018)}`);
@@ -952,7 +965,7 @@ export function calcolaViti(inp, T, TV) {
   lines.push(`ATAGL ${S_tag.taglio}`);
   if (ha_smusso)   lines.push(`ASMUS ${S_tag.smusso}`);
   if (STAMPAGGIO)  lines.push(`ASTA2 ${S_tag.stampaggio}`);
-  if (STAMPAGGIO)  lines.push(`ASBAV ${sbav_info.setup_sec}`);
+  if (STAMPAGGIO && sbav_info) lines.push(`ASBAV ${sbav_info.setup_sec}`);
   if (t_torn > 0)  lines.push(`ATOR1 ${S_tag.tornitura}`);
   if (t_fresa > 0) lines.push(`AFRES ${S_tag.fresatura}`);
   if (brocc_c > 0) lines.push(`ABROC ${S_tag.brocciatura}`);

@@ -581,6 +581,7 @@
     "rullatura": 1800,
     "tornitura_normale": 3600,
     "tornitura_fantina": 7200,
+    "setup_copiatore": 1800,
     "intestazione": 1667,
     "testa_5931_intestazione": 1800,
     "testa_5931_tornitura": 1800
