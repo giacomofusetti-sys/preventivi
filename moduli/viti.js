@@ -957,7 +957,15 @@ export function calcolaViti(inp, T, TV) {
   if (ha_smusso)   lines.push(`SMUSS ${Math.round(t_smusso)}`);
   if (STAMPAGGIO)  lines.push(`STAM2 ${Math.round(t_stamp)}`);
   if (STAMPAGGIO && sbav_info) lines.push(`SBAVA ${Math.round(t_sbav)}`);
-  if (t_torn > 0)  lines.push(`TORN1 ${Math.round(t_torn)}`);
+  // Tornitura: TORN1 sul copiatore, TORN2 sul CN (incl. caso ibrido che
+  // mette tutto in TORN1 perché is_copiatore=true)
+  if (t_torn > 0) {
+    if (tornitura_info.is_copiatore) {
+      lines.push(`TORN1 ${Math.round(t_torn)}`);
+    } else {
+      lines.push(`TORN2 ${Math.round(t_torn)}`);
+    }
+  }
   if (t_fresa > 0) lines.push(`FRESA ${Math.round(t_fresa)}`);
   if (brocc_c > 0) lines.push(`BROCC ${Math.round(brocc_c / 0.018)}`);
   lines.push(`RULLA ${Math.round(t_rulla)}`);
@@ -966,7 +974,22 @@ export function calcolaViti(inp, T, TV) {
   if (ha_smusso)   lines.push(`ASMUS ${S_tag.smusso}`);
   if (STAMPAGGIO)  lines.push(`ASTA2 ${S_tag.stampaggio}`);
   if (STAMPAGGIO && sbav_info) lines.push(`ASBAV ${sbav_info.setup_sec}`);
-  if (t_torn > 0)  lines.push(`ATOR1 ${S_tag.tornitura}`);
+  // Setup tornitura:
+  // - copiatore puro:    ATOR1 1800
+  // - copiatore ibrido:  ATOR1 1800 + ATOR2 (testa 5931, somma intestazione+tornitura = 3600)
+  // - CN puro:           ATOR2 3600
+  if (t_torn > 0) {
+    if (tornitura_info.is_copiatore) {
+      lines.push(`ATOR1 ${T.setup_secondi.setup_copiatore}`);
+      if (tornitura_info.has_testa_5931) {
+        const setup_5931 = T.setup_secondi.testa_5931_intestazione +
+                           T.setup_secondi.testa_5931_tornitura;
+        lines.push(`ATOR2 ${setup_5931}`);
+      }
+    } else {
+      lines.push(`ATOR2 ${S_tag.tornitura}`);
+    }
+  }
   if (t_fresa > 0) lines.push(`AFRES ${S_tag.fresatura}`);
   if (brocc_c > 0) lines.push(`ABROC ${S_tag.brocciatura}`);
   lines.push(`ARULL ${S_tag.rullatura}`);
