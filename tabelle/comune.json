@@ -15,6 +15,11 @@
     "B8 cl.2": 4.2,
     "B8M cl.2": 5.4,
     "inox": 0,
+    "625": 0,
+    "660": 0,
+    "718": 0,
+    "F51": 0,
+    "Nitronic": 0,
     "altro": 0
   },
   "densita": {
@@ -29,6 +34,11 @@
     "B8 cl.2": 8.0,
     "B8M cl.2": 8.0,
     "inox": 8.0,
+    "625": 0,
+    "660": 0,
+    "718": 0,
+    "F51": 0,
+    "Nitronic": 0,
     "altro": null
   },
   "diametri_medi_metrici": {
@@ -576,11 +586,11 @@
     "testa_5931_tornitura": 1800
   },
   "materiali_speciali_k": {
-    "Nitronic": null,
-    "660": 5,
-    "F51": null,
-    "625": null,
-    "718": 6
+    "625": 6,
+    "660": 6,
+    "718": 6,
+    "F51": 5,
+    "Nitronic": 6
   },
   "degrado_operatore": {
     "tipo_curva": "lineare",
