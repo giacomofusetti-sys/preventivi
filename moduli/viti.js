@@ -256,36 +256,67 @@ function calcolaTorniturraViti(
     (mat === 'altro' || MAT_INOX.includes(mat)) &&
     STAMPAGGIO;
 
-  // Discriminante ramo COPIATORE
-  const is_copiatore =
+  // Mezzo filetto: c'è parte liscia da non tornire (5737 sempre; 5931 sopra
+  // la soglia tabellata in lunghezze_filetto_5931).
+  const is_mezzo_filetto = L_liscia > 0;
+
+  // Territorio "copiatore": stampaggio + 5737/5931 + mezzo filetto.
+  // In questo territorio dia_disp deve stare in [dian-0.2, dian]:
+  // - sotto: errore esplicito (barra trafilata non adatta)
+  // - sopra: si va al CN come oggi
+  // - dentro: copiatore
+  const is_copiatore_territory =
     STAMPAGGIO &&
     (tipo === '5737' || tipo === '5931') &&
-    !is5931InoxAltro &&
-    dia_disp > dia_medio &&
-    dia_disp <= dia_parte_liscia;
+    is_mezzo_filetto;
+
+  if (is_copiatore_territory && dia_disp < dian - 0.2) {
+    throw new Error(
+      `Diametro disponibile (${dia_disp}mm) sotto soglia copiatore per ${tipo} M${dian} ` +
+      `(range ammesso: ${(dian - 0.2).toFixed(1)} - ${dian} mm). ` +
+      `Per stampaggio mezzo filetto serve una barra trafilata vicino al diametro nominale.`
+    );
+  }
+
+  const is_copiatore =
+    is_copiatore_territory &&
+    dia_disp >= (dian - 0.2) &&
+    dia_disp <= dian;
 
   // ─── RAMO COPIATORE ────────────────────────────────────────
+  // Formula copiatore (1 sola passata sempre, offset fisso, niente moltiplicatori
+  // materiali_speciali_k — la macchina lavora carbonio/inox/superleghe a velocità
+  // simili sui pezzi piccoli mezzo-filetto):
+  //   tempo_gambo = L_filettata / div + 13s
+  //   div = 3 per inox/altro/superleghe, 4 per acciai al carbonio
+  // Per 5931 inox/altro mezzo filetto a nominale: ibrido — gambo sul copiatore,
+  // testa lavorata col ramo E (E1 intestazione + E2 tornitura laterale).
   if (is_copiatore) {
-    const div = MAT_INOX.includes(mat) ? 3 : 4;
-    let tempo_copiatore = (L_filettata / div) * Math.ceil((dia_disp - dia_medio) / 3);
-    tempo_copiatore += 5; // offset fisso 5s (copiatore, no mov, no min)
+    const div = (MAT_INOX.includes(mat) || mat === 'altro') ? 3 : 4;
+    const tempo_gambo_copiatore = L_filettata / div + 13;
 
-    if (mat === 'altro') {
-      const k = T.materiali_speciali_k?.[materiale_speciale];
-      if (!k) throw new Error(`Specifica un materiale_speciale valido per "altro"`);
-      tempo_copiatore *= k;
+    let E1 = 0, E2 = 0;
+    if (is5931InoxAltro) {
+      // Stessa logica del ramo CN (vedi sotto). dati_testa.dk include il +2 storico.
+      const D_testa_eff = dati_testa.dk ?? 0;       // dk_eff (= dk_nominale + 2)
+      const D_testa_fin = D_testa_eff - 2;          // diametro testa finito
+      const h_testa     = dati_testa.hc ?? 0;
+      E1 = tempoSfacciatura(D_testa_fin / 2, mat, materiale_speciale, T);
+      E2 = tempoTornituraBase(D_testa_eff, D_testa_fin, h_testa, mat, materiale_speciale, T);
     }
 
+    const tempo_totale_cop = tempo_gambo_copiatore + E1 + E2;
+
     return {
-      tempo_ciclo: tempo_copiatore,
+      tempo_ciclo: tempo_totale_cop,
       mov: 0,
-      tempo_totale: tempo_copiatore,
+      tempo_totale: tempo_totale_cop,
       min_scattato: false,
       materiale_key,
-      componenti: { A: 0, B: tempo_copiatore, C: 0, D: 0, E1: 0, E2: 0, mov: 0 },
+      componenti: { A: 0, B: tempo_gambo_copiatore, C: 0, D: 0, E1, E2, mov: 0 },
       has_tornitura: true,
       has_intestazione: false,
-      has_testa_5931: false,
+      has_testa_5931: is5931InoxAltro,
       ha_extensione_testa_ex: false,
       L_liscia_eff: L_liscia,
       is_copiatore: true,
