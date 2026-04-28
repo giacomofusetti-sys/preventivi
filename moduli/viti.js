@@ -974,26 +974,39 @@ export function calcolaViti(inp, T, TV) {
   if (ha_smusso)   lines.push(`ASMUS ${S_tag.smusso}`);
   if (STAMPAGGIO)  lines.push(`ASTA2 ${S_tag.stampaggio}`);
   if (STAMPAGGIO && sbav_info) lines.push(`ASBAV ${sbav_info.setup_sec}`);
-  // Setup tornitura:
-  // - copiatore puro:    ATOR1 1800
-  // - copiatore ibrido:  ATOR1 1800 + ATOR2 (testa 5931, somma intestazione+tornitura = 3600)
-  // - CN puro:           ATOR2 3600
+  // Setup tornitura — una riga ATOR1/ATOR2 per ogni piazzamento applicato
+  // nel costo (tornitura, intestazione, testa 5931). ATOR1 SOLO per il
+  // copiatore (1800); ATOR2 per tutti gli altri (CN 3600, intestazione
+  // 1800, testa 5931 totale 3600, fantina 7200).
   if (t_torn > 0) {
     if (tornitura_info.is_copiatore) {
+      // Setup copiatore (1800)
       lines.push(`ATOR1 ${T.setup_secondi.setup_copiatore}`);
+      // Caso ibrido: 5931 inox/altro al copiatore + ramo E (testa)
       if (tornitura_info.has_testa_5931) {
         const setup_5931 = T.setup_secondi.testa_5931_intestazione +
                            T.setup_secondi.testa_5931_tornitura;
         lines.push(`ATOR2 ${setup_5931}`);
       }
     } else {
+      // Setup tornitura CN (3600)
       lines.push(`ATOR2 ${S_tag.tornitura}`);
+      // Setup intestazione (1800) per vite tornita-fresata da tondo
+      if (tornitura_info.has_intestazione) {
+        lines.push(`ATOR2 ${T.setup_secondi.intestazione}`);
+      }
+      // Setup testa 5931 (3600) per CN puro 5931 inox/altro
+      if (tornitura_info.has_testa_5931) {
+        const setup_5931 = T.setup_secondi.testa_5931_intestazione +
+                           T.setup_secondi.testa_5931_tornitura;
+        lines.push(`ATOR2 ${setup_5931}`);
+      }
     }
   }
   if (t_fresa > 0) lines.push(`AFRES ${S_tag.fresatura}`);
   if (brocc_c > 0) lines.push(`ABROC ${S_tag.brocciatura}`);
   lines.push(`ARULL ${S_tag.rullatura}`);
-  if (raddr_c > 0) lines.push(`ARADDR ${S_tag.raddrizzatura}`);
+  if (raddr_c > 0) lines.push(`ARADD ${S_tag.raddrizzatura}`);
   lines.unshift(`\u20AC ${totale.toFixed(2)} - da mat. ${mat} \u00D8 ${dia_disp.toFixed(1)} mm, ${peso_principale_reale.toFixed(2)} kg`);
   const tempi_gestionale = lines.join('\n');
 
