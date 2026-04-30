@@ -1832,7 +1832,6 @@ function renderResults(R) {
       ...(R.ha_stamp   ? [{ label: `⟐ Sbavatura (${R.sbav_macchina})`,  val: R.sbav_fin,   sub: `setup: €${r(R.setup_sbav)}`  }] : []),
       ...(R.ha_torn    ? [{ label: '◎ Tornitura',  val: R.torn_fin,   sub: `setup: €${r(R.setup_torn)}`  }] : []),
       ...(R.ha_fresa   ? [{ label: '⟋ Fresatura',  val: R.fresa_fin,  sub: `setup: €${r(R.setup_fresa)}` }] : []),
-      ...(R.ha_brocc   ? [{ label: '⬢ Brocciatura',val: R.brocc_fin,  sub: `setup: €${r(R.setup_brocc)}` }] : []),
       { label: '⟳ Rullatura',    val: R.rull_fin,       sub: `setup: €${r(R.setup_rull)}` },
       ...(R.ha_raddr   ? [{ label: '📐 Raddrizzatura', val: R.raddr_fin, sub: `setup: €${r(R.setup_raddr)}` }] : []),
       { label: '🏷 Marcatura',    val: R.marc_fin,       sub: '' },
@@ -2004,7 +2003,6 @@ function renderResults(R) {
       ${R.ha_stamp  ? `<div class="tempo-cell"><div class="tc-label">Sbavatura</div><div class="tc-val">${Math.round(R.t_sbav)}<span class="tc-unit"> s</span></div></div>` : ''}
       ${R.ha_torn   ? `<div class="tempo-cell"><div class="tc-label">Tornitura</div><div class="tc-val">${Math.round(R.t_torn)}<span class="tc-unit"> s</span></div></div>` : ''}
       ${R.ha_fresa  ? `<div class="tempo-cell"><div class="tc-label">Fresatura</div><div class="tc-val">${Math.round(R.t_fresa)}<span class="tc-unit"> s</span></div></div>` : ''}
-      ${R.ha_brocc  ? `<div class="tempo-cell"><div class="tc-label">Brocciatura</div><div class="tc-val">${Math.round(R.t_brocc)}<span class="tc-unit"> s</span></div></div>` : ''}
       <div class="tempo-cell"><div class="tc-label">Rullatura</div><div class="tc-val">${Math.round(R.t_rulla)}<span class="tc-unit"> s</span></div></div>
       ${R.ha_raddr  ? `<div class="tempo-cell"><div class="tc-label">Raddrizzatura</div><div class="tc-val">${Math.round(R.t_raddr)}<span class="tc-unit"> s</span></div></div>` : ''}
       <div class="tempo-cell"><div class="tc-label">A.Taglio</div><div class="tc-val">300<span class="tc-unit"> s</span></div></div>
@@ -2013,7 +2011,6 @@ function renderResults(R) {
       ${R.ha_stamp  ? `<div class="tempo-cell"><div class="tc-label">A.Sbavat.</div><div class="tc-val">${R.setup_sbav_sec}<span class="tc-unit"> s</span></div></div>` : ''}
       ${R.ha_torn   ? `<div class="tempo-cell"><div class="tc-label">A.Torn1</div><div class="tc-val">3600<span class="tc-unit"> s</span></div></div>` : ''}
       ${R.ha_fresa  ? `<div class="tempo-cell"><div class="tc-label">A.Fresa</div><div class="tc-val">3600<span class="tc-unit"> s</span></div></div>` : ''}
-      ${R.ha_brocc  ? `<div class="tempo-cell"><div class="tc-label">A.Brocc.</div><div class="tc-val">3600<span class="tc-unit"> s</span></div></div>` : ''}
       <div class="tempo-cell"><div class="tc-label">A.Rullatura</div><div class="tc-val">1800<span class="tc-unit"> s</span></div></div>
       ${R.ha_raddr  ? `<div class="tempo-cell"><div class="tc-label">A.Raddr.</div><div class="tc-val">1800<span class="tc-unit"> s</span></div></div>` : ''}`;
   } else if (isOcchio) {
@@ -2090,7 +2087,6 @@ function renderResults(R) {
       ${isViti  && R.ha_stamp  ? bar('Stampaggio', R.stamp_fin + R.setup_stamp, 'torn') : ''}
       ${isViti  && R.ha_torn   ? bar('Tornitura',  R.torn_fin  + R.setup_torn,  'torn') : ''}
       ${isViti  && R.ha_fresa  ? bar('Fresatura',  R.fresa_fin + R.setup_fresa, 'smusso') : ''}
-      ${isViti  && R.ha_brocc  ? bar('Brocciatura',R.brocc_fin + R.setup_brocc, 'smusso') : ''}
       ${isViti  ? bar('Rullatura', R.rull_fin + R.setup_rull, 'rull') : ''}
       ${!isDadi && !isPrig && !isOcchio && !isViti &&  isTornito ? bar('Tornitura', R.torni_fin + R.setup_torn, 'torn') : ''}
       ${!isDadi && !isPrig && !isOcchio && !isViti && !isTornito ? bar('Taglio',    R.taglio_fin + R.setup_taglio, 'taglio') : ''}

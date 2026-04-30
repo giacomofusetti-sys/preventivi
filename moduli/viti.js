@@ -18,6 +18,8 @@ import {
   tempoTornituraBase,
   tempoSfacciatura,
   tempoMovimentazione,
+  tempoFresaturaCava,
+  tempoFresaturaTestaEsagonale,
 } from '../lib/calcolo_comune.js';
 
 const MAT_STANDARD = ['42CD4', 'B16', 'B7', 'L7', 'B7M', 'A105'];
@@ -503,39 +505,6 @@ function calcolaTempoStampaggio(dian, TV) {
   return tierValue(TV.tempi_stampaggio, dian) ?? 0;
 }
 
-// ─── BROCCIATURA ─────────────────────────────────────────────
-
-function calcolaBrocciatura(dian, mat, tipo, STAMPAGGIO, materiale_speciale, TV, T, dati_testa) {
-  // Brocciatura: 5931 con FRESA o con STAMPAGGIO su inox; vite speciale
-  // solo se testa TCEI (tonda con cava esagonale).
-  const isTceiSpec = tipo === 'speciale' && dati_testa?.sub === 'tcei';
-  if (tipo !== '5931' && !isTceiSpec) return 0;
-  const serve = isTceiSpec ? true : (!STAMPAGGIO || MAT_INOX.includes(mat));
-  if (!serve) return 0;
-
-  let t = tierValue(TV.tempi_brocciatura, dian) ?? 0;
-  if (mat === 'altro') {
-    const k = T.materiali_speciali_k[materiale_speciale];
-    if (!k) throw new Error('Specifica un materiale_speciale valido per "altro" (F53, 660, 718)');
-    t *= k;
-  }
-  return t * 0.018; // costo diretto (come nel Python)
-}
-
-// ─── FRESATURA TESTA ─────────────────────────────────────────
-
-function calcolaFresaturaTesta(dian, mat, tipo, materiale_speciale, TV, T) {
-  // Solo per 5737/5739 con FRESA, o mai per 5931 (usa brocciatura)
-  let t = tierValue(TV.tempi_fresatura_testa, dian) ?? 0;
-  if (MAT_INOX.includes(mat)) t *= 2;
-  if (mat === 'altro') {
-    const k = T.materiali_speciali_k[materiale_speciale];
-    if (!k) throw new Error('Specifica un materiale_speciale valido per "altro" (F53, 660, 718)');
-    t *= k;
-  }
-  return t;
-}
-
 // ─── RULLATURA ───────────────────────────────────────────────
 
 function calcolaTempoRullatura(dian, filet, mat, TV) {
@@ -865,21 +834,58 @@ export function calcolaViti(inp, T, TV) {
     torn_fin = tc * qta < 10 ? 10 / qta : tc;
   }
 
-  // ── Fresatura testa (5737/5739/speciale con FRESA) ────────
+  // ── Fresatura (testa esagonale 5737/5739/speciale + cava 5931/TCEI, unificate) ──
+  // Lavorazione di scavo, due componenti:
+  //   - testa esagonale: 5737/5739 con FRESA, e speciale con sub esagonale/quadrata/
+  //     prismatica/troncopiramidale (sotto-forme con facce piane; le sotto-forme
+  //     di pura tornitura — troncoconica, cilindrica, bombata, sferica — non
+  //     ricevono fresatura testa)
+  //   - cava esagonale interna: 5931 (sempre con FRESA, con STAMP solo inox/altro)
+  //     e speciale con sub='tcei' (sempre)
+  // Il minimo 90s è applicato a monte dentro le funzioni; il vecchio minimo
+  // costo €1.62 è stato sostituito dal minimo tempo (numericamente equivalente
+  // sul carbonio con co1, leggermente più alto su pezzi co2).
   let t_fresa = 0, fresa_fin = 0;
-  if (!STAMPAGGIO && (tipo === '5737' || tipo === '5739' || IS_SPECIALE)) {
-    t_fresa  = calcolaFresaturaTesta(dian, mat, tipo, materiale_speciale, TV, T);
-    const minimo = 1.62;
-    let fc = t_fresa * co;
-    if (fc < minimo) fc = minimo;
-    fresa_fin = fc * qta < 10 ? 10 / qta : fc;
+
+  const ha_fresa_testa = !STAMPAGGIO && (
+    tipo === '5737' || tipo === '5739' ||
+    (tipo === 'speciale' && (
+      dati_testa.sub === 'esagonale' ||
+      dati_testa.sub === 'quadrata' ||
+      dati_testa.sub === 'prismatica' ||
+      dati_testa.sub === 'troncopiramidale'
+    ))
+  );
+  if (ha_fresa_testa) {
+    let chiave_testa = 0;
+    if (tipo === 'speciale') {
+      const sub = dati_testa.sub;
+      if      (sub === 'esagonale')        chiave_testa = dati_testa.s ?? 0;
+      else if (sub === 'quadrata')         chiave_testa = inp.spec_qu_lato ?? 0;
+      else if (sub === 'prismatica')       chiave_testa = Math.max(inp.spec_pr_lungh ?? 0, inp.spec_pr_largh ?? 0);
+      else if (sub === 'troncopiramidale') chiave_testa = inp.spec_tp_lato_mag ?? 0;
+    } else {
+      // 5737/5739: chiave esagono testa esposta da getDatiTesta
+      chiave_testa = dati_testa.s ?? 0;
+    }
+    if (chiave_testa > 0) {
+      t_fresa += tempoFresaturaTestaEsagonale(chiave_testa, mat, materiale_speciale, T);
+    }
   }
 
-  // ── Brocciatura (5931 sempre; 5931 inox anche stampata; speciale solo TCEI) ──
-  let brocc_c = 0, brocc_fin = 0;
-  if (tipo === '5931' || (tipo === 'speciale' && dati_testa.sub === 'tcei')) {
-    brocc_c  = calcolaBrocciatura(dian, mat, tipo, STAMPAGGIO, materiale_speciale, TV, T, dati_testa);
-    brocc_fin = brocc_c * qta < 10 ? 10 / qta : brocc_c;
+  const isTcei = tipo === 'speciale' && dati_testa.sub === 'tcei';
+  const ha_fresa_cava =
+    (tipo === '5931' && (!STAMPAGGIO || MAT_INOX.includes(mat))) || isTcei;
+  if (ha_fresa_cava) {
+    const ch_x = dati_testa.sc ?? 0;
+    if (ch_x > 0) {
+      t_fresa += tempoFresaturaCava(ch_x, mat, materiale_speciale, T);
+    }
+  }
+
+  if (t_fresa > 0) {
+    const fc = t_fresa * co;
+    fresa_fin = fc * qta < 10 ? 10 / qta : fc;
   }
 
   // ── Rullatura ─────────────────────────────────────────────
@@ -926,17 +932,16 @@ export function calcolaViti(inp, T, TV) {
       setupCosto(T.setup_secondi.testa_5931_tornitura,    co1, qta)
     : 0;
   const setup_fresa   = t_fresa > 0 ? setupCosto(S.fresatura,  co1, qta) : 0;
-  const setup_brocc   = brocc_c > 0 ? setupCosto(S.brocciatura,co1, qta) : 0;
   const setup_rull    = setupCosto(S.rullatura,  co1, qta);
   const setup_raddr   = raddr_c > 0 ? setupCosto(S.raddrizzatura, co1, qta) : 0;
 
   // ── Totale ───────────────────────────────────────────────
   const lavorazione = ta + smusso_fin + stamp_fin + sbav_fin
-                    + torn_fin + fresa_fin + brocc_fin
+                    + torn_fin + fresa_fin
                     + rull_fin + raddr_fin + marc_fin + attrezzatura
                     + setup_taglio + setup_smusso + setup_stamp + setup_sbav
                     + setup_torn + setup_intestazione + setup_testa_5931
-                    + setup_fresa + setup_brocc
+                    + setup_fresa
                     + setup_rull + setup_raddr;
 
   const totale = mat_cost_plus + lavorazione + bonifica;
@@ -967,7 +972,6 @@ export function calcolaViti(inp, T, TV) {
     }
   }
   if (t_fresa > 0) lines.push(`FRESA ${Math.round(t_fresa)}`);
-  if (brocc_c > 0) lines.push(`BROCC ${Math.round(brocc_c / 0.018)}`);
   lines.push(`RULLA ${Math.round(t_rulla)}`);
   if (raddr_c > 0) lines.push(`RADDR ${Math.round(raddr_c / 0.016)}`);
   lines.push(`ATAGL ${S_tag.taglio}`);
@@ -1004,7 +1008,6 @@ export function calcolaViti(inp, T, TV) {
     }
   }
   if (t_fresa > 0) lines.push(`AFRES ${S_tag.fresatura}`);
-  if (brocc_c > 0) lines.push(`ABROC ${S_tag.brocciatura}`);
   lines.push(`ARULL ${S_tag.rullatura}`);
   if (raddr_c > 0) lines.push(`ARADD ${S_tag.raddrizzatura}`);
   lines.unshift(`\u20AC ${totale.toFixed(2)} - da mat. ${mat} \u00D8 ${dia_disp.toFixed(1)} mm, ${peso_principale_reale.toFixed(2)} kg`);
@@ -1026,14 +1029,14 @@ export function calcolaViti(inp, T, TV) {
 
     // Costi singoli (per pz)
     ta, smusso_fin, stamp_fin, sbav_fin,
-    torn_fin, fresa_fin, brocc_fin,
+    torn_fin, fresa_fin,
     rull_fin, raddr_fin, marc_fin,
     attrezzatura, bonifica,
 
     // Setup
     setup_taglio, setup_smusso, setup_stamp, setup_sbav,
     setup_torn, setup_intestazione, setup_testa_5931,
-    setup_fresa, setup_brocc, setup_rull, setup_raddr,
+    setup_fresa, setup_rull, setup_raddr,
 
     // Sbavatura info
     sbav_macchina: sbav_info ? sbav_info.nome_display : null,
@@ -1042,7 +1045,6 @@ export function calcolaViti(inp, T, TV) {
     // Tempi (secondi, per gestionale)
     t_taglio, t_smusso, t_stamp, t_sbav,
     t_torn, t_fresa,
-    t_brocc: brocc_c > 0 ? Math.round(brocc_c / 0.018) : 0,
     t_rulla: Math.round(t_rulla),
     t_raddr,
 
@@ -1070,7 +1072,6 @@ export function calcolaViti(inp, T, TV) {
     ha_stamp:  STAMPAGGIO,
     ha_torn:   t_torn > 0,
     ha_fresa:  t_fresa > 0,
-    ha_brocc:  brocc_c > 0,
     ha_raddr:  raddr_c > 0,
     ha_bonifica: TRATTAMENTO,
 

@@ -742,54 +742,6 @@
     },
     "soglia_qta_normale": 100
   },
-  "tempi_brocciatura": [
-    {
-      "fino_a": 16,
-      "secondi": 90
-    },
-    {
-      "fino_a": 27,
-      "secondi": 120
-    },
-    {
-      "fino_a": 42,
-      "secondi": 180
-    },
-    {
-      "fino_a": 60,
-      "secondi": 240
-    },
-    {
-      "fino_a": 999,
-      "secondi": 300
-    }
-  ],
-  "tempi_fresatura_testa": [
-    {
-      "fino_a": 20,
-      "secondi": 50
-    },
-    {
-      "fino_a": 30,
-      "secondi": 100
-    },
-    {
-      "fino_a": 40,
-      "secondi": 150
-    },
-    {
-      "fino_a": 50,
-      "secondi": 200
-    },
-    {
-      "fino_a": 60,
-      "secondi": 250
-    },
-    {
-      "fino_a": 70,
-      "secondi": 300
-    }
-  ],
   "rullatura_viti": {
     "minimi": [
       {
@@ -938,7 +890,6 @@
     "stampaggio": 3600,
     "tornitura": 3600,
     "fresatura": 3600,
-    "brocciatura": 3600,
     "rullatura": 1800,
     "raddrizzatura": 1800
   }
