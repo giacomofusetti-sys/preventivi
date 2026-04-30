@@ -10,6 +10,7 @@ import {
   calcolaMarcatura, getModPeso, setupCosto, parseQta,
   applicaDegradoOperatore,
   tempoTornituraBase, tempoMovimentazione,
+  tempoFantina,
 } from '../lib/calcolo_comune.js';
 
 // --- RADICE (m) ---------------------------------------------
@@ -129,6 +130,14 @@ export function calcolaPrigionieri(inputs, TC, TP) {
   // Lunghezza totale
   const lunghtot = (tipo === 'prig') ? lungh : lungh + m_rad;
 
+  // Lunghezza fisica del pezzo finito (senza scarto +5):
+  // - tipo='prig' (libero): lunghtot = lungh - 5 = parseExpr(lungh_raw),
+  //   l'utente specifica direttamente la lunghezza fisica del pezzo
+  // - tipo='5909'/'5911': lunghtot include m_rad, quindi
+  //   lungh_pezzo_fisica = parseExpr(lungh_raw) + m_rad,
+  //   che è la lunghezza fisica del pezzo finito (corpo + radice)
+  const lungh_pezzo_fisica = lunghtot - 5;
+
   // Lunghezze tratti
   const lungh_fil    = m_rad + b_fil;
   const lungh_liscia = lunghtot - lungh_fil;
@@ -184,8 +193,11 @@ export function calcolaPrigionieri(inputs, TC, TP) {
   // Tornitura NORMALE: ciclo + movimentazione, con minimo
   const tempo_torn = Math.max(tempo_torn_ciclo + mov_norm, tempo_min);
 
-  // Tornitura FANTINA: metà del ciclo (non cambia rispetto a oggi)
-  const tempo_torn_fantina = tempo_torn_ciclo / 2;
+  // Tornitura FANTINA: tempo calibrato su dati officina (vedi
+  // T.fantina in comune.json e tempoFantina in calcolo_comune.js)
+  const tempo_torn_fantina = tempoFantina(
+    lungh_pezzo_fisica, mat, materiale_speciale, TC
+  );
 
   // Oggetto diagnostico per UI (pannello dettaglio tornitura)
   const tornitura_info = {
@@ -199,6 +211,8 @@ export function calcolaPrigionieri(inputs, TC, TP) {
       liscia: tempo_torn_liscia,
       mov:    mov_norm,
     },
+    fantina_attiva: FANTINA,
+    tempo_fantina:  FANTINA ? tempo_torn_fantina : null,
   };
 
   const to_rate = dian < 45 ? co1 : co2;

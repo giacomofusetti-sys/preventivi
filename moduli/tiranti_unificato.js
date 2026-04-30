@@ -16,6 +16,7 @@ import {
   getModPeso, setupCosto, parseQta,
   applicaDegradoOperatore,
   tempoTornituraBase, tempoMovimentazione,
+  tempoFantina,
 } from '../lib/calcolo_comune.js';
 
 // --- Helper tornitura ---------------------------------------
@@ -210,7 +211,10 @@ export function calcolaTiranti(inputs, T) {
     const mov_norm = tempoMovimentazione(peso_grezzo, 3, T);
     const tempo_min = T.tornitura_controllo.tempo_minimo_secondi;
     const tempo_torn         = Math.max(tempo_torn_ciclo + mov_norm, tempo_min);
-    const tempo_torn_fantina = tempo_torn_ciclo / 2;
+    // Tornitura FANTINA: tempo calibrato su dati officina
+    const tempo_torn_fantina = tempoFantina(
+      lungh_pezzo, mat, materiale_speciale, T
+    );
     const torni_fin  = torniFin(tempo_torn, tempo_torn_fantina, co1, co2, dian, qta, FANTINA);
 
     // Oggetto diagnostico per UI (pannello dettaglio tornitura)
@@ -224,6 +228,8 @@ export function calcolaTiranti(inputs, T) {
         ciclo: tempo_torn_ciclo,
         mov:   mov_norm,
       },
+      fantina_attiva: FANTINA,
+      tempo_fantina:  FANTINA ? tempo_torn_fantina : null,
     };
     const setup_torn = FANTINA
       ? setupCosto(T.setup_secondi.tornitura_fantina, co1, qta)
