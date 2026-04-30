@@ -626,5 +626,31 @@
       { "fino_a_kg": 25,   "secondi": 22 },
       { "fino_a_kg": null, "secondi": 30 }
     ]
+  },
+  "fantina": {
+    "_descrizione": "Modello tempi fantina (taglio + tornitura + intestatura su macchina con caricatore). Parametri calibrati su 24 punti officina raccolti su tiranti e prigionieri (file Excel produzione, ottobre 2025).",
+    "parametri_per_categoria": {
+      "carbonio": {
+        "modello": "lineare",
+        "base_sec": 20,
+        "pendenza_sec_per_mm": 0.20,
+        "_calibrato_su": "6 prigionieri B7 (M12-M20, L 35-110mm). Residui ±2.3s.",
+        "_materiali_inclusi": ["42CD4","B16","B7","L7","B7M","A105"]
+      },
+      "inox": {
+        "modello": "lineare",
+        "base_sec": 27,
+        "pendenza_sec_per_mm": 0.15,
+        "_calibrato_su": "6 prigionieri B82+B8M2 (M16-M18, L 45-150mm). Residui ±2.5s sui prigionieri; sui tiranti errore fino a ±10s, accettato come variabilita' del dataset.",
+        "_materiali_inclusi": ["AISI 304","AISI 316","B8 cl.2","B8M cl.2","inox"]
+      },
+      "altro_660": {
+        "modello": "proporzionale",
+        "pendenza_sec_per_mm": 1.35,
+        "_calibrato_su": "3 tiranti 660 M16 (L 90/100/110mm). Residui +6/0/-22s. Modello proporzionale (senza base) per evitare estrapolazioni assurde a L<60mm. Per altri materiali 'altro' lo scaling avviene via materiali_speciali_k rispetto a 660.",
+        "_materiale_riferimento": "660"
+      }
+    },
+    "_note_estensione": "Quando arriveranno nuovi dati: aggiornare base_sec/pendenza_sec_per_mm. Se servirà differenziare per diametro o per tipo pezzo, aggiungere campi a parametri_per_categoria mantenendo la backward compatibility."
   }
 }
