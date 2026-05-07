@@ -260,6 +260,7 @@
     <a href="#sec-bonifica">Bonifica 42CD4</a>
     <a href="#sec-mod-peso">Modificatore peso</a>
     <a href="#sec-setup">Setup (approntamento)</a>
+    <a href="#sec-fresatura">Fresatura (modello)</a>
 
     <a class="nav-section">Dadi</a>
     <a href="#sec-dadi-chiavi">Chiavi esagonali</a>
@@ -523,6 +524,38 @@ function renderAll(T, TD, TP, TV) {
   }
   html += '</div>';
 
+  // --- Fresatura — Modello unificato (cava 5931 + testa esagonale) ---
+  html += section('sec-fresatura', 'Fresatura — Modello unificato');
+  html += `<div class="t-note">tempo = base + pendenza × predittore (in mm), con minimo ${T.fresatura._minimo_secondi} s. Il predittore è la dimensione chiave esagono (cava: ch_x_mm interno; testa: chiave_mm esterna). Calibrato su 35 punti officina (ottobre 2025).</div>`;
+  {
+    const F = T.fresatura;
+    let rows = '';
+    rows += `<tr><td>Cava 5931 (TCEI)</td><td class="num">${F.cava_5931.base_sec}</td><td class="num">${F.cava_5931.pendenza_sec_per_mm}</td><td>${h(F.cava_5931.predittore)}</td></tr>`;
+    rows += `<tr><td>Testa esagonale (5737/5739)</td><td class="num">${F.testa_esagonale.base_sec}</td><td class="num">${F.testa_esagonale.pendenza_sec_per_mm}</td><td>${h(F.testa_esagonale.predittore)}</td></tr>`;
+    html += tableWrap(`<thead><tr><th>Lavorazione</th><th class="num">Base (s)</th><th class="num">Pendenza (s/mm)</th><th>Predittore</th></tr></thead><tbody>${rows}</tbody>`);
+  }
+  html += groupTitle('Moltiplicatori materiale — costanti');
+  {
+    const M = T.fresatura.moltiplicatori_materiale;
+    let rows = '';
+    rows += `<tr><td>Carbonio</td><td class="num">×${fmt(M.carbonio, 1)}</td></tr>`;
+    rows += `<tr><td>Inox</td><td class="num">×${fmt(M.inox, 1)}</td></tr>`;
+    html += tableWrap(`<thead><tr><th>Categoria</th><th class="num">Moltiplicatore</th></tr></thead><tbody>${rows}</tbody>`);
+  }
+  html += groupTitle('Moltiplicatori "altro" — fasce per dimensione predittore', 'Per superleghe il moltiplicatore cresce con la chiave esagono (passate piccole, calore, usura).');
+  {
+    const fasce = T.fresatura.moltiplicatori_materiale.altro.fasce_per_materiale;
+    let rows = '';
+    for (const [mat, list] of Object.entries(fasce)) {
+      for (const f of list) {
+        const range = f.ch_x_max != null ? `≤ ${f.ch_x_max}` : '> precedente';
+        rows += `<tr><td>${h(mat)}</td><td class="num">${range}</td><td class="num">×${fmt(f.k, 2)}</td></tr>`;
+      }
+    }
+    html += tableWrap(`<thead><tr><th>Materiale</th><th class="num">Ch_x (mm)</th><th class="num">Moltiplicatore</th></tr></thead><tbody>${rows}</tbody>`);
+  }
+  html += '</div>';
+
 
   // ══════════════════════════════════════════════════════════
   // DADI
@@ -750,12 +783,6 @@ function renderAll(T, TD, TP, TV) {
 
   html += groupTitle('Sbavatura — Regola selezione macchina');
   html += `<div class="t-note">Qta &lt; ${TV.sbavatura.soglia_qta_normale} pz → Ceriotti; Qta ≥ ${TV.sbavatura.soglia_qta_normale} pz → Sbavatrice normale; fallback reciproco se fuori range, altrimenti tornio</div>`;
-
-  html += groupTitle('Brocciatura (5931)');
-  html += tierTable(TV.tempi_brocciatura, 'secondi', 'Tempo (s)', 's');
-
-  html += groupTitle('Fresatura testa');
-  html += tierTable(TV.tempi_fresatura_testa, 'secondi', 'Tempo (s)', 's');
 
   html += groupTitle('Setup viti');
   {
