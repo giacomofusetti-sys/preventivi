@@ -594,7 +594,7 @@
       <div class="form-row">
         <div class="form-group">
           <label>Costo base (€/kg) <span class="label-hint" id="costo-mat-hint"></span></label>
-          <input type="number" id="costo_mat_base" value="1.70" step="0.001" min="0">
+          <input type="number" id="costo_mat_base" step="0.001" min="0">
         </div>
         <div class="form-group">
           <label>Ricarico %</label>
@@ -999,6 +999,11 @@ function mostraCalcolatore(prodotto) {
   document.getElementById('qta').value   = '30';
   document.getElementById('qta_x').value = '0';
 
+  // Sincronizza costo materiale con il materiale corrente del select.
+  // Il listener 'change' su #mat non parte all'init (nessun cambio),
+  // quindi lo invochiamo qui per evitare disallineamenti tra select e prezzo.
+  applicaDefaultCostoMateriale(document.getElementById('mat').value);
+
   // Reset toggle: rimuovi active da tutti, rimettilo solo sul primo di ogni gruppo
   const seenGroups = new Set();
   document.querySelectorAll('.toggle-btn').forEach(b => seenGroups.add(b.dataset.group));
@@ -1247,18 +1252,17 @@ const COSTO_DEFAULT = {
   altro:       { base: 0,    ricarico: 10, hint: 'inserire manualmente' },
 };
 
-document.getElementById('mat').addEventListener('change', function() {
-  const v   = this.value;
-  const def = COSTO_DEFAULT[v] || { base: 0, ricarico: 10, hint: '' };
+function applicaDefaultCostoMateriale(mat) {
+  const def = COSTO_DEFAULT[mat] || { base: 0, ricarico: 10, hint: '' };
   document.getElementById('costo_mat_base').value     = def.base;
   document.getElementById('costo_mat_ricarico').value = def.ricarico;
   document.getElementById('costo-mat-hint').textContent = def.hint ? `— ${def.hint}` : '';
   // Mostra il gruppo "altro" solo se mat = "altro"
-  document.getElementById('altro-group').style.display = v === 'altro' ? 'block' : 'none';
+  document.getElementById('altro-group').style.display = mat === 'altro' ? 'block' : 'none';
 
   // Auto-accensione toggle trattamento su materiali bonificabili
   const isViti = prodottoCorrente === 'viti';
-  if (v === '42CD4' || (v === 'B16' && isViti)) {
+  if (mat === '42CD4' || (mat === 'B16' && isViti)) {
     const group = isViti ? 'trattamento_vite' : 'trattamento';
     document.querySelectorAll(`.toggle-btn[data-group="${group}"]`)
       .forEach(b => b.classList.toggle('active', b.dataset.val === 'ON'));
@@ -1266,6 +1270,10 @@ document.getElementById('mat').addEventListener('change', function() {
     const panel = isViti ? 'trattamento-vite-group' : 'trattamento-group';
     document.getElementById(panel).style.display = 'block';
   }
+}
+
+document.getElementById('mat').addEventListener('change', function() {
+  applicaDefaultCostoMateriale(this.value);
 });
 
 
