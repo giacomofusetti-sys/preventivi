@@ -56,7 +56,7 @@
     <h1 id="header-title">Preventivi</h1>
     <span id="header-sub">Seleziona un prodotto</span>
   </div>
-  <div class="header-right" id="header-right">v1.0</div>
+  <div class="header-right" id="header-right"></div>
 </header>
 
 
@@ -884,8 +884,16 @@ import { calcolaTiranti }     from './moduli/tiranti_unificato.js?v=6';
 import { calcolaDadi }        from './moduli/dadi.js?v=6';
 import { calcolaPrigionieri } from './moduli/prigionieri.js?v=6';
 import { parseDia, parseExpr, getDiametroMedio } from './lib/calcolo_comune.js?v=6';
+import { VERSION, VERSION_DATE, formatDataItaliana } from './lib/version.js?v=6';
 // tiranti_occhio.js viene importato dinamicamente in calcola()
 // per evitare che un file mancante blocchi l'intera applicazione
+
+// ─── VERSIONING (header in alto a destra) ────────────────────
+document.getElementById('header-right').innerHTML =
+  `<span class="version">v${VERSION}</span>` +
+  `<span class="version-sep">·</span>` +
+  `<span class="version-date">${formatDataItaliana(VERSION_DATE)}</span>` +
+  `<a class="version-changelog" href="https://github.com/giacomofusetti-sys/preventivi/blob/main/CHANGELOG.md" target="_blank" rel="noopener" title="Changelog">↗</a>`;
 
 
 // ─── CARICAMENTO TABELLE JSON ─────────────────────────────────
