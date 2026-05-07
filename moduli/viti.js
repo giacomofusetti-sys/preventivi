@@ -648,7 +648,7 @@ export function calcolaViti(inp, T, TV) {
     chiave_tipo      = 'p',
     STAMPAGGIO       = true,
     TRATTAMENTO      = false,
-    costo_bonifica_kg = 1.20,
+    costo_bonifica_kg = 1.30,
     forfait_bonifica  = 400,
     medio_override   = 0,
   } = inp;
