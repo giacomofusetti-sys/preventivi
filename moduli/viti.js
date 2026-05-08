@@ -20,6 +20,8 @@ import {
   tempoMovimentazione,
   tempoFresaturaCava,
   tempoFresaturaTestaEsagonale,
+  calcolaSmusso,
+  interpola,
 } from '../lib/calcolo_comune.js';
 
 const MAT_STANDARD = ['42CD4', 'B16', 'B7', 'L7', 'B7M', 'A105'];
@@ -410,13 +412,8 @@ function calcolaTorniturraViti(
 }
 
 // ─── SBAVATURA ────────────────────────────────────────────────
-
-// Interpolazione lineare con clamp [0,1]
-function interpola(x, x_min, x_max, y_min, y_max) {
-  if (x_max === x_min) return y_min;
-  const t = Math.max(0, Math.min(1, (x - x_min) / (x_max - x_min)));
-  return y_min + t * (y_max - y_min);
-}
+// `interpola` è ora importata da calcolo_comune.js (riusata anche
+// dal nuovo calcolaSmusso). La logica della sbavatura sotto è invariata.
 
 const NOMI_DISPLAY_SBAV = {
   sbavatrice_normale: 'Sbavatrice normale',
@@ -488,15 +485,6 @@ function calcolaSbavatura(dian, lungh, mat, qta, co, TV) {
     setup_sec: cfg.tornio.setup_sec,
     costo_totale: (cfg.tornio.setup_sec + cfg.tornio.tempo_ciclo_sec * qta) * co,
   };
-}
-
-// ─── SMUSSO ───────────────────────────────────────────────────
-
-function calcolaTempoSmusso(dian, mat, TV) {
-  const tiers = MAT_INOX.includes(mat)
-    ? TV.tempi_smusso_viti.inox_altro
-    : TV.tempi_smusso_viti.standard;
-  return tierValue(tiers, dian) ?? 0;
 }
 
 // ─── STAMPAGGIO ───────────────────────────────────────────────
@@ -779,9 +767,13 @@ export function calcolaViti(inp, T, TV) {
   const t_taglio = Math.round(ta_raw / co1); // secondi per gestionale
 
   // ── Smusso (solo se dia_disp ≈ medio, cioè si parte già a misura) ─
+  // smussi_per_pezzo=1 per le viti: testa stampata/tornita su un lato,
+  // solo l'estremità libera filettata è da smussare. Floor €10/lotto al
+  // call site (pattern coerente con sbavatura/taglio/ecc.).
   const ha_smusso  = Math.abs(dia_disp - medio) < 0.5;
-  const t_smusso   = ha_smusso ? calcolaTempoSmusso(dian, mat, TV) : 0;
-  const smusso_c   = t_smusso * co;
+  const sm_info    = ha_smusso ? calcolaSmusso(dian, lungh, mat, qta, 1, co1, co2, T) : null;
+  const t_smusso   = sm_info ? sm_info.tempo_ciclo_sec : 0;
+  const smusso_c   = sm_info ? t_smusso * sm_info.co_applicato : 0;
   const smusso_fin = t_smusso > 0 ? (smusso_c * qta < 10 ? 10 / qta : smusso_c) : 0;
 
   // ── Stampaggio ────────────────────────────────────────────
@@ -912,7 +904,7 @@ export function calcolaViti(inp, T, TV) {
   // ── Setup (approntamento) ─────────────────────────────────
   const S = TV.setup_secondi;
   const setup_taglio  = setupCosto(S.taglio,    co1, qta);
-  const setup_smusso  = ha_smusso ? setupCosto(S.smusso,    co1, qta) : 0;
+  const setup_smusso  = sm_info ? setupCosto(sm_info.setup_sec, co1, qta) : 0;
   const setup_stamp   = STAMPAGGIO ? setupCosto(S.stampaggio, co1, qta) : 0;
   const setup_sbav    = STAMPAGGIO && sbav_info ? setupCosto(sbav_info.setup_sec, co1, qta) : 0;
   // Setup tornitura: 1800s sul copiatore (semiautomatico), 3600s sul CN
@@ -975,7 +967,7 @@ export function calcolaViti(inp, T, TV) {
   lines.push(`RULLA ${Math.round(t_rulla)}`);
   if (raddr_c > 0) lines.push(`RADDR ${Math.round(raddr_c / 0.016)}`);
   lines.push(`ATAGL ${S_tag.taglio}`);
-  if (ha_smusso)   lines.push(`ASMUS ${S_tag.smusso}`);
+  if (sm_info)     lines.push(`ASMUS ${sm_info.setup_sec}`);
   if (STAMPAGGIO)  lines.push(`ASTA2 ${S_tag.stampaggio}`);
   if (STAMPAGGIO && sbav_info) lines.push(`ASBAV ${sbav_info.setup_sec}`);
   // Setup tornitura — una riga ATOR1/ATOR2 per ogni piazzamento applicato

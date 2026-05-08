@@ -409,111 +409,33 @@
     ]
   },
   "smusso": {
-    "standard": [
-      {
-        "fino_a": 22.0,
-        "secondi": 20
-      },
-      {
-        "fino_a": 42.2,
-        "secondi": 30
-      },
-      {
-        "fino_a": 52.0,
-        "secondi": 60
-      },
-      {
-        "fino_a": 56.0,
-        "secondi": 120
-      },
-      {
-        "fino_a": 63.0,
-        "secondi": 140
-      },
-      {
-        "fino_a": 85.0,
-        "secondi": 200
-      }
-    ],
-    "inox_altro": [
-      {
-        "fino_a": 22.0,
-        "secondi": 30
-      },
-      {
-        "fino_a": 42.2,
-        "secondi": 40
-      },
-      {
-        "fino_a": 52.0,
-        "secondi": 70
-      },
-      {
-        "fino_a": 56.0,
-        "secondi": 130
-      },
-      {
-        "fino_a": 63.0,
-        "secondi": 150
-      }
-    ],
-    "moltiplicatori_lunghezza": [
-      {
-        "da": 500,
-        "a": 600,
-        "mult": 1.5
-      },
-      {
-        "da": 600,
-        "a": 700,
-        "mult": 2.0
-      },
-      {
-        "da": 700,
-        "a": 800,
-        "mult": 2.5
-      },
-      {
-        "da": 800,
-        "a": 900,
-        "mult": 3.0
-      },
-      {
-        "da": 900,
-        "a": 1000,
-        "mult": 3.5
-      },
-      {
-        "da": 1000,
-        "a": 1200,
-        "mult": 4.0
-      },
-      {
-        "da": 1200,
-        "a": 1400,
-        "mult": 4.5
-      },
-      {
-        "da": 1400,
-        "a": 1600,
-        "mult": 5.0
-      },
-      {
-        "da": 1600,
-        "a": 1800,
-        "mult": 5.5
-      },
-      {
-        "da": 1800,
-        "a": 2000,
-        "mult": 6.0
-      },
-      {
-        "da": 2000,
-        "a": 2300,
-        "mult": 6.5
-      }
-    ]
+    "copiatore": {
+      "diametro_min": 8,
+      "diametro_max": 44.5,
+      "lunghezza_min": 60,
+      "lunghezza_max": 450,
+      "tempo_ciclo_min_sec": 15,
+      "tempo_ciclo_max_sec": 20,
+      "setup_sec": 1800
+    },
+    "ceriotti": {
+      "diametro_min": 8,
+      "diametro_max": 55,
+      "lunghezza_max": 600,
+      "tempo_ciclo_min_sec": 15,
+      "tempo_ciclo_max_sec": 20,
+      "setup_sec": 900
+    },
+    "tornio": {
+      "tempo_ciclo_sec": 90,
+      "setup_sec": 3600
+    },
+    "moltiplicatori_materiale": {
+      "standard": { "min": 1.0, "max": 1.0 },
+      "inox":     { "min": 1.1, "max": 1.2 },
+      "altro":    { "min": 1.3, "max": 2.0 }
+    },
+    "soglia_qta_normale": 100
   },
   "bonifica_42CD4": {
     "piccolo_corto": {
@@ -577,7 +499,6 @@
   ],
   "setup_secondi": {
     "taglio": 300,
-    "smusso": 1800,
     "rullatura": 1800,
     "tornitura_normale": 3600,
     "tornitura_fantina": 7200,

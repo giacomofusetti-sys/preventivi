@@ -609,52 +609,6 @@
       "soglia": 160
     }
   },
-  "tempi_smusso_viti": {
-    "standard": [
-      {
-        "fino_a": 22,
-        "secondi": 10
-      },
-      {
-        "fino_a": 42.2,
-        "secondi": 15
-      },
-      {
-        "fino_a": 52,
-        "secondi": 30
-      },
-      {
-        "fino_a": 56,
-        "secondi": 60
-      },
-      {
-        "fino_a": 65,
-        "secondi": 70
-      }
-    ],
-    "inox_altro": [
-      {
-        "fino_a": 22,
-        "secondi": 20
-      },
-      {
-        "fino_a": 42.2,
-        "secondi": 30
-      },
-      {
-        "fino_a": 52,
-        "secondi": 45
-      },
-      {
-        "fino_a": 56,
-        "secondi": 70
-      },
-      {
-        "fino_a": 65,
-        "secondi": 90
-      }
-    ]
-  },
   "tempi_stampaggio": [
     {
       "fino_a": 13.99,
@@ -886,7 +840,6 @@
   ],
   "setup_secondi": {
     "taglio": 300,
-    "smusso": 1800,
     "stampaggio": 3600,
     "tornitura": 3600,
     "fresatura": 3600,

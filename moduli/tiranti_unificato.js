@@ -10,7 +10,7 @@ import {
   parseDia, parseExpr, getDiametroMedio, getDiametroNominale, getDensita,
   calcolaPeso, getCostoMateriale,
   calcolaTempoTaglio, modulaCostoTaglio, taglioFin,
-  calcolaTempoSmusso, smussoCosto, smussoFin,
+  calcolaSmusso,
   calcolaTempoRullatura, rullaturaFin,
   calcolaMarcatura,
   getModPeso, setupCosto, parseQta,
@@ -107,9 +107,18 @@ export function calcolaTiranti(inputs, T) {
     const taglio_fin = taglioFin(ta, qta);
 
     // Smusso
-    const smusso_t   = calcolaTempoSmusso(dian, lungh_pezzo, mat, T);
-    const sm         = smussoCosto(smusso_t, dian, co1, co2);
-    const smusso_fin = smussoFin(sm, qta);
+    // smussi_per_pezzo=2 per i tiranti: entrambe le estremità libere
+    // vanno smussate. Tempo per pezzo = tempo_ciclo × 2.
+    // Floor €10/lotto al call site (pattern coerente con taglio/sbavatura).
+    // NB: smusso_t rappresenta ora il tempo PER PEZZO (= 2 smussi),
+    // mentre nel sistema pre-refactor era il tempo per UNO smusso —
+    // il nuovo valore esposto nel gestionale e nell'UI sarà quindi
+    // numericamente maggiore (correzione di un sotto-dimensionamento
+    // storico, non un bug del refactor).
+    const sm_info   = calcolaSmusso(dian, lungh_pezzo, mat, qta, 2, co1, co2, T);
+    const smusso_t  = sm_info.tempo_ciclo_sec * 2;
+    const sm        = smusso_t * sm_info.co_applicato;
+    const smusso_fin = sm * qta < 10 ? 10 / qta : sm;
 
     // Rullatura
     const lung_fil  = PRIGIONIERO ? (fil_a + fil_b) : lungh_pezzo;
@@ -122,7 +131,7 @@ export function calcolaTiranti(inputs, T) {
 
     // Setup
     const setup_taglio = setupCosto(T.setup_secondi.taglio,    co1, qta);
-    const setup_smusso = setupCosto(T.setup_secondi.smusso,    co1, qta);
+    const setup_smusso = setupCosto(sm_info.setup_sec,         co1, qta);
     const setup_rull   = setupCosto(T.setup_secondi.rullatura, co1, qta);
 
     // Totali
@@ -144,7 +153,7 @@ export function calcolaTiranti(inputs, T) {
       `RULLA ${Math.round(t_rull)}\n` +
       `MARCA ${tempo_marc}\n` +
       `ATAGL ${T.setup_secondi.taglio}\n` +
-      `ASMUS ${T.setup_secondi.smusso}\n` +
+      `ASMUS ${sm_info.setup_sec}\n` +
       `ARULL ${T.setup_secondi.rullatura}\n` +
       `AMARC ${tempo_setup_marc}`;
 
