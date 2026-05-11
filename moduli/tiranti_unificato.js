@@ -226,12 +226,30 @@ export function calcolaTiranti(inputs, T) {
     );
     const torni_fin  = torniFin(tempo_torn, tempo_torn_fantina, co1, co2, dian, qta, FANTINA);
 
+    // Narrazione naturale per il popup "Dettaglio tornitura"
+    // (T1: tirante CN normale, T2: tirante fantina). Vedi tabella casi
+    // tornitura nei commenti di calcolaTorniturraViti (viti.js).
+    const min_scattato_torn = tempo_torn_ciclo + mov_norm < tempo_min;
+    const setup_torn_sec = FANTINA
+      ? T.setup_secondi.tornitura_fantina
+      : T.setup_secondi.tornitura_normale;
+    const nota_min_torn = min_scattato_torn
+      ? ` (minimo ${tempo_min} secondi applicato, sotto questa soglia la lavorazione non è economicamente sensata)`
+      : '';
+    const narrazione_torn = FANTINA
+      ? [
+          `Il pezzo viene tornito in fantina: tornio a passaggio con ciclo continuo, niente movimentazione manuale grazie al caricatore automatico. Tempo per pezzo: ${Math.round(tempo_torn_fantina)}s. Setup macchina (Fantina): ${setup_torn_sec}s.`
+        ]
+      : [
+          `Il pezzo viene tornito al Tornio CN per portare il diametro di partenza al diametro medio sulla lunghezza del tirante. Ciclo: ${Math.round(tempo_torn_ciclo)}s. Si aggiungono ${Math.round(mov_norm)}s di movimentazione (carico barra, rotazione per la seconda estremità, scarico). Totale ${Math.round(tempo_torn)}s per pezzo${nota_min_torn}. Setup macchina (Tornio CN): ${setup_torn_sec}s.`
+        ];
+
     // Oggetto diagnostico per UI (pannello dettaglio tornitura)
     const tornitura_info = {
       tempo_ciclo:   tempo_torn_ciclo,
       mov:           mov_norm,
       tempo_totale:  tempo_torn,
-      min_scattato:  tempo_torn_ciclo + mov_norm < tempo_min,
+      min_scattato:  min_scattato_torn,
       materiale_key: mat === 'altro' ? materiale_speciale : mat,
       componenti: {
         ciclo: tempo_torn_ciclo,
@@ -239,6 +257,12 @@ export function calcolaTiranti(inputs, T) {
       },
       fantina_attiva: FANTINA,
       tempo_fantina:  FANTINA ? tempo_torn_fantina : null,
+      narrazione:     narrazione_torn,
+      // Piazzamenti (approntamento) per la sezione tabellare del popup.
+      // Single source of truth nei moduli: il renderer itera sull'array.
+      piazzamenti: FANTINA
+        ? [{ nome: 'Fantina',   setup_sec: T.setup_secondi.tornitura_fantina }]
+        : [{ nome: 'Tornio CN', setup_sec: T.setup_secondi.tornitura_normale }],
     };
     const setup_torn = FANTINA
       ? setupCosto(T.setup_secondi.tornitura_fantina, co1, qta)

@@ -322,6 +322,7 @@ function calcolaTorniturraViti(
       has_intestazione: false,
       has_testa_5931: is5931InoxAltro,
       ha_extensione_testa_ex: false,
+      A_include_solo_testa_esagonale: false,
       L_liscia_eff: L_liscia,
       is_copiatore: true,
     };
@@ -406,9 +407,155 @@ function calcolaTorniturraViti(
     has_intestazione: C > 0,
     has_testa_5931: is5931InoxAltro,
     ha_extensione_testa_ex,
+    // True solo se A è esclusivamente la testa esagonale (V1 5739
+    // FRESA con tondo grosso): L_liscia originale=0 + estensione attiva.
+    // Per V2/V10 estensione attiva con L_liscia originale > 0, A include
+    // sia parte liscia sia testa esagonale.
+    A_include_solo_testa_esagonale: ha_extensione_testa_ex && L_liscia === 0,
     L_liscia_eff,
     is_copiatore: false,
   };
+}
+
+// ─── NARRAZIONE TORNITURA ─────────────────────────────────────
+// Costruisce l'array di paragrafi descrittivi per il popup
+// "Dettaglio tornitura", a partire dalle componenti già calcolate da
+// calcolaTorniturraViti. I numeri (tempo ciclo, mov, setup) sono
+// inseriti inline nelle frasi; le tabelle tecniche del popup restano
+// invariate e mostrano i parametri di taglio.
+//
+// Mappa terminologia (codice → narrazione):
+//   tempoTornituraBase su gambo/parte liscia (A/B) → "tornitura del gambo"
+//     o "tornitura della parte liscia/filettata"
+//   tempoTornituraBase su laterale testa (E2)      → "tornitura del fianco della testa"
+//   tempoSfacciatura su intestazione (C)           → "intestazione"
+//   tempoSfacciatura su sottotesta (D)             → "ripresa del sottotesta"
+//   tempoSfacciatura su fronte testa (E1)          → "intestazione del fronte testa"
+//   tempoMovimentazione                            → "movimentazione (presa e deposito del pezzo)"
+//   tempo_gambo_copiatore                          → "tornitura del gambo sul copiatore"
+//
+// In officina "sfacciatura" si chiama "intestazione" — uso quest'ultima
+// nelle stringhe narrative, mantenendo "sfacciatura" nei nomi di
+// funzione del codice.
+
+function _notaMinTornitura(min_scattato, tempo_min) {
+  return min_scattato
+    ? ` (minimo ${tempo_min} secondi applicato, sotto questa soglia la lavorazione non è economicamente sensata)`
+    : '';
+}
+
+/**
+ * @param {object} info tornitura_info (output di calcolaTorniturraViti)
+ * @param {object} setup secondi dei setup macchina:
+ *   {torn_sec, intestazione_sec, testa_E1_sec, testa_E2_sec, copiatore_sec, tempo_min}
+ * @returns {string[]} paragrafi narrativi; [] se nessuna tornitura applicabile.
+ */
+function costruisciNarrazioneTornituraViti(info, setup) {
+  if (!info.has_tornitura) return [];
+
+  const { A, B, C, D, E1, E2, mov } = info.componenti;
+
+  // ─── RAMO COPIATORE ────────────────────────────────────────
+  // V5/V6: solo gambo. V7: ibrido (gambo sul copiatore + testa sul CN).
+  // Nel return del ramo copiatore: B contiene tempo_gambo_copiatore,
+  // A/C/D/mov sono 0; E1/E2 valorizzati solo per V7 (is5931InoxAltro).
+  if (info.is_copiatore) {
+    const tempo_gambo = Math.round(B);
+
+    if (info.has_testa_5931) {
+      // V7 — ibrido: 2 paragrafi (copiatore + CN)
+      const E1r = Math.round(E1);
+      const E2r = Math.round(E2);
+      return [
+        `Sul Copiatore: il gambo viene tornito in una sola passata per portarlo al diametro medio. ` +
+        `Tempo per pezzo: ${tempo_gambo}s. Setup: ${setup.copiatore_sec}s.`,
+        `Sul Tornio CN: la testa cilindrica viene poi lavorata in due fasi: intestazione del fronte testa (${E1r}s) ` +
+        `e tornitura del fianco della testa per portarla al diametro finito (${E2r}s). ` +
+        `Totale ${E1r + E2r}s per pezzo. ` +
+        `Setup: ${setup.testa_E1_sec}s + ${setup.testa_E2_sec}s (due piazzamenti distinti, intestazione e tornitura).`,
+      ];
+    }
+
+    // V5/V6 — solo gambo sul copiatore
+    return [
+      `Il gambo viene tornito sul copiatore in una sola passata per portarlo al diametro medio. ` +
+      `Tempo per pezzo: ${tempo_gambo}s. Setup macchina (Copiatore): ${setup.copiatore_sec}s.`,
+    ];
+  }
+
+  // ─── RAMO CN ────────────────────────────────────────────────
+  // Composizione dinamica delle fasi attive (componente > 0).
+  //
+  // Frase per A:
+  //   - estensione testa esagonale attiva (solo FRESA con testa esagonale):
+  //       L_liscia originale=0  → "tornitura della testa esagonale"  (V1 5739)
+  //       L_liscia originale>0  → "tornitura della parte liscia e della testa esagonale"  (V2/V10)
+  //   - senza estensione:
+  //       B > 0  → "tornitura della parte liscia"  (V2/V10 mezzo filetto FRESA)
+  //       B == 0 → "tornitura del gambo per portarlo al diametro medio"
+  //                (V8/V11 STAMPAGGIO sopra nominale, dove B viene azzerato
+  //                perché L_filettata=0 da stampaggio)
+  // NB: l'estensione si attiva solo in FRESA (testa_esagonale richiede
+  // !STAMPAGGIO); per V8/V11 STAMPAGGIO è sempre disattiva.
+  const fasi = [];
+  if (A > 0) {
+    let frase_A;
+    if (info.ha_extensione_testa_ex) {
+      frase_A = info.A_include_solo_testa_esagonale
+        ? `tornitura della testa esagonale (${Math.round(A)}s)`
+        : `tornitura della parte liscia e della testa esagonale (${Math.round(A)}s)`;
+    } else if (B > 0) {
+      frase_A = `tornitura della parte liscia (${Math.round(A)}s)`;
+    } else {
+      frase_A = `tornitura del gambo per portarlo al diametro medio (${Math.round(A)}s)`;
+    }
+    fasi.push(frase_A);
+  }
+  if (B > 0) fasi.push(`tornitura della parte filettata (${Math.round(B)}s)`);
+  if (C > 0) fasi.push(`intestazione (${Math.round(C)}s)`);
+  if (D > 0) fasi.push(`ripresa del sottotesta (${Math.round(D)}s)`);
+  if (info.has_testa_5931) {
+    fasi.push(`intestazione del fronte testa (${Math.round(E1)}s)`);
+    fasi.push(`tornitura del fianco della testa (${Math.round(E2)}s)`);
+  }
+
+  if (fasi.length === 0) return [];   // safety net (non dovrebbe accadere se has_tornitura=true)
+
+  // Frase principale: 1 fase o "più fasi: ..., ..., e ultima"
+  let frase_principale;
+  if (fasi.length === 1) {
+    frase_principale = `Il pezzo viene tornito al Tornio CN: ${fasi[0]}.`;
+  } else {
+    const ultima = fasi.pop();
+    frase_principale = `Il pezzo viene tornito al Tornio CN in più fasi: ${fasi.join(', ')} e ${ultima}.`;
+  }
+
+  // Movimentazione (solo se mov > 0)
+  const frase_mov = mov > 0
+    ? ` Si aggiungono ${Math.round(mov)}s di movimentazione (presa e deposito del pezzo).`
+    : '';
+
+  // Totale + eventuale nota minimo
+  const frase_totale = ` Totale ${Math.round(info.tempo_totale)}s per pezzo` +
+    `${_notaMinTornitura(info.min_scattato, setup.tempo_min)}.`;
+
+  // Setup macchina: 3 varianti mutuamente esclusive (CN+intestazione,
+  // CN+testa 5931, solo CN). Non esiste il caso "intestazione + testa
+  // 5931" insieme: C>0 richiede !STAMPAGGIO, has_testa_5931 richiede
+  // STAMPAGGIO.
+  let frase_setup;
+  if (info.has_testa_5931) {
+    frase_setup =
+      ` Setup macchina: ${setup.torn_sec}s + ${setup.testa_E1_sec}s + ${setup.testa_E2_sec}s ` +
+      `per i piazzamenti distinti di intestazione e tornitura testa.`;
+  } else if (info.has_intestazione) {
+    frase_setup =
+      ` Setup macchina: ${setup.torn_sec}s + ${setup.intestazione_sec}s per il piazzamento di intestazione.`;
+  } else {
+    frase_setup = ` Setup macchina: ${setup.torn_sec}s.`;
+  }
+
+  return [frase_principale + frase_mov + frase_totale + frase_setup];
 }
 
 // ─── SBAVATURA ────────────────────────────────────────────────
@@ -819,6 +966,41 @@ export function calcolaViti(inp, T, TV) {
     peso,
     T
   );
+  // Narrazione naturale per il popup. Costruita qui (non dentro
+  // calcolaTorniturraViti) per evitare di propagare TV nella signature:
+  // i setup CN viti vivono in TV.setup_secondi.tornitura, gli altri in T.
+  tornitura_info.narrazione = costruisciNarrazioneTornituraViti(tornitura_info, {
+    torn_sec:          tornitura_info.is_copiatore
+                         ? T.setup_secondi.setup_copiatore
+                         : TV.setup_secondi.tornitura,
+    intestazione_sec:  T.setup_secondi.intestazione,
+    testa_E1_sec:      T.setup_secondi.testa_5931_intestazione,
+    testa_E2_sec:      T.setup_secondi.testa_5931_tornitura,
+    copiatore_sec:     T.setup_secondi.setup_copiatore,
+    tempo_min:         T.tornitura_controllo.tempo_minimo_secondi,
+  });
+  // Piazzamenti (approntamento) per la sezione tabellare del popup.
+  // Single source of truth nei moduli: il renderer itera sull'array.
+  tornitura_info.piazzamenti = (() => {
+    if (!tornitura_info.has_tornitura) return [];
+    const p = [];
+    // Macchina principale: Copiatore (V5/V6/V7) o Tornio CN (V1/V2/V8/V10/V11)
+    if (tornitura_info.is_copiatore) {
+      p.push({ nome: 'Copiatore', setup_sec: T.setup_secondi.setup_copiatore });
+    } else {
+      p.push({ nome: 'Tornio CN', setup_sec: TV.setup_secondi.tornitura });
+    }
+    // Intestazione del tondo (V1/V2/V10 FRESA, has_intestazione = C > 0)
+    if (tornitura_info.has_intestazione) {
+      p.push({ nome: 'Intestazione', setup_sec: T.setup_secondi.intestazione });
+    }
+    // Testa 5931 inox/altro: 2 piazzamenti distinti (V7 ibrido o V8 inox/altro)
+    if (tornitura_info.has_testa_5931) {
+      p.push({ nome: 'Testa 5931 — intestazione',     setup_sec: T.setup_secondi.testa_5931_intestazione });
+      p.push({ nome: 'Testa 5931 — tornitura laterale', setup_sec: T.setup_secondi.testa_5931_tornitura });
+    }
+    return p;
+  })();
   const t_torn = tornitura_info.tempo_totale;
   let torn_fin = 0;
   if (t_torn > 0) {

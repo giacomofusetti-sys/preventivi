@@ -880,11 +880,11 @@
 // Ogni modulo esporta la sua funzione di calcolo principale.
 // Aggiungere un nuovo modulo = aggiungere una riga qui + un branch
 // in calcola() + la logica in renderResults().
-import { calcolaTiranti }     from './moduli/tiranti_unificato.js?v=7';
-import { calcolaDadi }        from './moduli/dadi.js?v=7';
-import { calcolaPrigionieri } from './moduli/prigionieri.js?v=7';
-import { parseDia, parseExpr, getDiametroMedio } from './lib/calcolo_comune.js?v=7';
-import { VERSION, VERSION_DATE, formatDataItaliana } from './lib/version.js?v=7';
+import { calcolaTiranti }     from './moduli/tiranti_unificato.js?v=9';
+import { calcolaDadi }        from './moduli/dadi.js?v=9';
+import { calcolaPrigionieri } from './moduli/prigionieri.js?v=9';
+import { parseDia, parseExpr, getDiametroMedio } from './lib/calcolo_comune.js?v=9';
+import { VERSION, VERSION_DATE, formatDataItaliana } from './lib/version.js?v=9';
 // tiranti_occhio.js viene importato dinamicamente in calcola()
 // per evitare che un file mancante blocchi l'intera applicazione
 
@@ -1540,7 +1540,7 @@ window.calcola = async function() {
       }, T, TD);
     } else if (prodottoCorrente === 'tiranti_occhio') {
       // ── Tiranti a Occhio — import dinamico ───────────────
-      const { calcolaTirantiOcchio } = await import('./moduli/tiranti_occhio.js?v=7');
+      const { calcolaTirantiOcchio } = await import('./moduli/tiranti_occhio.js?v=9');
       const _diam_o  = getDiametroMedio(T, parseDia(getStr('dia')), getStr('passo'));
       const _min_o   = getToggleVal('minorato') === 'ON';
       const medio_override = _min_o ? _diam_o - getNum('riduzione_medio', 0.4) : 0;
@@ -1571,7 +1571,7 @@ window.calcola = async function() {
 
     // ── Viti ─────────────────────────────────────────────
     if (prodottoCorrente === 'viti') {
-      const { calcolaViti } = await import('./moduli/viti.js?v=7');
+      const { calcolaViti } = await import('./moduli/viti.js?v=9');
       const _diam_v  = getDiametroMedio(T, parseDia(getStr('dia')), getStr('passo'));
       const _min_v   = getToggleVal('minorato') === 'ON';
       const medio_override = _min_v ? _diam_v - getNum('riduzione_medio', 0.4) : 0;
@@ -1729,24 +1729,29 @@ function renderTornDetail(info, T) {
   }
   calcRows += row('Tempo totale', Math.round(info.tempo_totale) + ' s', 'accent');
 
-  // Piazzamenti (solo per viti, che hanno has_intestazione/has_testa_5931)
+  // Piazzamenti (approntamento): array popolato dai moduli viti/tiranti
+  // come single source of truth (nome macchina + setup_sec specifico).
+  // Il fallback copre eventuali cache stale o moduli che non espongono
+  // ancora il campo — mostra "Tornio CN" che è il caso più frequente.
   let setupRows = '';
-  if ('has_intestazione' in info || 'has_testa_5931' in info) {
-    setupRows = row('Tornitura normale', (T?.setup_secondi?.tornitura_normale ?? 3600) + ' s');
-    if (info.has_intestazione) {
-      setupRows += row('Intestazione', (T?.setup_secondi?.intestazione ?? 1667) + ' s');
-    }
-    if (info.has_testa_5931) {
-      const s5 = (T?.setup_secondi?.testa_5931_intestazione ?? 1800)
-               + (T?.setup_secondi?.testa_5931_tornitura    ?? 1800);
-      setupRows += row('Testa 5931 (2 piazzamenti)', s5 + ' s');
+  if (Array.isArray(info.piazzamenti) && info.piazzamenti.length > 0) {
+    for (const p of info.piazzamenti) {
+      setupRows += row(p.nome, p.setup_sec + ' s');
     }
   } else {
-    setupRows = row('Tornitura normale', (T?.setup_secondi?.tornitura_normale ?? 3600) + ' s');
+    setupRows = row('Tornio CN', (T?.setup_secondi?.tornitura_normale ?? 3600) + ' s');
   }
+
+  // Blocco narrativo (paragrafi descrittivi prodotti dai moduli viti/tiranti).
+  // Graceful fallback: se assente o array vuoto → nessun blocco renderizzato.
+  const narrazione = info.narrazione;
+  const narrazioneHtml = (Array.isArray(narrazione) && narrazione.length > 0)
+    ? `<div class="torn-narrazione">${narrazione.map(par => `<p>${par}</p>`).join('')}</div>`
+    : '';
 
   return `
     <div class="breakdown-title">▎ Dettaglio tornitura</div>
+    ${narrazioneHtml}
     <div class="breakdown-subtitle">Componenti</div>
     <div class="cost-grid">${compRows}</div>
     <div class="breakdown-subtitle">Parametri materiale</div>

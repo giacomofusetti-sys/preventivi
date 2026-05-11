@@ -569,3 +569,22 @@ header span {
 }
 .torn-detail-panel .breakdown-subtitle:first-of-type { margin-top: 0; }
 .torn-detail-panel .cost-row-value.accent { color: var(--accent); font-weight: bold; }
+
+/* Blocco narrativo nel popup dettaglio tornitura. Leggibile (Barlow
+   Condensed 14px), separato visivamente dalle tabelle tecniche da un
+   bordo sottile. Quando assente, il blocco non viene renderizzato. */
+.torn-detail-panel .torn-narrazione {
+  margin-bottom: 18px;
+  padding-bottom: 14px;
+  border-bottom: 1px solid var(--border);
+}
+.torn-detail-panel .torn-narrazione p {
+  font-family: var(--sans);
+  font-size: 14px;
+  line-height: 1.55;
+  color: var(--text);
+  margin-bottom: 10px;
+}
+.torn-detail-panel .torn-narrazione p:last-child {
+  margin-bottom: 0;
+}
