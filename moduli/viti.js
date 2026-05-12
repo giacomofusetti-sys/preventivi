@@ -228,6 +228,16 @@ function calcolaTorniturraViti(
   peso_grezzo,
   T
 ) {
+  // Validazione input: la parte liscia non può eccedere la barra di partenza.
+  // Fail-fast prima di qualunque calcolo, così l'errore esce subito con un
+  // messaggio comprensibile invece di propagare valori incoerenti a valle.
+  if (dia_parte_liscia > 0 && dia_parte_liscia > dia_disp) {
+    throw new Error(
+      `Parte liscia (Ø ${dia_parte_liscia} mm) non può superare il diametro ` +
+      `della barra di partenza (Ø ${dia_disp} mm).`
+    );
+  }
+
   // Estensione L_liscia per testa esagonale tornita da tondo grosso:
   // se il tondo è più largo dello spigolo + 5 mm, il tornio abbassa
   // anche il lato della testa (non solo il gambo). L'estensione vale
@@ -264,11 +274,18 @@ function calcolaTorniturraViti(
   // la soglia tabellata in lunghezze_filetto_5931).
   const is_mezzo_filetto = L_liscia > 0;
 
-  // Territorio "copiatore": stampaggio + 5737/5931 + mezzo filetto.
+  // Territorio "copiatore": stampaggio + 5737/5931 + mezzo filetto +
+  // parte liscia al nominale. Il copiatore lavora in 1 passata sul perno
+  // (parte filettata) portandolo dal nominale al medio: se la parte liscia
+  // è ridotta rispetto al nominale, non sa fare le due geometrie distinte
+  // e va al CN.
+  //
   // In questo territorio dia_disp deve stare in [dian-0.2, dian]:
   // - sotto: errore esplicito (barra trafilata non adatta)
   // - sopra: si va al CN come oggi
-  // - dentro: copiatore
+  // - dentro + parte liscia al nominale: copiatore
+  // - dentro + parte liscia ridotta: si va al CN (logica V8 carbonio o
+  //   V8 inox/altro gestisce automaticamente il caso)
   const is_copiatore_territory =
     STAMPAGGIO &&
     (tipo === '5737' || tipo === '5931') &&
@@ -282,10 +299,13 @@ function calcolaTorniturraViti(
     );
   }
 
+  // Tolleranza dia_parte_liscia-dian coerente con quella dia_disp-medio
+  // del check ha_smusso (0.5 mm), che identifica "barra già a misura".
   const is_copiatore =
     is_copiatore_territory &&
     dia_disp >= (dian - 0.2) &&
-    dia_disp <= dian;
+    dia_disp <= dian &&
+    Math.abs(dia_parte_liscia - dian) < 0.5;
 
   // ─── RAMO COPIATORE ────────────────────────────────────────
   // Formula copiatore (1 sola passata sempre, offset fisso, niente moltiplicatori
@@ -331,13 +351,14 @@ function calcolaTorniturraViti(
   // ─── RAMO CN (controllo numerico) ──────────────────────────
 
   // A — tornitura parte liscia (con eventuale estensione per testa esagonale)
+  // Sul CN il gambo riceve sempre una passata di finitura in coda (flag true).
   const A = (dia_disp > dia_parte_liscia && L_liscia_eff > 0)
-    ? tempoTornituraBase(dia_disp, dia_parte_liscia, L_liscia_eff, mat, materiale_speciale, T)
+    ? tempoTornituraBase(dia_disp, dia_parte_liscia, L_liscia_eff, mat, materiale_speciale, T, true)
     : 0;
 
-  // B — tornitura parte filettata
+  // B — tornitura parte filettata (anch'essa parte del gambo, finitura attiva).
   const B = (dia_disp > dia_medio && L_filettata > 0)
-    ? tempoTornituraBase(dia_disp, dia_medio, L_filettata, mat, materiale_speciale, T)
+    ? tempoTornituraBase(dia_disp, dia_medio, L_filettata, mat, materiale_speciale, T, true)
     : 0;
 
   // C — intestazione tondo (solo FRESA)
@@ -492,9 +513,13 @@ function costruisciNarrazioneTornituraViti(info, setup) {
   //       L_liscia originale>0  → "tornitura della parte liscia e della testa esagonale"  (V2/V10)
   //   - senza estensione:
   //       B > 0  → "tornitura della parte liscia"  (V2/V10 mezzo filetto FRESA)
-  //       B == 0 → "tornitura del gambo per portarlo al diametro medio"
+  //       B == 0 → "tornitura del gambo"
   //                (V8/V11 STAMPAGGIO sopra nominale, dove B viene azzerato
-  //                perché L_filettata=0 da stampaggio)
+  //                perché L_filettata=0 da stampaggio; anche il caso
+  //                "copiatore declassato a CN" per dpl<dian rientra qui.
+  //                Il target di A è dia_parte_liscia, che può essere
+  //                dian — V8 standard — o dpl<dian — declassato. Frase
+  //                volutamente senza target per coprire entrambi.)
   // NB: l'estensione si attiva solo in FRESA (testa_esagonale richiede
   // !STAMPAGGIO); per V8/V11 STAMPAGGIO è sempre disattiva.
   const fasi = [];
@@ -507,7 +532,7 @@ function costruisciNarrazioneTornituraViti(info, setup) {
     } else if (B > 0) {
       frase_A = `tornitura della parte liscia (${Math.round(A)}s)`;
     } else {
-      frase_A = `tornitura del gambo per portarlo al diametro medio (${Math.round(A)}s)`;
+      frase_A = `tornitura del gambo (${Math.round(A)}s)`;
     }
     fasi.push(frase_A);
   }
