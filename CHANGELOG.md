@@ -6,6 +6,79 @@ documentate in questo file.
 Il formato è basato su [Keep a Changelog](https://keepachangelog.com/it/1.1.0/),
 e il progetto segue [Semantic Versioning](https://semver.org/lang/it/).
 
+## [1.0.3] — 2026-05-12
+
+### Added
+- Narrazione naturale nel popup "Dettaglio tornitura". Il popup
+  mostra ora un blocco testuale in alto che racconta in linguaggio
+  naturale cosa fa la macchina al pezzo: tornitura del gambo,
+  intestazione, ripresa del sottotesta, movimentazione, totale,
+  setup. La narrazione è dinamica per tutti i casi (V1-V11 viti
+  + T1-T2 tiranti), con paragrafi separati per il caso ibrido
+  5931 inox/altro stampata (copiatore + CN).
+- Validazione fail-fast: parte liscia (`dia_parte_liscia`) non
+  può superare il diametro della barra di partenza (`dia_disp`)
+  oltre una tolleranza di 0.3 mm (per coprire la trafilatura
+  standard). Errore esplicito con valori effettivi.
+
+### Changed
+- **Tornitura viti al CN: aggiunta passata di finitura sul
+  gambo.** Sul tornio CN, dopo le passate di sgrossatura, si
+  applica sempre una passata di finitura aggiuntiva sul gambo
+  (parte liscia + parte filettata). Effetto: il tempo di
+  tornitura del gambo aumenta di 1/N rispetto a prima (dove N
+  è il numero di passate di sgrossatura). Non si applica a:
+  copiatore (formula chiusa), fantina (modello a passaggio),
+  intestazione/sottotesta/testa 5931, tiranti.
+- **Copiatore vincolato a parte liscia al nominale.** Il caso
+  "5737/5931 stampata mezzo filetto da barra al nominale"
+  finiva sempre al copiatore, anche quando la parte liscia
+  era ridotta rispetto al nominale (caso fisicamente non
+  gestibile dal copiatore, che lavora in una sola passata su
+  un solo diametro target). Ora la condizione di attivazione
+  copiatore richiede anche che la parte liscia sia ≈ nominale
+  (tolleranza 0.5 mm). Quando la parte liscia è ridotta, il
+  pezzo va automaticamente al Tornio CN, che sa gestire i due
+  diametri distinti.
+- **Popup tornitura — sezione PIAZZAMENTI.** Le label macchina
+  ora sono dinamiche e coerenti tra narrazione e tabella:
+  "Copiatore", "Tornio CN", "Fantina", "Intestazione", "Testa
+  5931 — intestazione", "Testa 5931 — tornitura laterale".
+  Prima la tabella mostrava sempre "Tornitura normale 3600s"
+  anche quando il pezzo era stato lavorato su copiatore
+  (1800s) o fantina (7200s). Anche il caso 5931 inox/altro
+  stampata (V7 ibrido) mostra ora i 3 piazzamenti distinti
+  (copiatore + 2 piazzamenti testa 5931) invece di una riga
+  aggregata.
+- **Narrazione gambo CN: rimosso target "diametro medio".**
+  Le narrazioni del ramo CN ora dicono "tornitura del gambo
+  (Xs)" invece di "tornitura del gambo per portarlo al
+  diametro medio (Xs)". La frase era imprecisa per i casi
+  dove il gambo viene tornito al nominale (V8 standard) o a
+  un diametro parte liscia ridotto (caso copiatore-declassato).
+  Sul ramo copiatore la frase resta invariata ("al diametro
+  medio") perché lì è semanticamente corretta.
+
+### Internal
+- `lib/calcolo_comune.js`: parametro opzionale `finitura_aggiuntiva`
+  (default false) aggiunto a `tempoTornituraBase`. Retrocompatibile
+  con tutte le chiamate esistenti.
+- `moduli/viti.js`: nuovo helper `costruisciNarrazioneTornituraViti`
+  che produce dinamicamente i template per gli 11 casi V1-V11.
+- `moduli/viti.js`: nuovo campo `tornitura_info.piazzamenti`
+  (array di `{nome, setup_sec}`) popolato condizionalmente dai
+  moduli viti e tiranti. Single source of truth nei moduli,
+  renderer generico in `index.html`.
+- `moduli/tiranti_unificato.js`: campo `tornitura_info.narrazione`
+  per i casi T1 (CN normale) e T2 (fantina). Campo
+  `tornitura_info.piazzamenti` allineato al nuovo pattern.
+- `index.html`: `renderTornDetail` riscritto per renderizzare
+  dinamicamente narrazione (array di paragrafi) e piazzamenti
+  (array di righe). Eliminati hardcode di label e fallback
+  dispersi.
+- `stile.css`: stile dedicato al blocco narrazione (Barlow
+  Condensed 14px, border-bottom di separazione).
+
 ## [1.0.2] — 2026-05-08
 
 ### Changed
