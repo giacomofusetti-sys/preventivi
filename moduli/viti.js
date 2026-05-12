@@ -228,13 +228,16 @@ function calcolaTorniturraViti(
   peso_grezzo,
   T
 ) {
-  // Validazione input: la parte liscia non può eccedere la barra di partenza.
+  // Validazione input: la parte liscia non può eccedere significativamente
+  // la barra di partenza. Tolleranza 0.3 mm per coprire la trafilatura
+  // (la barra trafilata sta tipicamente 0.1-0.2 mm sotto il nominale,
+  // quindi 0.3 dà margine senza essere permissivo).
   // Fail-fast prima di qualunque calcolo, così l'errore esce subito con un
   // messaggio comprensibile invece di propagare valori incoerenti a valle.
-  if (dia_parte_liscia > 0 && dia_parte_liscia > dia_disp) {
+  if (dia_parte_liscia > 0 && dia_parte_liscia > dia_disp + 0.3) {
     throw new Error(
-      `Parte liscia (Ø ${dia_parte_liscia} mm) non può superare il diametro ` +
-      `della barra di partenza (Ø ${dia_disp} mm).`
+      `Parte liscia (Ø ${dia_parte_liscia} mm) non può superare significativamente ` +
+      `il diametro della barra di partenza (Ø ${dia_disp} mm).`
     );
   }
 
