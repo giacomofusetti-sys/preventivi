@@ -14,6 +14,7 @@ import {
   calcolaPeso,
   parseQta,
   setupCosto,
+  calcolaSetupTaglio,
   applicaDegradoOperatore,
   tempoTornituraBase,
   tempoSfacciatura,
@@ -922,6 +923,14 @@ export function calcolaViti(inp, T, TV) {
 
   const peso = calcolaPeso(dia_disp, lungh_spezzone, dens);
 
+  // Setup taglio dinamico: dipende dal numero di barre da maneggiare.
+  // lungh_spezzone - 5 rimuove lo sfrido di sicurezza già presente,
+  // restituendo la lunghezza fisica della barra tagliata: sviluppo_testa
+  // + lungh (stampaggio) oppure lungh + h_testa (fresa). Lo sfrido di
+  // taglio viene riapplicato uniforme da calcolaSetupTaglio.
+  const lungh_geometrica = lungh_spezzone - 5;
+  const setup_taglio_sec = calcolaSetupTaglio(lungh_geometrica, qta, dia_disp, T);
+
   // Modificatore quantità
   const mod_qta = getModQta(dian, lungh, TV);
   const mat_cost = peso * costo_kg;
@@ -1113,7 +1122,7 @@ export function calcolaViti(inp, T, TV) {
 
   // ── Setup (approntamento) ─────────────────────────────────
   const S = TV.setup_secondi;
-  const setup_taglio  = setupCosto(S.taglio,    co1, qta);
+  const setup_taglio  = setupCosto(setup_taglio_sec, co1, qta);
   const setup_smusso  = sm_info ? setupCosto(sm_info.setup_sec, co1, qta) : 0;
   const setup_stamp   = STAMPAGGIO ? setupCosto(S.stampaggio, co1, qta) : 0;
   const setup_sbav    = STAMPAGGIO && sbav_info ? setupCosto(sbav_info.setup_sec, co1, qta) : 0;
@@ -1176,7 +1185,7 @@ export function calcolaViti(inp, T, TV) {
   if (t_fresa > 0) lines.push(`FRESA ${Math.round(t_fresa)}`);
   lines.push(`RULLA ${Math.round(t_rulla)}`);
   if (raddr_c > 0) lines.push(`RADDR ${Math.round(raddr_c / 0.016)}`);
-  lines.push(`ATAGL ${S_tag.taglio}`);
+  lines.push(`ATAGL ${Math.round(setup_taglio_sec)}`);
   if (sm_info)     lines.push(`ASMUS ${sm_info.setup_sec}`);
   if (STAMPAGGIO)  lines.push(`ASTA2 ${S_tag.stampaggio}`);
   if (STAMPAGGIO && sbav_info) lines.push(`ASBAV ${sbav_info.setup_sec}`);

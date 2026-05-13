@@ -255,6 +255,7 @@
     <a href="#sec-materiali">Materiali e densità</a>
     <a href="#sec-costi-base">Costi base</a>
     <a href="#sec-taglio">Taglio</a>
+    <a href="#sec-setup-taglio">Setup taglio (modello)</a>
     <a href="#sec-smusso">Smusso</a>
     <a href="#sec-rullatura">Rullatura</a>
     <a href="#sec-bonifica">Bonifica 42CD4</a>
@@ -456,6 +457,22 @@ function renderAll(T, TD, TP, TV) {
   html += '<div>' + groupTitle('Standard') + tierTable(T.taglio.standard, 'costo', 'Costo (€)', '€') + '</div>';
   html += '<div>' + groupTitle('Inox / Altro') + tierTable(T.taglio.inox_altro, 'costo', 'Costo (€)', '€') + '</div>';
   html += '</div></div>';
+
+  // --- Setup taglio (modello dinamico) ---
+  html += section('sec-setup-taglio', 'Setup taglio — Modello dinamico');
+  html += `<div class="t-note">Setup proporzionale al numero di barre maneggiate dall'operatore, non costante per lotto. Formula: num_barre = ceil((lungh_pezzo + sfrido) × qta / lungh_barra); setup = clamp(num_barre × tempo_per_barra, setup_min, setup_max). Override: se Ø barra ≥ soglia_diametro_max, setup forzato al massimo (manovra più lenta, peso). Sostituisce la vecchia costante 300 s/lotto.</div>`;
+  {
+    const ST = T.setup_taglio;
+    let rows = '';
+    rows += `<tr><td>Lunghezza barra</td><td class="num">${ST.lungh_barra_mm} mm</td><td>Barra standard a magazzino</td></tr>`;
+    rows += `<tr><td>Tempo per barra</td><td class="num">${ST.tempo_per_barra_sec} s</td><td>Tempo operatore per caricare una barra in macchina</td></tr>`;
+    rows += `<tr><td>Setup minimo</td><td class="num">${ST.setup_min_sec} s</td><td>Floor: anche con 1 barra il setup non scende sotto questo valore</td></tr>`;
+    rows += `<tr><td>Setup massimo</td><td class="num">${ST.setup_max_sec} s</td><td>Cap: anche con molte barre il setup non sale oltre</td></tr>`;
+    rows += `<tr><td>Soglia Ø max</td><td class="num">${ST.soglia_diametro_max} mm</td><td>Ø barra ≥ soglia → setup forzato al massimo</td></tr>`;
+    rows += `<tr><td>Sfrido di taglio</td><td class="num">${ST.sfrido_mm} mm</td><td>Aggiunto a lungh_pezzo per stimare la lunghezza spezzone</td></tr>`;
+    html += tableWrap(`<thead><tr><th>Parametro</th><th class="num">Valore</th><th>Note</th></tr></thead><tbody>${rows}</tbody>`);
+  }
+  html += '</div>';
 
   // --- Smusso (modello a 3 macchine) ---
   html += section('sec-smusso', 'Smusso — Modello a 3 macchine');
@@ -927,7 +944,7 @@ function setupSearch() {
 </script>
 
 <script type="module">
-import { VERSION, VERSION_DATE, formatDataItaliana } from './lib/version.js?v=10';
+import { VERSION, VERSION_DATE, formatDataItaliana } from './lib/version.js?v=11';
 document.getElementById('header-right').innerHTML =
   `<span class="version">v${VERSION}</span>` +
   `<span class="version-sep">·</span>` +

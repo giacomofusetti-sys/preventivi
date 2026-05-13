@@ -10,6 +10,7 @@ import {
   calcolaTempoRullatura, rullaturaFin,
   calcolaMarcatura,
   getModPeso, setupCosto, parseQta,
+  calcolaSetupTaglio,
   applicaDegradoOperatore,
   tempoTornituraBase, tempoMovimentazione,
 } from '../lib/calcolo_comune.js';
@@ -226,7 +227,17 @@ export function calcolaTirantiOcchio(inputs, T) {
   const ta_raw   = calcolaTaglioCosto(dia_disp, mat);
   const ta_costo = conMinimo(ta_raw, qta);
   const ta_tempo = ta_raw / co1;  // secondi ricavati dal costo
-  const setup_taglio = setupCosto(T.setup_secondi.taglio, co1, qta);
+  // lungh_geometrica = (lungh_tot | lungh_spz) - 5 rimuove lo sfrido di
+  // sicurezza già presente, restituendo la lunghezza fisica della barra
+  // tagliata per fare un tirante a occhio. Distingue STAMPATO (testa
+  // upsettata da spezzone equivalente sviluppo_t) vs TORNITO (testa intera
+  // ricavata da spezzone Ø dia_disp). Lo sfrido di taglio viene
+  // riapplicato uniforme da calcolaSetupTaglio.
+  const lungh_geometrica = STAMPAGGIO
+    ? lungh_spz - 5    // stampato: gambo + sviluppo testa upset
+    : lungh_tot - 5;   // tornito/fresato: gambo + testa intera
+  const setup_taglio_sec = calcolaSetupTaglio(lungh_geometrica, qta, dia_disp, T);
+  const setup_taglio = setupCosto(setup_taglio_sec, co1, qta);
 
   // --- Stampaggio (solo se STAMPAGGIO) ---
   let tempo_stamp = STAMPAGGIO ? calcolaTempoStampaggio(dian, mat) : 0;
@@ -308,7 +319,7 @@ export function calcolaTirantiOcchio(inputs, T) {
       `TORN1 ${Math.round(tempo_torn)}\n` +
       `FRESA ${Math.round(tempo_fres)}\n` +
       `RULLA ${Math.round(t_rull)}\n` +
-      `ATAGL ${T.setup_secondi.taglio}\n` +
+      `ATAGL ${Math.round(setup_taglio_sec)}\n` +
       `ASTA2 ${SETUP_STAMP_S}\n` +
       `ATOR1 ${T.setup_secondi.tornitura_normale}\n` +
       `AFRES ${T.setup_secondi.tornitura_normale}\n` +
@@ -319,7 +330,7 @@ export function calcolaTirantiOcchio(inputs, T) {
       `TORN1 ${Math.round(tempo_torn)}\n` +
       `FRESA ${Math.round(tempo_fres)}\n` +
       `RULLA ${Math.round(t_rull)}\n` +
-      `ATAGL ${T.setup_secondi.taglio}\n` +
+      `ATAGL ${Math.round(setup_taglio_sec)}\n` +
       `ATOR1 ${T.setup_secondi.tornitura_normale}\n` +
       `AFRES ${T.setup_secondi.tornitura_normale}\n` +
       `ARULL ${T.setup_secondi.rullatura}`;

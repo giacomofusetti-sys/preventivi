@@ -408,6 +408,14 @@
       }
     ]
   },
+  "setup_taglio": {
+    "lungh_barra_mm": 6000,
+    "tempo_per_barra_sec": 120,
+    "setup_min_sec": 660,
+    "setup_max_sec": 1800,
+    "soglia_diametro_max": 26,
+    "sfrido_mm": 5
+  },
   "smusso": {
     "copiatore": {
       "diametro_min": 8,
@@ -498,7 +506,6 @@
     }
   ],
   "setup_secondi": {
-    "taglio": 300,
     "rullatura": 1800,
     "tornitura_normale": 3600,
     "tornitura_fantina": 7200,

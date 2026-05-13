@@ -9,7 +9,7 @@ import {
   MAT_INOX,
   parseDia, parseExpr, getDiametroMedio, getDiametroNominale, getDensita,
   calcolaPeso, getCostoMateriale,
-  calcolaTempoTaglio, modulaCostoTaglio, taglioFin,
+  calcolaTempoTaglio, modulaCostoTaglio, taglioFin, calcolaSetupTaglio,
   calcolaSmusso,
   calcolaTempoRullatura, rullaturaFin,
   calcolaMarcatura,
@@ -130,7 +130,8 @@ export function calcolaTiranti(inputs, T) {
     const { costo: marc_fin, setup: setup_marc, tempo: tempo_marc, tempo_setup: tempo_setup_marc } = calcolaMarcatura(dian, lungh_pezzo, qta, co1, marcatura_complessa);
 
     // Setup
-    const setup_taglio = setupCosto(T.setup_secondi.taglio,    co1, qta);
+    const setup_taglio_sec = calcolaSetupTaglio(lungh_pezzo, qta, dia_disp, T);
+    const setup_taglio = setupCosto(setup_taglio_sec,          co1, qta);
     const setup_smusso = setupCosto(sm_info.setup_sec,         co1, qta);
     const setup_rull   = setupCosto(T.setup_secondi.rullatura, co1, qta);
 
@@ -152,7 +153,7 @@ export function calcolaTiranti(inputs, T) {
       `SMUSS ${Math.round(smusso_t)}\n` +
       `RULLA ${Math.round(t_rull)}\n` +
       `MARCA ${tempo_marc}\n` +
-      `ATAGL ${T.setup_secondi.taglio}\n` +
+      `ATAGL ${Math.round(setup_taglio_sec)}\n` +
       `ASMUS ${sm_info.setup_sec}\n` +
       `ARULL ${T.setup_secondi.rullatura}\n` +
       `AMARC ${tempo_setup_marc}`;
@@ -203,13 +204,14 @@ export function calcolaTiranti(inputs, T) {
     }
 
     // Taglio (solo senza fantina)
-    let tempo_ta = null, taglio_fin = 0, setup_taglio = 0;
+    let tempo_ta = null, taglio_fin = 0, setup_taglio = 0, setup_taglio_sec = 0;
     if (!FANTINA) {
       tempo_ta   = calcolaTempoTaglio(dia_disp, mat);
       const ta_raw = tempo_ta * co1;
       const { ta } = modulaCostoTaglio(ta_raw, qta, mat, costo_mat_kg, peso_grezzo);
       taglio_fin   = taglioFin(ta, qta);
-      setup_taglio = setupCosto(T.setup_secondi.taglio, co1, qta);
+      setup_taglio_sec = calcolaSetupTaglio(lungh_pezzo, qta, dia_disp, T);
+      setup_taglio = setupCosto(setup_taglio_sec, co1, qta);
     }
 
     // Tornitura
@@ -308,7 +310,7 @@ export function calcolaTiranti(inputs, T) {
         `TORN1 ${Math.round(tempo_torn)}\n` +
         `RULLA ${Math.round(t_rull)}\n` +
         `MARCA ${tempo_marc}\n` +
-        `ATAGL ${T.setup_secondi.taglio}\n` +
+        `ATAGL ${Math.round(setup_taglio_sec)}\n` +
         `ATOR1 ${T.setup_secondi.tornitura_normale}\n` +
         `ARULL ${T.setup_secondi.rullatura}\n` +
         `AMARC ${tempo_setup_marc}`;

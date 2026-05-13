@@ -9,6 +9,7 @@ import {
   calcolaPeso, getCostoMateriale,
   calcolaMarcatura,
   getModPeso, setupCosto, parseQta,
+  calcolaSetupTaglio,
   applicaDegradoOperatore,
 } from '../lib/calcolo_comune.js';
 
@@ -167,6 +168,9 @@ export function calcolaDadi(inputs, TC, TD) {
   const dens = getDensita(TC, mat, dens_altro);
 
   // --- Peso materiale grezzo (cilindro dia_disp × altez+3) ---
+  // Sovrametallo +3 mm specifico per dadi fresati/torniti (storico,
+  // coerente con i +3 nelle formule di tornitura/fresatura/prima_torn).
+  // Indipendente dallo sfrido di taglio (+5 mm) gestito da calcolaSetupTaglio.
   const peso_grezzo = calcolaPeso(dia_disp, altez + 3, dens);
 
   // --- Costo materiale ---
@@ -187,7 +191,17 @@ export function calcolaDadi(inputs, TC, TD) {
   // --- Taglio ---
   const tempo_ta = calcolaTempoTaglio(dian, mat, TD);
   const ta       = conMinimo(tempo_ta * coeff, qta);
-  const setup_ta = setupCosto(TD.setup_secondi.taglio, coeff, qta);
+  // Setup taglio dinamico: dipende dal numero di barre da maneggiare.
+  // Lunghezza fisica del pezzo netto = sviluppo (stampato, parte di barra
+  // ricalcata in dado esagonale) oppure altez (tornito/fresato, parte di
+  // barra che diventa il dado per asportazione).
+  // Lo sfrido di taglio (5 mm) viene aggiunto uniforme dentro
+  // calcolaSetupTaglio. NB: questo è indipendente dai sovrametalli di peso
+  // applicati altrove (+3 per dadi fresati, +5 per gli altri moduli).
+  // Passa TC (comune.json) perché setup_taglio vive lì, non in TD (dadi.json).
+  const lungh_geometrica = STAMPAGGIO ? sviluppo : altez;
+  const setup_taglio_sec = calcolaSetupTaglio(lungh_geometrica, qta, dia_disp, TC);
+  const setup_ta = setupCosto(setup_taglio_sec, coeff, qta);
 
   // --- Prima tornitura (solo senza stampaggio) ---
   const pt = !STAMPAGGIO
@@ -254,7 +268,7 @@ export function calcolaDadi(inputs, TC, TD) {
       `STAM2 ${Math.round(tempo_st)}\n` +
       `TORN1 ${Math.round(tempo_to)}\n` +
       `MARCA ${tempo_marc}\n` +
-      `ATAGL ${TD.setup_secondi.taglio}\n` +
+      `ATAGL ${Math.round(setup_taglio_sec)}\n` +
       `ASTA2 ${TD.setup_secondi.stampaggio}\n` +
       `ATOR1 ${TD.setup_secondi.tornitura}\n` +
       `AMARC ${tempo_setup_marc}`;
@@ -267,7 +281,7 @@ export function calcolaDadi(inputs, TC, TD) {
       `FRESA ${Math.round(tempo_fr)}\n` +
       `MARCA ${tempo_marc}\n` +
       (pt.serve ? `ATOR2 ${TD.setup_secondi.prima_torn}\n` : '') +
-      `ATAGL ${TD.setup_secondi.taglio}\n` +
+      `ATAGL ${Math.round(setup_taglio_sec)}\n` +
       `ATOR1 ${TD.setup_secondi.tornitura}\n` +
       `AFRES ${TD.setup_secondi.fresatura}\n` +
       `AMARC ${tempo_setup_marc}`;

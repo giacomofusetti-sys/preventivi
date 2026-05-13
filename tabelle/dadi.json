@@ -96,7 +96,6 @@
   ],
 
   "setup_secondi": {
-    "taglio":     300,
     "tornitura":  3600,
     "fresatura":  3600,
     "prima_torn": 3600,

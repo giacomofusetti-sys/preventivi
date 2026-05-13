@@ -64,7 +64,6 @@
   },
 
   "setup_secondi": {
-    "taglio":             300,
     "tornitura_normale":  3600,
     "tornitura_fantina":  7200,
     "rullatura":          1800

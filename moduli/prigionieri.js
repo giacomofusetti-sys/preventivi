@@ -8,6 +8,7 @@ import {
   parseDia, parseExpr, getDiametroMedio, getDiametroNominale, getDensita,
   calcolaPeso, getCostoMateriale,
   calcolaMarcatura, getModPeso, setupCosto, parseQta,
+  calcolaSetupTaglio,
   applicaDegradoOperatore,
   tempoTornituraBase, tempoMovimentazione,
   tempoFantina,
@@ -165,13 +166,18 @@ export function calcolaPrigionieri(inputs, TC, TP) {
     : costo_mat_kg * peso_grezzo;
 
   // --- Taglio (solo senza fantina) ---
-  let ta_costo = 0, setup_taglio = 0, tempo_taglio = 0;
+  let ta_costo = 0, setup_taglio = 0, tempo_taglio = 0, setup_taglio_sec = 0;
   if (!FANTINA) {
     ta_costo     = calcolaTaglio(dia_disp, mat, TP);
     tempo_taglio = ta_costo / co1;  // secondi ricavati dal costo
     const ta_fin = ta_costo * qta < 10 ? 10 / qta : ta_costo;
     ta_costo     = ta_fin;
-    setup_taglio = setupCosto(TP.setup_secondi.taglio, co1, qta);
+    // lungh_pezzo_fisica = lunghtot - 5 rimuove lo sfrido di sicurezza già
+    // presente in lungh, restituendo la lunghezza fisica del pezzo finito
+    // (corpo + radice per 5909/5911, solo corpo per tipo='prig'). Lo sfrido
+    // di taglio viene riapplicato uniforme da calcolaSetupTaglio.
+    setup_taglio_sec = calcolaSetupTaglio(lungh_pezzo_fisica, qta, dia_disp, TC);
+    setup_taglio = setupCosto(setup_taglio_sec, co1, qta);
   }
 
   // --- Tornitura ---
@@ -270,7 +276,7 @@ export function calcolaPrigionieri(inputs, TC, TP) {
       `TORN1 ${Math.round(tempo_torn)}\n` +
       `RULLA ${Math.round(t_rull)}\n` +
       `MARCA ${tempo_marc}\n` +
-      `ATAGL ${TP.setup_secondi.taglio}\n` +
+      `ATAGL ${Math.round(setup_taglio_sec)}\n` +
       `ATOR1 ${TP.setup_secondi.tornitura_normale}\n` +
       `ARULL ${TP.setup_secondi.rullatura}\n` +
       `AMARC ${tempo_setup_marc}`;
