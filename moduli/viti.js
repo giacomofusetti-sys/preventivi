@@ -22,10 +22,9 @@ import {
   tempoFresaturaCava,
   tempoFresaturaTestaEsagonale,
   calcolaSmusso,
+  calcolaSbavatura,
   interpola,
 } from '../lib/calcolo_comune.js';
-
-const MAT_STANDARD = ['42CD4', 'B16', 'B7', 'L7', 'B7M', 'A105'];
 
 // ─── HELPERS INTERNI ─────────────────────────────────────────
 
@@ -587,82 +586,6 @@ function costruisciNarrazioneTornituraViti(info, setup) {
   return [frase_principale + frase_mov + frase_totale + frase_setup];
 }
 
-// ─── SBAVATURA ────────────────────────────────────────────────
-// `interpola` è ora importata da calcolo_comune.js (riusata anche
-// dal nuovo calcolaSmusso). La logica della sbavatura sotto è invariata.
-
-const NOMI_DISPLAY_SBAV = {
-  sbavatrice_normale: 'Sbavatrice normale',
-  ceriotti: 'Ceriotti',
-  tornio: 'Tornio',
-};
-
-// lungh = lunghezza sottotesta (non "lungh_pezzo": la variabile nel modulo si chiama "lungh")
-function calcolaSbavatura(dian, lungh, mat, qta, co, TV) {
-  const cfg = TV.sbavatura;
-  const mults = cfg.moltiplicatori_materiale;
-
-  // Classificazione materiale
-  // Ordine esplicito: standard → altro (check diretto) → inox → fallback altro.
-  // Nota: MAT_INOX contiene storicamente anche 'altro' come marker
-  // di "materiale difficile", per cui 'altro' va intercettato PRIMA
-  // del check su MAT_INOX.
-  let categoria;
-  if (MAT_STANDARD.includes(mat))       categoria = 'standard';
-  else if (mat === 'altro')             categoria = 'altro';
-  else if (MAT_INOX.includes(mat))      categoria = 'inox';
-  else                                  categoria = 'altro';
-
-  const macchine_sbav = ['sbavatrice_normale', 'ceriotti'];
-  const candidati = [];
-
-  for (const nome of macchine_sbav) {
-    const m = cfg[nome];
-    // Compatibilità dimensionale
-    if (dian < m.diametro_min || dian > m.diametro_max) continue;
-    if (m.lunghezza_min != null && lungh < m.lunghezza_min) continue;
-    if (m.lunghezza_max != null && lungh > m.lunghezza_max) continue;
-
-    const tempo_base = interpola(dian, m.diametro_min, m.diametro_max,
-                                  m.tempo_ciclo_min_sec, m.tempo_ciclo_max_sec);
-    const mult_mat = mults[categoria];
-    const mult = interpola(dian, m.diametro_min, m.diametro_max,
-                           mult_mat.min, mult_mat.max);
-    const tempo_ciclo = tempo_base * mult;
-    const costo_totale = (m.setup_sec + tempo_ciclo * qta) * co;
-
-    candidati.push({
-      macchina: nome,
-      nome_display: NOMI_DISPLAY_SBAV[nome],
-      tempo_ciclo_sec: tempo_ciclo,
-      setup_sec: m.setup_sec,
-      costo_totale,
-    });
-  }
-
-  // Selezione macchina a soglia unica
-  const soglia = cfg.soglia_qta_normale;
-  const normale_ok = candidati.find(c => c.macchina === 'sbavatrice_normale');
-  const ceriotti_ok = candidati.find(c => c.macchina === 'ceriotti');
-
-  if (qta < soglia) {
-    if (ceriotti_ok) return ceriotti_ok;
-    if (normale_ok) return normale_ok;
-  } else {
-    if (normale_ok) return normale_ok;
-    if (ceriotti_ok) return ceriotti_ok;
-  }
-
-  // Fallback: tornio (nessuna sbavatrice compatibile)
-  return {
-    macchina: 'tornio',
-    nome_display: NOMI_DISPLAY_SBAV.tornio,
-    tempo_ciclo_sec: cfg.tornio.tempo_ciclo_sec,
-    setup_sec: cfg.tornio.setup_sec,
-    costo_totale: (cfg.tornio.setup_sec + cfg.tornio.tempo_ciclo_sec * qta) * co,
-  };
-}
-
 // ─── STAMPAGGIO ───────────────────────────────────────────────
 
 function calcolaTempoStampaggio(dian, TV) {
@@ -974,7 +897,7 @@ export function calcolaViti(inp, T, TV) {
   // inclusa nell'intestazione del ramo E (E1), quindi qui salta.
   let t_sbav = 0, sbav_fin = 0, sbav_info = null;
   if (STAMPAGGIO && !is_5931_inox_altro) {
-    sbav_info = calcolaSbavatura(dian, lungh, mat, qta, co, TV);
+    sbav_info = calcolaSbavatura(dian, lungh, mat, qta, co, T);
     t_sbav = sbav_info.tempo_ciclo_sec;
     const sb = t_sbav * co;
     sbav_fin = sb * qta < 10 ? 10 / qta : sb;
