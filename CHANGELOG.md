@@ -6,6 +6,44 @@ documentate in questo file.
 Il formato è basato su [Keep a Changelog](https://keepachangelog.com/it/1.1.0/),
 e il progetto segue [Semantic Versioning](https://semver.org/lang/it/).
 
+## [1.0.4] — 2026-05-13
+
+### Changed
+- **Setup macchina taglio: da costante a modello dinamico.** Il
+  setup taglio (ATAGL nel gestionale) era una costante di 300 s
+  (5 minuti) uniforme per tutti i prodotti. Ora è calcolato
+  dinamicamente in base al numero di barre da movimentare per il
+  lotto. Formula: num_barre = ceil((lungh_pezzo + sfrido) × qta /
+  lungh_barra), con sfrido 5 mm, barra standard 6 metri. Setup =
+  num_barre × 2 minuti, vincolato tra 11 e 30 minuti. Se dia_disp
+  ≥ 26 mm, setup forzato a 30 minuti indipendentemente dal lotto.
+  Ogni modulo passa la propria lunghezza geometrica del pezzo:
+  tiranti/prigionieri = lunghezza pura, viti = lungh +
+  sviluppo_testa (stampato) o lungh + h_testa (fresato), dadi =
+  sviluppo (stampato) o altez (fresato/tornito), tiranti_occhio =
+  lungh + testa intera (o equivalente stampato con upset). Il
+  modello riflette la realtà operativa di officina: più barre da
+  movimentare = più tempo di approntamento; barre grosse richiedono
+  setup massimo a prescindere.
+
+### Internal
+- `lib/calcolo_comune.js`: nuova funzione esportata
+  `calcolaSetupTaglio(lungh_geometrica, qta, dia_disp, T)` con
+  JSDoc completo che documenta la convenzione di `lungh_geometrica`
+  per ogni modulo.
+- `tabelle/comune.json`: nuovo blocco `setup_taglio` con 6 parametri
+  (`lungh_barra_mm`, `tempo_per_barra_sec`, `setup_min_sec`,
+  `setup_max_sec`, `soglia_diametro_max`, `sfrido_mm`).
+- Migrati 5 moduli alla nuova funzione: `tiranti_unificato`,
+  `prigionieri`, `tiranti_occhio`, `viti`, `dadi`. Ciascuno passa
+  la lunghezza geometrica appropriata, riusando le formule del peso
+  materiale per coerenza.
+- Rimosso `setup_secondi.taglio` da tutti i JSON (`comune`, `viti`,
+  `prigionieri`, `dadi`) — non più letto da nessun modulo.
+- `consultazione.html`: nuova sezione "Setup taglio — Modello
+  dinamico" in COMUNE con i 6 parametri e formula esplicita.
+- Cache-busting: bump `?v=10` → `?v=11` su tutti gli import.
+
 ## [1.0.3] — 2026-05-12
 
 ### Added
