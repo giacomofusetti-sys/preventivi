@@ -234,7 +234,12 @@ function calcolaTorniturraViti(
   // quindi 0.3 dà margine senza essere permissivo).
   // Fail-fast prima di qualunque calcolo, così l'errore esce subito con un
   // messaggio comprensibile invece di propagare valori incoerenti a valle.
-  if (dia_parte_liscia > 0 && dia_parte_liscia > dia_disp + 0.3) {
+  // La validazione si applica SOLO se la parte liscia esiste fisicamente
+  // (L_liscia > 0). Per pezzi tutto filetto (5739, flag TF, o filet >= lungh)
+  // dia_parte_liscia è un placeholder ininfluente (dpl = dian come fallback
+  // a riga 754), non va validato. Senza questo check, ogni 5739 con
+  // dia_disp < dian scatena erroneamente l'errore.
+  if (L_liscia > 0 && dia_parte_liscia > dia_disp + 0.3) {
     throw new Error(
       `Parte liscia (Ø ${dia_parte_liscia} mm) non può superare significativamente ` +
       `il diametro della barra di partenza (Ø ${dia_disp} mm).`
