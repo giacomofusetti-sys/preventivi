@@ -669,7 +669,6 @@ function getModQta(dian, lungh, TV) {
 // ─── BONIFICA VITI ───────────────────────────────────────────
 
 function calcolaBonificaViti(peso, qta, dian, lungh, TRATTAMENTO, costo_bonifica_kg, forfait_bonifica) {
-  console.log('[bonifica viti] costo_bonifica_kg ricevuto:', costo_bonifica_kg);
   if (!TRATTAMENTO) return 0;
   // 4 casi da Python (assoluti 1.20/1.45/1.50/1.60) → moltiplicatori relativi a costo_bonifica_kg
   let mult_costo, mult_forfait;
@@ -735,8 +734,8 @@ export function calcolaViti(inp, T, TV) {
     chiave_tipo      = 'p',
     STAMPAGGIO       = true,
     TRATTAMENTO      = false,
-    costo_bonifica_kg = 1.30,
-    forfait_bonifica  = 400,
+    costo_bonifica_kg,
+    forfait_bonifica,
     medio_override   = 0,
   } = inp;
 

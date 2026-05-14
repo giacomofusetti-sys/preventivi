@@ -880,11 +880,11 @@
 // Ogni modulo esporta la sua funzione di calcolo principale.
 // Aggiungere un nuovo modulo = aggiungere una riga qui + un branch
 // in calcola() + la logica in renderResults().
-import { calcolaTiranti }     from './moduli/tiranti_unificato.js?v=12';
-import { calcolaDadi }        from './moduli/dadi.js?v=12';
-import { calcolaPrigionieri } from './moduli/prigionieri.js?v=12';
-import { parseDia, parseExpr, getDiametroMedio } from './lib/calcolo_comune.js?v=12';
-import { VERSION, VERSION_DATE, formatDataItaliana } from './lib/version.js?v=12';
+import { calcolaTiranti }     from './moduli/tiranti_unificato.js?v=13';
+import { calcolaDadi }        from './moduli/dadi.js?v=13';
+import { calcolaPrigionieri } from './moduli/prigionieri.js?v=13';
+import { parseDia, parseExpr, getDiametroMedio } from './lib/calcolo_comune.js?v=13';
+import { VERSION, VERSION_DATE, formatDataItaliana } from './lib/version.js?v=13';
 // tiranti_occhio.js viene importato dinamicamente in calcola()
 // per evitare che un file mancante blocchi l'intera applicazione
 
@@ -916,6 +916,26 @@ let TD = null;   // dadi.json        — tabelle specifiche per i dadi
 let TP = null;   // prigionieri.json — tabelle specifiche per i prigionieri
 let TV = null;   // viti.json        — tabelle specifiche per le viti
 
+// Sincronizza i campi UI col JSON come fonte di verità. Chiamata
+// una volta dopo il fetch: il value="..." hardcoded dell'HTML serve
+// solo da placeholder finché i JSON non sono caricati. Se in futuro
+// si cambia un default, basta modificare comune.json — l'HTML resta
+// invariato (al massimo va aggiornato il value="..." per coerenza
+// del placeholder pre-fetch).
+function populateDefaultsFromJSON(T) {
+  const dt = T.trattamento_termico;
+  const ids = [
+    ['costo_bonifica_kg', dt.costo_kg],
+    ['forfait_bonifica',  dt.forfait],
+    ['prezzo_kg',         dt.costo_kg],
+    ['forfait',           dt.forfait],
+  ];
+  for (const [id, val] of ids) {
+    const el = document.getElementById(id);
+    if (el) el.value = val;
+  }
+}
+
 Promise.all([
   fetch('./tabelle/comune.json').then(r => r.json()),
   fetch('./tabelle/dadi.json').then(r => r.json()),
@@ -926,6 +946,7 @@ Promise.all([
   TD = dadi;
   TP = prig;
   TV = viti;
+  populateDefaultsFromJSON(T);
 }).catch(() => { alert('Errore: impossibile caricare le tabelle JSON'); });
 
 
@@ -1385,6 +1406,21 @@ function getToggle(group) {
   return getToggleVal(group) === 'ON';
 }
 
+// Applica il trattamento termico al risultato R, in-place.
+// Usato per tiranti/prigionieri/tiranti_occhio, che NON gestiscono
+// il trattamento dentro al modulo. I dadi lo gestiscono internamente
+// via calcolaTrattamento (pattern diverso). Le viti hanno il loro
+// modello bonifica via calcolaBonificaViti dentro calcolaViti.
+function applicaTrattamento(R, T) {
+  if (!getToggle('trattamento')) return;
+  const costo_kg = getNum('prezzo_kg', T.trattamento_termico.costo_kg);
+  const forfait  = getNum('forfait',   T.trattamento_termico.forfait);
+  const tratt = Math.max(R.peso * costo_kg, forfait / R.qta);
+  R.trattamento = tratt;
+  R.costo_tot += tratt;
+  R.costo_lav += tratt;
+}
+
 
 // ─── CALCOLA ─────────────────────────────────────────────────
 // Funzione principale — chiamata dal bottone CALCOLA.
@@ -1443,12 +1479,7 @@ window.calcola = async function() {
         marcatura_complessa: getToggle('marcatura_complessa'),
         medio_override,
       }, T);
-      if (getToggle('trattamento')) {
-        const tratt = Math.max(R.peso * getNum('prezzo_kg', 1.3), getNum('forfait', 400) / R.qta);
-        R.trattamento = tratt;
-        R.costo_tot += tratt;
-        R.costo_lav += tratt;
-      }
+      applicaTrattamento(R, T);
 
     } else if (prodottoCorrente === 'prigionieri') {
       // ── Prigionieri ───────────────────────────────────────
@@ -1476,12 +1507,7 @@ window.calcola = async function() {
         marcatura_complessa: getToggle('marcatura_complessa'),
         medio_override,
       }, T, TP);
-      if (getToggle('trattamento')) {
-        const tratt = Math.max(R.peso * getNum('prezzo_kg', 1.3), getNum('forfait', 400) / R.qta);
-        R.trattamento = tratt;
-        R.costo_tot += tratt;
-        R.costo_lav += tratt;
-      }
+      applicaTrattamento(R, T);
 
     } else if (prodottoCorrente === 'dadi') {
       // ── Dadi — validazione prima del calcolo ──────────────
@@ -1534,13 +1560,13 @@ window.calcola = async function() {
         dia_disp:            getNum('dia_disp_dadi', 60),
         STAMPAGGIO:          getToggle('stampaggio'),
         TRATTAMENTO_TERMICO: getToggle('trattamento'),
-        prezzo_kg:           getNum('prezzo_kg', 1.3),
-        forfait:             getNum('forfait', 400),
+        prezzo_kg:           getNum('prezzo_kg', T.trattamento_termico.costo_kg),
+        forfait:             getNum('forfait', T.trattamento_termico.forfait),
         marcatura_complessa: getToggle('marcatura_complessa'),
       }, T, TD);
     } else if (prodottoCorrente === 'tiranti_occhio') {
       // ── Tiranti a Occhio — import dinamico ───────────────
-      const { calcolaTirantiOcchio } = await import('./moduli/tiranti_occhio.js?v=12');
+      const { calcolaTirantiOcchio } = await import('./moduli/tiranti_occhio.js?v=13');
       const _diam_o  = getDiametroMedio(T, parseDia(getStr('dia')), getStr('passo'));
       const _min_o   = getToggleVal('minorato') === 'ON';
       const medio_override = _min_o ? _diam_o - getNum('riduzione_medio', 0.4) : 0;
@@ -1561,17 +1587,12 @@ window.calcola = async function() {
         STAMPAGGIO:         getToggle('stampaggio_occhio'),
         medio_override,
       }, T);
-      if (getToggle('trattamento')) {
-        const tratt = Math.max(R.peso * getNum('prezzo_kg', 1.3), getNum('forfait', 400) / R.qta);
-        R.trattamento = tratt;
-        R.costo_tot += tratt;
-        R.costo_lav += tratt;
-      }
+      applicaTrattamento(R, T);
     }
 
     // ── Viti ─────────────────────────────────────────────
     if (prodottoCorrente === 'viti') {
-      const { calcolaViti } = await import('./moduli/viti.js?v=12');
+      const { calcolaViti } = await import('./moduli/viti.js?v=13');
       const _diam_v  = getDiametroMedio(T, parseDia(getStr('dia')), getStr('passo'));
       const _min_v   = getToggleVal('minorato') === 'ON';
       const medio_override = _min_v ? _diam_v - getNum('riduzione_medio', 0.4) : 0;
@@ -1594,8 +1615,8 @@ window.calcola = async function() {
         chiave_tipo:        getToggleVal('chiave_tipo'),
         STAMPAGGIO:         getToggleVal('lav_vite') === 'stamp',
         TRATTAMENTO:        getToggle('trattamento_vite'),
-        costo_bonifica_kg:  getNum('costo_bonifica_kg', 1.30),
-        forfait_bonifica:   getNum('forfait_bonifica', 400),
+        costo_bonifica_kg:  getNum('costo_bonifica_kg', T.trattamento_termico.costo_kg),
+        forfait_bonifica:   getNum('forfait_bonifica', T.trattamento_termico.forfait),
         medio_override,
       };
       // Vite speciale: raccogli tipo testa + parametri geometrici

@@ -474,6 +474,10 @@
     },
     "soglia_qta_normale": 100
   },
+  "trattamento_termico": {
+    "costo_kg": 1.30,
+    "forfait":  400
+  },
   "bonifica_42CD4": {
     "piccolo_corto": {
       "moltiplicatore": 1.2,

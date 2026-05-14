@@ -258,6 +258,7 @@
     <a href="#sec-setup-taglio">Setup taglio (modello)</a>
     <a href="#sec-smusso">Smusso</a>
     <a href="#sec-rullatura">Rullatura</a>
+    <a href="#sec-trattamento-termico">Trattamento termico</a>
     <a href="#sec-bonifica">Bonifica 42CD4</a>
     <a href="#sec-mod-peso">Modificatore peso</a>
     <a href="#sec-setup">Setup (approntamento)</a>
@@ -521,6 +522,18 @@ function renderAll(T, TD, TP, TV) {
       rows += `<tr><td class="num">${r.dian_da}–${r.dian_a} mm</td><td class="num">${r.minimo} s</td></tr>`;
     }
     html += tableWrap(`<thead><tr><th class="num">Range Ø nominale</th><th class="num">Minimo</th></tr></thead><tbody>${rows}</tbody>`);
+  }
+  html += '</div>';
+
+  // --- Trattamento termico ---
+  html += section('sec-trattamento-termico', 'Trattamento termico');
+  html += `<div class="t-note">Valori base del trattamento termico, applicabili a tutti i prodotti. Per le viti si applicano ulteriori moltiplicatori dalla bonifica 42CD4 (vedi sotto). Per dadi/tiranti/prigionieri/tiranti_occhio si usa il modello semplice: max(peso × costo_kg, forfait / qta).</div>`;
+  {
+    const TT = T.trattamento_termico;
+    let rows = '';
+    rows += `<tr><td>Costo €/kg</td><td class="num">€ ${fmt(TT.costo_kg, 2)}</td><td>Prezzo base del trattamento per chilo di pezzo</td></tr>`;
+    rows += `<tr><td>Forfait minimo</td><td class="num">€ ${fmt(TT.forfait, 0)}</td><td>Minimo per lotto: se peso × costo_kg × qta &lt; forfait, si usa forfait/qta come costo unitario</td></tr>`;
+    html += tableWrap(`<thead><tr><th>Parametro</th><th class="num">Valore</th><th>Note</th></tr></thead><tbody>${rows}</tbody>`);
   }
   html += '</div>';
 
@@ -944,7 +957,7 @@ function setupSearch() {
 </script>
 
 <script type="module">
-import { VERSION, VERSION_DATE, formatDataItaliana } from './lib/version.js?v=12';
+import { VERSION, VERSION_DATE, formatDataItaliana } from './lib/version.js?v=13';
 document.getElementById('header-right').innerHTML =
   `<span class="version">v${VERSION}</span>` +
   `<span class="version-sep">·</span>` +
