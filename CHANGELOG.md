@@ -6,6 +6,73 @@ documentate in questo file.
 Il formato è basato su [Keep a Changelog](https://keepachangelog.com/it/1.1.0/),
 e il progetto segue [Semantic Versioning](https://semver.org/lang/it/).
 
+## [1.0.6] — 2026-05-19
+
+### Added
+- **Blocco `T.taglio` in `comune.json` con modello lineare calibrato.**
+  Nuovo schema con `modello`, `range_dia_validato`, e 4 gruppi
+  materiale (`standard`, `inox`, `f51`, `superleghe`), ciascuno con
+  coefficienti `m`, `q` e lista dei materiali documentativa. Sostituisce
+  il blocco legacy `T.taglio.{standard,inox_altro}` (tier-list di costi
+  diretti, ormai orfano nei calcoli, sopravvissuto solo come dato di
+  consultazione).
+
+### Changed
+- **Nuovo modello lineare per `calcolaTempoTaglio` in
+  `lib/calcolo_comune.js`.** Sostituisce la formula grossolana
+  precedente (`dian/2`, `dian`, `dian*4` con un'unica categoria "altro"
+  indistinta) con un modello calibrato su dati misurati forniti dal
+  responsabile officina: `t_sec = m · dia + q` per gruppo materiale.
+  Validazione statistica: R² > 0.96 per tutti i gruppi, R² > 0.999
+  per F51 e superleghe. Range validato: 6-80 mm; fuori range extrapola
+  linearmente. Nuova firma: `calcolaTempoTaglio(dia, mat,
+  materiale_speciale, T)`. Distingue ora F51/F53 dal blocco superleghe
+  (Nitronic/718/660/625) — prima erano trattate uguali. Il valore
+  `materiale_speciale = '0'` (Generico) non è ammesso per il taglio
+  (errore esplicito).
+
+- **`moduli/tiranti_unificato.js`: passa `materiale_speciale` a
+  `calcolaTempoTaglio`.** Aggiornati i 2 callsite (path semplice riga
+  104, path tornito riga 209). Abilita la distinzione fine tra F51
+  e superleghe nei calcoli di taglio per i tiranti.
+
+- **`moduli/viti.js`: sostituita la tier-list inline di taglio
+  (righe 866-881 pre-refactor) con chiamata alla funzione centrale.**
+  Convenzione di conversione tempo → costo allineata a
+  `tiranti_unificato.js`: `tempo × co1` → `modulaCostoTaglio` →
+  `taglioFin`. **Cambio di comportamento consapevole**: viti pre-1.0.6
+  NON applicava il cap qta-dipendente di `modulaCostoTaglio` (€2/pz
+  per qta 11-20, €1/pz per qta > 20, dimezzato per `mat='altro'`).
+  Ora lo applica. Sui pezzi piccoli/medi nessuna differenza pratica
+  (ta_raw < cap); sui pezzi grossi in superleghe ad alta qta il
+  costo unitario di taglio è ora cappato. Da rivalutare con
+  `modulaCostoTaglio` stessa in una release futura (la modulazione
+  qta è una pezza obsoleta che il nuovo modello lineare potrebbe
+  rendere superflua).
+
+- **Sezione "Taglio" in `consultazione.html` riscritta.** Mostra ora
+  il modello (`m·dia + q`), i coefficienti per gruppo con relativi
+  materiali, e una tabella di esempio con i tempi calcolati a diametri
+  tipici (Ø 6, 12, 20, 30, 42, 56, 72, 80) per ciascuno dei 4 gruppi.
+
+### Internal
+- `lib/calcolo_comune.js`: aggiunta mappa interna `GRUPPO_TAGLIO`
+  (materiale → gruppo) per risoluzione runtime O(1). Duplicazione
+  consapevole con `T.taglio.gruppi[].materiali` (documentativo,
+  letto da consultazione.html). Se si aggiunge un materiale a un
+  gruppo, aggiornare ENTRAMBI.
+- Invariante del dominio mantenuta: la fantina è l'unica lavorazione
+  che NON dipende dal taglio a monte, perché taglia direttamente in
+  macchina durante la tornitura. Coerentemente, `tempoFantina` non
+  chiama `calcolaTempoTaglio`.
+- Funzioni di taglio LOCALI di `moduli/dadi.js:55`, `moduli/prigionieri.js:62`,
+  `moduli/tiranti_occhio.js:66` NON toccate in questa release.
+  Semanticamente diverse (tier-list storiche calibrate per il taglio
+  specifico di quei pezzi: dadi corti, prigionieri/tiranti_occhio con
+  loro convenzioni). Una task futura valuterà se unificarle col modello
+  centrale sulla base di dati misurati specifici per ciascuna tipologia.
+- Cache-bust: `?v=16` → `?v=17`.
+
 ## [1.0.5] — 2026-05-19
 
 ### Added
