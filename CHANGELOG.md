@@ -6,6 +6,117 @@ documentate in questo file.
 Il formato è basato su [Keep a Changelog](https://keepachangelog.com/it/1.1.0/),
 e il progetto segue [Semantic Versioning](https://semver.org/lang/it/).
 
+## [1.0.5] — 2026-05-19
+
+### Added
+- **Macchina "Tela" nel modello smusso.** Aggiunta come terza
+  macchina dedicata (oltre a Copiatore e Ceriotti) per gestire
+  lotti piccolissimi (qta ≤ 20). Range Ø 8-30.60 mm, lunghezza
+  20-1100 mm, setup 15 minuti. Caratteristica unica: usa
+  interpolazione 2D media su (Ø, lunghezza) per il calcolo del
+  tempo, perché il range lunghezza è molto ampio e impatta
+  significativamente il tempo. Le altre macchine restano in 1D
+  sul Ø. Logica selezione passa da 2 a 3 livelli: qta ≤ 20 →
+  Tela, n_smussi ≥ 100 → Copiatore, altrimenti → Ceriotti
+  (tornio CN come ultimo fallback).
+
+### Changed
+- **Sbavatura centralizzata in comune (dato + funzione).** Il
+  blocco JSON sbavatura era in `viti.json`, ma la sbavatura è
+  un'operazione applicabile concettualmente a tutti i prodotti.
+  Spostato in `comune.json`, accanto al gemello strutturale
+  smusso. La funzione `calcolaSbavatura`, prima in
+  `moduli/viti.js`, ora vive in `lib/calcolo_comune.js` adiacente
+  a `calcolaSmusso` (gemello). Firma aggiornata: `TV` → `T`.
+  Refactor puramente organizzativo, nessun valore numerico cambia.
+
+- **Trattamento termico centralizzato in un punto di verità.**
+  Il valore €1.30/kg e il forfait €400 erano duplicati in 8 punti
+  del codice (HTML, fallback inline, default param moduli). Ora
+  vivono in `T.trattamento_termico` in `comune.json`, autoritativo.
+  Aggiunto helper `applicaTrattamento(R, T)` in `index.html` che
+  deduplica 3 formule inline identiche per tiranti/prigionieri/
+  tiranti_occhio. `populateDefaultsFromJSON(T)` chiamato dopo il
+  fetch sincronizza i 4 campi UI col JSON (HTML diventa solo
+  placeholder). Rimossi default param ridondanti in `calcolaViti`
+  per allineamento con `dadi.js` (no rete di sicurezza modulo).
+  Dadi non toccati: gestiscono il trattamento internamente al
+  modulo con un pattern diverso.
+
+- **`calcolaSmusso` ora confronta `dia_disp` invece di `dian` con
+  i range macchina.** I range Ø in `T.smusso.*` sono espressi in
+  diametri fisici/medi (es. `copiatore.diametro_max=44.5` = medio
+  M48; `tela.diametro_max=30.60` = medio M33), non in nominali UNI.
+  Il confronto con `dian` (nominale) rifiutava erroneamente i
+  pezzi al limite alto di ogni macchina. Garanzia semantica: i
+  callsite garantiscono `dia_disp ≈ medio` (lo smusso si attiva
+  solo nel ramo "no tornitura"). Effetto numerico: pezzi al
+  limite alto ora correttamente accettati dalla macchina dedicata
+  (M33 → Tela, M48 → Copiatore, ecc.); pezzi normali hanno
+  tempi interpolati leggermente più bassi (pochi % perché medio
+  è < del nominale, scarto fisiologico). `calcolaSbavatura` NON
+  riceve il fix simmetrico: decisione esplicita, da riprendere
+  in un refactor dedicato se servirà.
+
+- **Calibrazione Tela: `tempo_ciclo` espresso per smusso, non per
+  pezzo.** I valori originariamente forniti (15-30s) erano "tempo
+  per pezzo intero", incoerenti con la convenzione del resto del
+  modello smusso (tempo per smusso, moltiplicato dal caller per
+  `smussi_per_pezzo`). Dimezzati a 7.5-15s. La formula del caller
+  ricostruisce il tempo totale come atteso: viti (1 smusso)
+  7.5-15s/pezzo, tiranti (2 smussi) 15-30s/pezzo. Aggiunta nota
+  `_nota_tempo_ciclo` inline in `comune.json` per prevenire
+  regressioni.
+
+### Fixed
+- **Validazione parte liscia: bug pre-esistente sulle viti 5739
+  e tutto filetto.** La validazione fail-fast introdotta in v1.0.3
+  scattava erroneamente per le viti 5739 (tutto filetto per
+  definizione UNI) e per qualsiasi vite con `TF=true`, perché
+  `dia_parte_liscia` viene popolato come fallback al diametro
+  nominale anche quando la parte liscia non esiste fisicamente
+  (`L_liscia=0`). Fix: validare solo quando `L_liscia > 0` (la
+  parte liscia esiste fisicamente). Bug latente di v1.0.3, attivo
+  solo per casi 5739/TF con `dia_disp < dian`. Nessun preventivo
+  esistente compromesso, solo blocco runtime.
+
+### Internal
+- `lib/calcolo_comune.js`: `calcolaSbavatura` aggiunta come
+  funzione esportata (era interna a `moduli/viti.js`);
+  `MAT_STANDARD_SBAV` e `NOMI_DISPLAY_SBAV` migrate accanto alla
+  funzione.
+- `lib/calcolo_comune.js`: `calcolaSmusso` firma cambiata da
+  `dian` a `dia_disp`, 6 occorrenze interne aggiornate. JSDoc
+  esteso con nota "perché dia_disp e non dian".
+- `lib/calcolo_comune.js`: aggiunto supporto interpolazione 2D
+  nella selezione macchina smusso (esclusivo della Tela). Lista
+  macchine: `['copiatore', 'tela', 'ceriotti']`.
+- `tabelle/comune.json`: nuovo blocco `T.trattamento_termico`,
+  blocco `T.smusso.tela`, parametro `T.smusso.soglia_qta_tela=20`,
+  nota `_nota_tempo_ciclo` inline alla Tela. Blocco `T.sbavatura`
+  spostato qui da `viti.json`.
+- `moduli/viti.js`: rimossi default param `costo_bonifica_kg=1.30`
+  e `forfait_bonifica=400` in `calcolaViti` (no rete di sicurezza
+  modulo). Rimosso debug `console.log` dimenticato. Validazione
+  parte liscia con guardia `L_liscia > 0`. Callsite `calcolaSmusso`
+  e `calcolaSbavatura` aggiornate.
+- `moduli/tiranti_unificato.js`: callsite `calcolaSmusso`
+  aggiornata.
+- `index.html`: nuovo helper `applicaTrattamento(R, T)`; nuovo
+  `populateDefaultsFromJSON(T)` chiamato post-fetch; 8 fallback
+  hardcoded 1.30/400 sostituiti con riferimenti a
+  `T.trattamento_termico.*`.
+- `consultazione.html`: nuova sezione "Trattamento termico";
+  sezione "Smusso" riscritta per 3 macchine + tornio (tabella
+  selezione a 3 livelli, colonna interpolazione 1D/2D, nota
+  esplicita sulla differenza qta vs n_smussi); riferimenti
+  `TV.sbavatura` → `T.sbavatura`.
+- Corretti 6 commenti narrativi pre-esistenti (riferimenti
+  obsoleti a "viti.js", claim errato "ordine INVERSO" tra
+  smusso e sbavatura — in realtà i pattern sono identici
+  pre-Tela, divergenti post-Tela).
+- Cache-bust: `?v=11` → `?v=16` (5 bump nel periodo).
+
 ## [1.0.4] — 2026-05-13
 
 ### Changed
