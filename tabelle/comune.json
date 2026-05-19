@@ -456,12 +456,13 @@
       "setup_sec": 1800
     },
     "tela": {
+      "_nota_tempo_ciclo": "tempo_ciclo è il tempo per UN smusso, coerente con copiatore/ceriotti. Il caller moltiplica per smussi_per_pezzo (1 viti, 2 tiranti). Officina osserva 15-30s per pezzo INTERO: per i tiranti (2 smussi) → 15-30s/pezzo; per le viti (1 smusso) → 7.5-15s/pezzo.",
       "diametro_min": 8,
       "diametro_max": 30.60,
       "lunghezza_min": 20,
       "lunghezza_max": 1100,
-      "tempo_ciclo_min_sec": 15,
-      "tempo_ciclo_max_sec": 30,
+      "tempo_ciclo_min_sec": 7.5,
+      "tempo_ciclo_max_sec": 15,
       "setup_sec": 900
     },
     "ceriotti": {
