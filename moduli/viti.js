@@ -882,7 +882,7 @@ export function calcolaViti(inp, T, TV) {
   // solo l'estremità libera filettata è da smussare. Floor €10/lotto al
   // call site (pattern coerente con sbavatura/taglio/ecc.).
   const ha_smusso  = Math.abs(dia_disp - medio) < 0.5;
-  const sm_info    = ha_smusso ? calcolaSmusso(dian, lungh, mat, qta, 1, co1, co2, T) : null;
+  const sm_info    = ha_smusso ? calcolaSmusso(dia_disp, lungh, mat, qta, 1, co1, co2, T) : null;
   const t_smusso   = sm_info ? sm_info.tempo_ciclo_sec : 0;
   const smusso_c   = sm_info ? t_smusso * sm_info.co_applicato : 0;
   const smusso_fin = t_smusso > 0 ? (smusso_c * qta < 10 ? 10 / qta : smusso_c) : 0;

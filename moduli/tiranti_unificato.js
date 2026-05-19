@@ -115,7 +115,7 @@ export function calcolaTiranti(inputs, T) {
     // il nuovo valore esposto nel gestionale e nell'UI sarà quindi
     // numericamente maggiore (correzione di un sotto-dimensionamento
     // storico, non un bug del refactor).
-    const sm_info   = calcolaSmusso(dian, lungh_pezzo, mat, qta, 2, co1, co2, T);
+    const sm_info   = calcolaSmusso(dia_disp, lungh_pezzo, mat, qta, 2, co1, co2, T);
     const smusso_t  = sm_info.tempo_ciclo_sec * 2;
     const sm        = smusso_t * sm_info.co_applicato;
     const smusso_fin = sm * qta < 10 ? 10 / qta : sm;
