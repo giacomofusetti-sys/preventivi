@@ -359,54 +359,31 @@
     ]
   },
   "taglio": {
-    "standard": [
-      {
-        "fino_a": 20,
-        "costo": 0.2
+    "_descrizione": "Modello lineare del tempo di taglio: t_sec = m * dia + q. Calibrato su dati misurati forniti dall'officina, 4 gruppi materiale. R² > 0.96 per tutti i gruppi (> 0.999 per F51 e superleghe). Range validato: dia da 6 a 80 mm.",
+    "modello": "t_sec = m * dia + q",
+    "range_dia_validato": { "min": 6, "max": 80 },
+    "gruppi": {
+      "standard": {
+        "m": 0.27,
+        "q": 3.0,
+        "materiali": ["42CD4", "B7", "B7M", "L7", "B16"]
       },
-      {
-        "fino_a": 33,
-        "costo": 0.3
+      "inox": {
+        "m": 0.30,
+        "q": 5.0,
+        "materiali": ["AISI 304", "AISI 316", "B8 cl.2", "B8M cl.2"]
       },
-      {
-        "fino_a": 52,
-        "costo": 0.4
+      "f51": {
+        "m": 0.84,
+        "q": 8.6,
+        "materiali": ["F51", "F53"]
       },
-      {
-        "fino_a": 56,
-        "costo": 0.5
-      },
-      {
-        "fino_a": 63,
-        "costo": 0.6
-      },
-      {
-        "fino_a": 85,
-        "costo": 1.0
+      "superleghe": {
+        "m": 0.93,
+        "q": 9.2,
+        "materiali": ["Nitronic", "718", "660", "625"]
       }
-    ],
-    "inox_altro": [
-      {
-        "fino_a": 20,
-        "costo": 0.3
-      },
-      {
-        "fino_a": 33,
-        "costo": 0.4
-      },
-      {
-        "fino_a": 52,
-        "costo": 0.5
-      },
-      {
-        "fino_a": 56,
-        "costo": 0.7
-      },
-      {
-        "fino_a": 63,
-        "costo": 0.8
-      }
-    ]
+    }
   },
   "setup_taglio": {
     "lungh_barra_mm": 6000,
