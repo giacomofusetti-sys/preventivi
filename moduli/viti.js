@@ -15,6 +15,9 @@ import {
   parseQta,
   setupCosto,
   calcolaSetupTaglio,
+  calcolaTempoTaglio,
+  modulaCostoTaglio,
+  taglioFin,
   applicaDegradoOperatore,
   tempoTornituraBase,
   tempoSfacciatura,
@@ -864,18 +867,19 @@ export function calcolaViti(inp, T, TV) {
   const mat_cost_plus = mat_cost * (qta + mod_qta) / qta;
 
   // ── Taglio ───────────────────────────────────────────────
-  // Il Python usa costi tabellari diretti (€) non tempi
-  // Li ricaviamo come: costo_taglio / co1 → secondi impliciti
-  const taglio_costi_std  = [0.20,0.30,0.40,0.50,0.60,1.00];
-  const taglio_costi_inox = [0.30,0.40,0.50,0.70,0.80];
-  const taglio_soglie     = [20,33,52,56,63,85];
-  let ta_raw = 0;
-  const costi_tag = isInox ? taglio_costi_inox : taglio_costi_std;
-  for (let i = 0; i < taglio_soglie.length; i++) {
-    if (dia_disp <= taglio_soglie[i]) { ta_raw = costi_tag[i] ?? costi_tag[costi_tag.length-1]; break; }
-  }
-  const ta = ta_raw * qta < 10 ? 10 / qta : ta_raw;
-  const t_taglio = Math.round(ta_raw / co1); // secondi per gestionale
+  // Convenzione coerente con tiranti_unificato.js:
+  //   1. tempo (sec) dalla funzione centrale calcolaTempoTaglio
+  //      (modello lineare m·dia+q per gruppo materiale)
+  //   2. ta_raw = tempo × co1 (euro grezzo, tariffa base)
+  //   3. modulaCostoTaglio: cap qta-dipendente (€2 qta11-20, €1 qta>20
+  //      per std/inox; dimezzato per 'altro'). NB: introdotto in v1.0.6,
+  //      prima della release viti.js usava tier-list inline senza cap qta.
+  //   4. taglioFin: floor €10/lotto.
+  const tempo_ta_sec      = calcolaTempoTaglio(dia_disp, mat, materiale_speciale, T);
+  const ta_raw            = tempo_ta_sec * co1;
+  const { ta: ta_modulato } = modulaCostoTaglio(ta_raw, qta, mat, costo_kg, peso);
+  const ta                = taglioFin(ta_modulato, qta);
+  const t_taglio          = Math.round(tempo_ta_sec); // secondi per gestionale
 
   // ── Smusso (solo se dia_disp ≈ medio, cioè si parte già a misura) ─
   // smussi_per_pezzo=1 per le viti: testa stampata/tornita su un lato,

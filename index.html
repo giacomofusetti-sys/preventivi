@@ -880,11 +880,11 @@
 // Ogni modulo esporta la sua funzione di calcolo principale.
 // Aggiungere un nuovo modulo = aggiungere una riga qui + un branch
 // in calcola() + la logica in renderResults().
-import { calcolaTiranti }     from './moduli/tiranti_unificato.js?v=16';
-import { calcolaDadi }        from './moduli/dadi.js?v=16';
-import { calcolaPrigionieri } from './moduli/prigionieri.js?v=16';
-import { parseDia, parseExpr, getDiametroMedio } from './lib/calcolo_comune.js?v=16';
-import { VERSION, VERSION_DATE, formatDataItaliana } from './lib/version.js?v=16';
+import { calcolaTiranti }     from './moduli/tiranti_unificato.js?v=17';
+import { calcolaDadi }        from './moduli/dadi.js?v=17';
+import { calcolaPrigionieri } from './moduli/prigionieri.js?v=17';
+import { parseDia, parseExpr, getDiametroMedio } from './lib/calcolo_comune.js?v=17';
+import { VERSION, VERSION_DATE, formatDataItaliana } from './lib/version.js?v=17';
 // tiranti_occhio.js viene importato dinamicamente in calcola()
 // per evitare che un file mancante blocchi l'intera applicazione
 
@@ -1566,7 +1566,7 @@ window.calcola = async function() {
       }, T, TD);
     } else if (prodottoCorrente === 'tiranti_occhio') {
       // ── Tiranti a Occhio — import dinamico ───────────────
-      const { calcolaTirantiOcchio } = await import('./moduli/tiranti_occhio.js?v=16');
+      const { calcolaTirantiOcchio } = await import('./moduli/tiranti_occhio.js?v=17');
       const _diam_o  = getDiametroMedio(T, parseDia(getStr('dia')), getStr('passo'));
       const _min_o   = getToggleVal('minorato') === 'ON';
       const medio_override = _min_o ? _diam_o - getNum('riduzione_medio', 0.4) : 0;
@@ -1592,7 +1592,7 @@ window.calcola = async function() {
 
     // ── Viti ─────────────────────────────────────────────
     if (prodottoCorrente === 'viti') {
-      const { calcolaViti } = await import('./moduli/viti.js?v=16');
+      const { calcolaViti } = await import('./moduli/viti.js?v=17');
       const _diam_v  = getDiametroMedio(T, parseDia(getStr('dia')), getStr('passo'));
       const _min_v   = getToggleVal('minorato') === 'ON';
       const medio_override = _min_v ? _diam_v - getNum('riduzione_medio', 0.4) : 0;

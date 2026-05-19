@@ -452,12 +452,40 @@ function renderAll(T, TD, TP, TV) {
   }
   html += '</div>';
 
-  // --- Taglio ---
-  html += section('sec-taglio', 'Taglio — Costi diretti');
-  html += '<div class="t-grid-2">';
-  html += '<div>' + groupTitle('Standard') + tierTable(T.taglio.standard, 'costo', 'Costo (€)', '€') + '</div>';
-  html += '<div>' + groupTitle('Inox / Altro') + tierTable(T.taglio.inox_altro, 'costo', 'Costo (€)', '€') + '</div>';
-  html += '</div></div>';
+  // --- Taglio (modello lineare per gruppo materiale) ---
+  html += section('sec-taglio', 'Taglio — Modello tempi (m·dia + q)');
+  html += `<div class="t-note">Modello lineare calibrato su dati misurati forniti dall'officina (R² > 0.96 per tutti i gruppi, R² > 0.999 per F51 e superleghe). Formula: <code>t_sec = m · dia + q</code>. Range validato: dia da ${T.taglio.range_dia_validato.min} a ${T.taglio.range_dia_validato.max} mm. Fuori range si extrapola linearmente. Per i materiali "altro" la distinzione fine (F51/F53 vs Nitronic/718/660/625) è applicata via <code>materiale_speciale</code>.</div>`;
+  html += groupTitle('Coefficienti per gruppo');
+  {
+    let rows = '';
+    for (const [nome, g] of Object.entries(T.taglio.gruppi)) {
+      const matStr = g.materiali.join(', ');
+      rows += `<tr><td><strong>${h(nome)}</strong></td><td class="num">${fmt(g.m, 2)}</td><td class="num">${fmt(g.q, 1)}</td><td>${h(matStr)}</td></tr>`;
+    }
+    html += tableWrap(`<thead><tr><th>Gruppo</th><th class="num">m (s/mm)</th><th class="num">q (s)</th><th>Materiali</th></tr></thead><tbody>${rows}</tbody>`);
+  }
+  html += groupTitle('Esempi di tempi di taglio (s)');
+  {
+    // Tabella di documentazione: valori calcolati a priori per i diametri
+    // tipici e per i 4 gruppi materiale. Hardcoded perché sono valori
+    // illustrativi della formula (vivono accanto al modello che li produce).
+    const esempi = [
+      [6,   4.6,  6.8, 13.6, 14.8],
+      [12,  6.2,  8.6, 18.7, 20.4],
+      [20,  8.4, 11.0, 25.4, 27.8],
+      [30, 11.1, 14.0, 33.8, 37.1],
+      [42, 14.3, 17.6, 43.9, 48.3],
+      [56, 18.1, 21.8, 55.6, 61.3],
+      [72, 22.4, 26.6, 69.1, 76.2],
+      [80, 24.6, 29.0, 75.8, 83.6],
+    ];
+    let rows = '';
+    for (const [dia, std, inox, f51, sup] of esempi) {
+      rows += `<tr><td class="num">${dia}</td><td class="num">${fmt(std, 1)}</td><td class="num">${fmt(inox, 1)}</td><td class="num">${fmt(f51, 1)}</td><td class="num">${fmt(sup, 1)}</td></tr>`;
+    }
+    html += tableWrap(`<thead><tr><th class="num">Ø (mm)</th><th class="num">standard</th><th class="num">inox</th><th class="num">F51</th><th class="num">superleghe</th></tr></thead><tbody>${rows}</tbody>`);
+  }
+  html += '</div>';
 
   // --- Setup taglio (modello dinamico) ---
   html += section('sec-setup-taglio', 'Setup taglio — Modello dinamico');
@@ -966,7 +994,7 @@ function setupSearch() {
 </script>
 
 <script type="module">
-import { VERSION, VERSION_DATE, formatDataItaliana } from './lib/version.js?v=16';
+import { VERSION, VERSION_DATE, formatDataItaliana } from './lib/version.js?v=17';
 document.getElementById('header-right').innerHTML =
   `<span class="version">v${VERSION}</span>` +
   `<span class="version-sep">·</span>` +
