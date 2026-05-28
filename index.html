@@ -1419,6 +1419,39 @@ function applicaTrattamento(R, T) {
   R.trattamento = tratt;
   R.costo_tot += tratt;
   R.costo_lav += tratt;
+
+  // Riallinea il totale in euro della prima riga del transcript "tempi
+  // gestionale" col nuovo R.costo_tot (post-bonifica). La bonifica NON
+  // diventa una voce-tempo: solo l'importo della riga di intestazione
+  // viene aggiornato.
+  // NB tiranti_occhio è ESENTE: il suo transcript non ha riga "€ totale"
+  // di intestazione (parte direttamente con TAGLI ...), quindi la
+  // sostituzione viene saltata silenziosamente. Da rivedere se/quando
+  // tiranti_occhio.js verrà uniformato agli altri due moduli.
+  if (typeof R.tempi_gestionale === 'string' && R.tempi_gestionale.length > 0) {
+    const nl = R.tempi_gestionale.indexOf('\n');
+    const prima_riga = nl >= 0 ? R.tempi_gestionale.slice(0, nl) : R.tempi_gestionale;
+    const resto      = nl >= 0 ? R.tempi_gestionale.slice(nl)    : '';
+    if (prima_riga.startsWith('€')) {
+      // Pattern atteso: "€ {importo} - da mat. ... kg"
+      const nuova_prima_riga = prima_riga.replace(
+        /^€\s*[\d.]+/,
+        `€ ${R.costo_tot.toFixed(2)}`
+      );
+      if (nuova_prima_riga === prima_riga) {
+        // La riga inizia con "€" ma il pattern importo non ha matchato.
+        // Cambio di formato non previsto: lascio il transcript invariato
+        // e segnalo, così una regressione futura non passa silenziosa.
+        console.warn(
+          'applicaTrattamento: prima riga inizia con € ma importo non trovato, transcript non aggiornato'
+        );
+      } else {
+        R.tempi_gestionale = nuova_prima_riga + resto;
+      }
+    }
+    // else: prima riga non inizia con € → caso atteso (es. tiranti_occhio).
+    // Skip silenzioso, nessun warn.
+  }
 }
 
 
