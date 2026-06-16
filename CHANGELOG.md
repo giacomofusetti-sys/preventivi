@@ -6,6 +6,38 @@ documentate in questo file.
 Il formato è basato su [Keep a Changelog](https://keepachangelog.com/it/1.1.0/),
 e il progetto segue [Semantic Versioning](https://semver.org/lang/it/).
 
+## [1.1.0] — 2026-06-12
+
+### Added
+- **Via di lavorazione "Fantina" nel modulo viti.** Terzo bottone nel
+  toggle `lav_vite` (Stampaggio / Fresa / Fantina). La fantina è un
+  tornio automatico a caricamento barra che produce la vite finita in un
+  unico ciclo continuo (taglia, tornisce il gambo e fresa la testa in
+  macchina). Modello a **tempo ciclo costante per tipologia testa**:
+  `ciclo_TE = 80s` per testa esagonale (5737/5739), `ciclo_TCE = 90s`
+  per testa cava (5931). I tempi non dipendono da diametro né lunghezza
+  nel range osservato, perché il ciclo è dettato dalla fresatura della
+  testa con la tornitura del gambo in tempo nascosto — validato su
+  misure officina 2026 (range M5-M16, L 12-100). Per il gruppo materiale
+  ALTRO il ciclo è moltiplicato per `materiali_speciali_k[mat]` (fallback
+  al k di `660` se il codice non è noto); carbonio e inox usano il tempo
+  base. Setup unico di 7200s sul gestionale (`ATOR2`). Limiti macchina
+  (`dia_min/max`, `lungh_min/max`) configurabili in tabella con blocco
+  fail-fast — attualmente `null` (nessun blocco). Le viti speciali sono
+  escluse con errore esplicito in cima a `calcolaViti`. L'attrezzatura
+  inox/altro (€0.6, usura utensili) resta applicata anche in fantina.
+  Nuova funzione `calcolaCicloFantinaViti` e ramo dedicato in
+  `moduli/viti.js`; nuovo flag `FANTINA` nell'input.
+
+### Internal
+- Nuovo blocco `fantina_viti` in `tabelle/viti.json` (`ciclo_TE`,
+  `ciclo_TCE`, `limiti`, commento col razionale del modello).
+- Sezione "Viti — Fantina" in `consultazione.html` (tempi ciclo, setup,
+  regole, limiti) con voce di navigazione.
+- Pannello risultati (`renderResults`, `index.html`): riga e cella
+  "Fantina" con ciclo + setup 7200s, soppressione della riga Taglio
+  nella via fantina, barra di composizione costo dedicata.
+
 ## [1.0.6] — 2026-05-19
 
 ### Added

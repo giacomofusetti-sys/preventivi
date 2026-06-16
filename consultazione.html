@@ -282,6 +282,7 @@
     <a href="#sec-viti-filetto-5931">Filetto 5931</a>
     <a href="#sec-viti-tempi">Tempi viti</a>
     <a href="#sec-viti-rullatura">Rullatura viti</a>
+    <a href="#sec-viti-fantina">Fantina viti</a>
   </nav>
 
   <div class="consult-body">
@@ -904,6 +905,26 @@ function renderAll(T, TD, TP, TV) {
   }
   html += '</div>';
 
+  // --- Fantina viti ---
+  html += section('sec-viti-fantina', 'Viti — Fantina (ciclo unico)');
+  html += `<div class="t-note">${h(TV.fantina_viti._commento)}</div>`;
+  html += groupTitle('Tempi ciclo (s/pezzo)');
+  {
+    const FV = TV.fantina_viti;
+    let rows = '';
+    rows += `<tr><td>Testa esagonale (5737 / 5739)</td><td class="num">${FV.ciclo_TE} s</td></tr>`;
+    rows += `<tr><td>Testa cava esagonale (5931)</td><td class="num">${FV.ciclo_TCE} s</td></tr>`;
+    html += tableWrap(`<thead><tr><th>Tipologia testa</th><th class="num">Tempo ciclo</th></tr></thead><tbody>${rows}</tbody>`);
+  }
+  html += groupTitle('Setup e regole');
+  html += `<div class="t-note">Setup macchina (fantina): ${T.setup_secondi.tornitura_fantina} s. Materiale "altro": tempo ciclo × moltiplicatore materiali speciali (fallback k di 660). In fantina niente taglio / tornitura / fresatura / sbavatura / smusso separati; rullatura e marcatura restano invariate. Viti speciali non supportate.</div>`;
+  {
+    const lim = TV.fantina_viti.limiti;
+    const fmtLim = (v) => v == null ? '—' : v;
+    html += `<div class="t-note">Limiti macchina: Ø ${fmtLim(lim.dia_min)}–${fmtLim(lim.dia_max)} · L ${fmtLim(lim.lungh_min)}–${fmtLim(lim.lungh_max)} mm (— = nessun blocco)</div>`;
+  }
+  html += '</div>';
+
 
   c.innerHTML = html;
 
@@ -994,7 +1015,7 @@ function setupSearch() {
 </script>
 
 <script type="module">
-import { VERSION, VERSION_DATE, formatDataItaliana } from './lib/version.js?v=17';
+import { VERSION, VERSION_DATE, formatDataItaliana } from './lib/version.js?v=18';
 document.getElementById('header-right').innerHTML =
   `<span class="version">v${VERSION}</span>` +
   `<span class="version-sep">·</span>` +

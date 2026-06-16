@@ -736,6 +736,7 @@
         <div class="toggle-group">
           <button class="toggle-btn active" data-group="lav_vite" data-val="stamp">Stampaggio</button>
           <button class="toggle-btn"        data-group="lav_vite" data-val="fresa">Fresa / Tornitura</button>
+          <button class="toggle-btn"        data-group="lav_vite" data-val="fantina">Fantina</button>
         </div>
       </div>
 
@@ -880,11 +881,11 @@
 // Ogni modulo esporta la sua funzione di calcolo principale.
 // Aggiungere un nuovo modulo = aggiungere una riga qui + un branch
 // in calcola() + la logica in renderResults().
-import { calcolaTiranti }     from './moduli/tiranti_unificato.js?v=17';
-import { calcolaDadi }        from './moduli/dadi.js?v=17';
-import { calcolaPrigionieri } from './moduli/prigionieri.js?v=17';
-import { parseDia, parseExpr, getDiametroMedio } from './lib/calcolo_comune.js?v=17';
-import { VERSION, VERSION_DATE, formatDataItaliana } from './lib/version.js?v=17';
+import { calcolaTiranti }     from './moduli/tiranti_unificato.js?v=18';
+import { calcolaDadi }        from './moduli/dadi.js?v=18';
+import { calcolaPrigionieri } from './moduli/prigionieri.js?v=18';
+import { parseDia, parseExpr, getDiametroMedio } from './lib/calcolo_comune.js?v=18';
+import { VERSION, VERSION_DATE, formatDataItaliana } from './lib/version.js?v=18';
 // tiranti_occhio.js viene importato dinamicamente in calcola()
 // per evitare che un file mancante blocchi l'intera applicazione
 
@@ -1175,11 +1176,12 @@ document.querySelectorAll('.toggle-btn').forEach(btn => {
         el.style.display = el.dataset.spec === btn.dataset.val ? 'block' : 'none';
       });
     }
-    // viti: fresa = mostra dia_disp_viti, filetto, dpl
+    // viti: fresa/fantina = mostra dia_disp_viti, filetto, dpl
+    // (fantina usa gli stessi campi della via fresa: tondo di partenza,
+    //  lunghezza filetto, Ø parte liscia — vedi ramo FANTINA in viti.js)
     if (group === 'lav_vite') {
-      const isFresa = btn.dataset.val === 'fresa';
       document.getElementById('row-dia-disp-viti').style.display = 'block'; // sempre
-      // con fresa mostra anche filetto e parte liscia
+      // con fresa/fantina mostra anche filetto e parte liscia
       document.getElementById('row-filetto-vite').style.display = 'block';
       document.getElementById('row-dpl-vite').style.display = 'block';
     }
@@ -1599,7 +1601,7 @@ window.calcola = async function() {
       }, T, TD);
     } else if (prodottoCorrente === 'tiranti_occhio') {
       // ── Tiranti a Occhio — import dinamico ───────────────
-      const { calcolaTirantiOcchio } = await import('./moduli/tiranti_occhio.js?v=17');
+      const { calcolaTirantiOcchio } = await import('./moduli/tiranti_occhio.js?v=18');
       const _diam_o  = getDiametroMedio(T, parseDia(getStr('dia')), getStr('passo'));
       const _min_o   = getToggleVal('minorato') === 'ON';
       const medio_override = _min_o ? _diam_o - getNum('riduzione_medio', 0.4) : 0;
@@ -1625,7 +1627,7 @@ window.calcola = async function() {
 
     // ── Viti ─────────────────────────────────────────────
     if (prodottoCorrente === 'viti') {
-      const { calcolaViti } = await import('./moduli/viti.js?v=17');
+      const { calcolaViti } = await import('./moduli/viti.js?v=18');
       const _diam_v  = getDiametroMedio(T, parseDia(getStr('dia')), getStr('passo'));
       const _min_v   = getToggleVal('minorato') === 'ON';
       const medio_override = _min_v ? _diam_v - getNum('riduzione_medio', 0.4) : 0;
@@ -1647,6 +1649,7 @@ window.calcola = async function() {
         dia_parte_liscia:   getNum('dpl_vite', 0),
         chiave_tipo:        getToggleVal('chiave_tipo'),
         STAMPAGGIO:         getToggleVal('lav_vite') === 'stamp',
+        FANTINA:            getToggleVal('lav_vite') === 'fantina',
         TRATTAMENTO:        getToggle('trattamento_vite'),
         costo_bonifica_kg:  getNum('costo_bonifica_kg', T.trattamento_termico.costo_kg),
         forfait_bonifica:   getNum('forfait_bonifica', T.trattamento_termico.forfait),
@@ -1901,12 +1904,13 @@ function renderResults(R) {
       { label: '🟢 Materiale',   val: R.mat_cost_plus, sub: `peso grezzo: ${r(R.peso, 3)} kg (+${R.mod_qta} pz mat.)` },
       ...(R.bonifica     > 0 ? [{ label: '🌡 Trattamento',  val: R.bonifica,     sub: '' }] : []),
       ...(R.attrezzatura > 0 ? [{ label: '🔧 Attrezzatura', val: R.attrezzatura, sub: '' }] : []),
-      { label: '✂ Taglio',       val: R.ta,             sub: `setup: €${r(R.setup_taglio)}` },
+      ...(!R.FANTINA ? [{ label: '✂ Taglio',     val: R.ta,         sub: `setup: €${r(R.setup_taglio)}` }] : []),
       ...(R.ha_smusso  ? [{ label: '⟋ Smusso',     val: R.smusso_fin, sub: `setup: €${r(R.setup_smusso)}` }] : []),
       ...(R.ha_stamp   ? [{ label: '⬡ Stampaggio', val: R.stamp_fin,  sub: `setup: €${r(R.setup_stamp)}`  }] : []),
       ...(R.ha_stamp   ? [{ label: `⟐ Sbavatura (${R.sbav_macchina})`,  val: R.sbav_fin,   sub: `setup: €${r(R.setup_sbav)}`  }] : []),
       ...(R.ha_torn    ? [{ label: '◎ Tornitura',  val: R.torn_fin,   sub: `setup: €${r(R.setup_torn)}`  }] : []),
       ...(R.ha_fresa   ? [{ label: '⟋ Fresatura',  val: R.fresa_fin,  sub: `setup: €${r(R.setup_fresa)}` }] : []),
+      ...(R.FANTINA    ? [{ label: '◎ Fantina',    val: R.fantina_fin, sub: `setup: €${r(R.setup_fantina)}` }] : []),
       { label: '⟳ Rullatura',    val: R.rull_fin,       sub: `setup: €${r(R.setup_rull)}` },
       ...(R.ha_raddr   ? [{ label: '📐 Raddrizzatura', val: R.raddr_fin, sub: `setup: €${r(R.setup_raddr)}` }] : []),
       { label: '🏷 Marcatura',    val: R.marc_fin,       sub: '' },
@@ -2072,20 +2076,22 @@ function renderResults(R) {
       <div class="tempo-cell"><div class="tc-label">A.Marcatura</div><div class="tc-val">${R.tempo_setup_marc}<span class="tc-unit"> s</span></div></div>`;
   } else if (isViti) {
     tempiGridHTML = `
-      <div class="tempo-cell"><div class="tc-label">Taglio</div><div class="tc-val">${Math.round(R.t_taglio)}<span class="tc-unit"> s</span></div></div>
+      ${!R.FANTINA ? `<div class="tempo-cell"><div class="tc-label">Taglio</div><div class="tc-val">${Math.round(R.t_taglio)}<span class="tc-unit"> s</span></div></div>` : ''}
       ${R.ha_smusso ? `<div class="tempo-cell"><div class="tc-label">Smusso</div><div class="tc-val">${Math.round(R.t_smusso)}<span class="tc-unit"> s</span></div></div>` : ''}
       ${R.ha_stamp  ? `<div class="tempo-cell"><div class="tc-label">Stampaggio</div><div class="tc-val">${Math.round(R.t_stamp)}<span class="tc-unit"> s</span></div></div>` : ''}
       ${R.ha_stamp  ? `<div class="tempo-cell"><div class="tc-label">Sbavatura</div><div class="tc-val">${Math.round(R.t_sbav)}<span class="tc-unit"> s</span></div></div>` : ''}
       ${R.ha_torn   ? `<div class="tempo-cell"><div class="tc-label">Tornitura</div><div class="tc-val">${Math.round(R.t_torn)}<span class="tc-unit"> s</span></div></div>` : ''}
       ${R.ha_fresa  ? `<div class="tempo-cell"><div class="tc-label">Fresatura</div><div class="tc-val">${Math.round(R.t_fresa)}<span class="tc-unit"> s</span></div></div>` : ''}
+      ${R.FANTINA   ? `<div class="tempo-cell"><div class="tc-label">Fantina</div><div class="tc-val">${Math.round(R.t_fantina)}<span class="tc-unit"> s</span></div></div>` : ''}
       <div class="tempo-cell"><div class="tc-label">Rullatura</div><div class="tc-val">${Math.round(R.t_rulla)}<span class="tc-unit"> s</span></div></div>
       ${R.ha_raddr  ? `<div class="tempo-cell"><div class="tc-label">Raddrizzatura</div><div class="tc-val">${Math.round(R.t_raddr)}<span class="tc-unit"> s</span></div></div>` : ''}
-      <div class="tempo-cell"><div class="tc-label">A.Taglio</div><div class="tc-val">300<span class="tc-unit"> s</span></div></div>
+      ${!R.FANTINA ? `<div class="tempo-cell"><div class="tc-label">A.Taglio</div><div class="tc-val">300<span class="tc-unit"> s</span></div></div>` : ''}
       ${R.ha_smusso ? `<div class="tempo-cell"><div class="tc-label">A.Smusso</div><div class="tc-val">1800<span class="tc-unit"> s</span></div></div>` : ''}
       ${R.ha_stamp  ? `<div class="tempo-cell"><div class="tc-label">A.Stamp.</div><div class="tc-val">3600<span class="tc-unit"> s</span></div></div>` : ''}
       ${R.ha_stamp  ? `<div class="tempo-cell"><div class="tc-label">A.Sbavat.</div><div class="tc-val">${R.setup_sbav_sec}<span class="tc-unit"> s</span></div></div>` : ''}
       ${R.ha_torn   ? `<div class="tempo-cell"><div class="tc-label">A.Torn1</div><div class="tc-val">3600<span class="tc-unit"> s</span></div></div>` : ''}
       ${R.ha_fresa  ? `<div class="tempo-cell"><div class="tc-label">A.Fresa</div><div class="tc-val">3600<span class="tc-unit"> s</span></div></div>` : ''}
+      ${R.FANTINA   ? `<div class="tempo-cell"><div class="tc-label">A.Fantina</div><div class="tc-val">7200<span class="tc-unit"> s</span></div></div>` : ''}
       <div class="tempo-cell"><div class="tc-label">A.Rullatura</div><div class="tc-val">1800<span class="tc-unit"> s</span></div></div>
       ${R.ha_raddr  ? `<div class="tempo-cell"><div class="tc-label">A.Raddr.</div><div class="tc-val">1800<span class="tc-unit"> s</span></div></div>` : ''}`;
   } else if (isOcchio) {
@@ -2162,6 +2168,7 @@ function renderResults(R) {
       ${isViti  && R.ha_stamp  ? bar('Stampaggio', R.stamp_fin + R.setup_stamp, 'torn') : ''}
       ${isViti  && R.ha_torn   ? bar('Tornitura',  R.torn_fin  + R.setup_torn,  'torn') : ''}
       ${isViti  && R.ha_fresa  ? bar('Fresatura',  R.fresa_fin + R.setup_fresa, 'smusso') : ''}
+      ${isViti  && R.FANTINA   ? bar('Fantina',    R.fantina_fin + R.setup_fantina, 'torn') : ''}
       ${isViti  ? bar('Rullatura', R.rull_fin + R.setup_rull, 'rull') : ''}
       ${!isDadi && !isPrig && !isOcchio && !isViti &&  isTornito ? bar('Tornitura', R.torni_fin + R.setup_torn, 'torn') : ''}
       ${!isDadi && !isPrig && !isOcchio && !isViti && !isTornito ? bar('Taglio',    R.taglio_fin + R.setup_taglio, 'taglio') : ''}

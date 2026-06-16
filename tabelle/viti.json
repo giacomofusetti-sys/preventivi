@@ -815,5 +815,12 @@
     "fresatura": 3600,
     "rullatura": 1800,
     "raddrizzatura": 1800
+  },
+  "fantina_viti": {
+    "ciclo_TE": 80,
+    "ciclo_TCE": 90,
+    "limiti": { "dia_min": null, "dia_max": null,
+                "lungh_min": null, "lungh_max": null },
+    "_commento": "Tempi ciclo costanti (s/pezzo). Validati su misure officina 2026, range M5-M16, L 12-100. Nessuna dipendenza dimensionale: ciclo dettato da fresatura testa, tornitura in tempo nascosto. Limiti null = nessun blocco; valorizzarli quando noti i range macchina."
   }
 }
