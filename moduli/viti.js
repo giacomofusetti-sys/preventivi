@@ -227,7 +227,7 @@ function calcolaTorniturraViti(
   tipo, dian, dia_medio, dia_disp, dia_parte_liscia,
   L_filettata, L_liscia,
   mat, materiale_speciale,
-  STAMPAGGIO, dati_testa,
+  STAMPAGGIO, IS_FUSTO, dati_testa,
   peso_grezzo,
   T
 ) {
@@ -297,8 +297,14 @@ function calcolaTorniturraViti(
   // - dentro + parte liscia al nominale: copiatore
   // - dentro + parte liscia ridotta: si va al CN (logica V8 carbonio o
   //   V8 inox/altro gestisce automaticamente il caso)
+  // FUSTO escluso a priori: is_mezzo_filetto è SEMPRE vero per un fusto
+  // (L_liscia = intero gambo), quindi senza questa esclusione un fusto
+  // entrerebbe nel ramo copiatore e fatturerebbe ~13s di tornitura + 1800s
+  // di setup + una riga TORN1/ATOR1 inesistenti. Fuori dal copiatore, il ramo
+  // CN produce da sé il risultato corretto (A=B=C=D=E=0 → has_tornitura=false).
   const is_copiatore_territory =
     STAMPAGGIO &&
+    !IS_FUSTO &&
     (tipo === '5737' || tipo === '5931') &&
     is_mezzo_filetto;
 
@@ -771,6 +777,7 @@ export function calcolaViti(inp, T, TV) {
     chiave_tipo      = 'p',
     STAMPAGGIO       = true,
     FANTINA          = false,
+    FUSTO            = 'no',   // 'no' | 'liscio' | 'smussato'
     TRATTAMENTO      = false,
     costo_bonifica_kg,
     forfait_bonifica,
@@ -784,6 +791,33 @@ export function calcolaViti(inp, T, TV) {
   // errore pertinente, anche con parametri testa speciale incompleti.
   if (FANTINA && IS_SPECIALE) throw new Error('Fantina non supportata per viti speciali');
 
+  const IS_FUSTO = FUSTO !== 'no';
+
+  // ── Validazioni FUSTO (fail-fast in cima, come fantina/speciale) ──────
+  // Il fusto è un semilavorato: testa (5737/5931) + gambo al diametro
+  // nominale NON filettato, sempre stampato, solo acciai al carbonio.
+  // Le tre condizioni qui sotto sono strutturali: la UI (fase 2) le rende
+  // già impossibili, ma il modulo di calcolo deve difendersi da solo, così
+  // l'errore è pertinente anche se chiamato con un input incoerente.
+  if (IS_FUSTO) {
+    if (tipo !== '5737' && tipo !== '5931') {
+      throw new Error('Il fusto è disponibile solo per teste 5737 o 5931.');
+    }
+    if (FANTINA) {
+      throw new Error('Fusto e fantina sono incompatibili: il fusto è sempre stampato.');
+    }
+    // Materiale al carbonio obbligatorio. NB: MAT_INOX include storicamente
+    // anche 'altro' (marker "materiale difficile"/superleghe), quindi il caso
+    // 'altro' va intercettato PRIMA del check MAT_INOX per dare il messaggio
+    // giusto (superleghe) invece di quello inox.
+    if (mat === 'altro') {
+      throw new Error('Fusto non disponibile per superleghe: solo acciai al carbonio (42CD4, B16).');
+    }
+    if (MAT_INOX.includes(mat)) {
+      throw new Error('Fusto non disponibile per inox: solo acciai al carbonio (42CD4, B16).');
+    }
+  }
+
   const { co1, co2 } = T.costi_base;
 
   // ── Parse input ──────────────────────────────────────────
@@ -794,7 +828,9 @@ export function calcolaViti(inp, T, TV) {
   const lungh = parseExpr(lungh_raw);
   const qta   = parseQta(qta_raw);
   const dia_disp = parseExpr(dia_disp_raw) || dian;
-  const dpl   = dia_parte_liscia > 0 ? dia_parte_liscia : dian;
+  // FUSTO: gambo tutto al nominale per definizione → dpl=dian, ignorando
+  // qualunque dia_parte_liscia passato in input.
+  const dpl   = IS_FUSTO ? dian : (dia_parte_liscia > 0 ? dia_parte_liscia : dian);
 
   if (isNaN(lungh) || lungh <= 0) throw new Error('Lunghezza non valida');
   if (isNaN(qta)   || qta   <= 0) throw new Error('Quantità non valida');
@@ -802,6 +838,14 @@ export function calcolaViti(inp, T, TV) {
   // Validazione generale: barra non può essere inferiore al 95% del diametro medio effettivo
   if (dia_disp < medio * 0.95) throw new Error(
     `Diametro barra (${dia_disp.toFixed(1)} mm) inferiore al minimo accettabile (${(medio * 0.95).toFixed(1)} mm).`
+  );
+
+  // FUSTO: il gambo è al nominale, quindi la barra deve stare nella finestra
+  // [dian-0.2, dian] — la STESSA soglia del territorio copiatore (barra
+  // trafilata un paio di decimi sotto il nominale). Fail-fast fuori range.
+  if (IS_FUSTO && (dia_disp < dian - 0.2 || dia_disp > dian)) throw new Error(
+    `Fusto: diametro barra (${dia_disp.toFixed(1)} mm) fuori dalla finestra ammessa ` +
+    `per M${dian} (${(dian - 0.2).toFixed(1)} - ${dian} mm).`
   );
 
   // ── Validazioni FANTINA (limiti macchina) ────────────────
@@ -863,8 +907,16 @@ export function calcolaViti(inp, T, TV) {
   const is_5931_inox_altro = STAMPAGGIO && tipo === '5931' && (mat === 'altro' || isInox);
 
   // ── Lunghezza filetto ─────────────────────────────────────
-  const filet = TF ? lungh : calcolaLunghFiletto(tipo, dia, lungh, filetto_override, TV);
+  // FUSTO: gambo non filettato per definizione → filet=0, che bypassa sia TF
+  // sia filetto_override. Va imposto PRIMA di lungh_liscia, così quest'ultima
+  // esce = lungh da sé.
+  const filet = IS_FUSTO ? 0 : (TF ? lungh : calcolaLunghFiletto(tipo, dia, lungh, filetto_override, TV));
   const lungh_liscia = filet > 0 ? lungh - filet : 0;
+
+  // Rullatura legata alla GEOMETRIA, non alla feature fusto: niente filetto →
+  // niente rullatura. È un invariante fisico che vale a prescindere (un fusto
+  // ha filet=0, ma la condizione resta geometrica e non accoppia con IS_FUSTO).
+  const ha_rulla = filet > 0;
 
   // ── Dati testa ───────────────────────────────────────────
   let dati_testa, h_testa;
@@ -947,7 +999,11 @@ export function calcolaViti(inp, T, TV) {
   // smussi_per_pezzo=1 per le viti: testa stampata/tornita su un lato,
   // solo l'estremità libera filettata è da smussare. Floor €10/lotto al
   // call site (pattern coerente con sbavatura/taglio/ecc.).
-  const ha_smusso  = !FANTINA && Math.abs(dia_disp - medio) < 0.5;
+  // FUSTO: lo smusso è deciso dalla variante scelta, non dal check dimensionale
+  // (che sarebbe comunque falso: la barra sta al nominale, non al medio).
+  const ha_smusso  = IS_FUSTO
+    ? (FUSTO === 'smussato')
+    : (!FANTINA && Math.abs(dia_disp - medio) < 0.5);
   const sm_info    = ha_smusso ? calcolaSmusso(dia_disp, lungh, mat, qta, 1, co1, co2, T) : null;
   const t_smusso   = sm_info ? sm_info.tempo_ciclo_sec : 0;
   const smusso_c   = sm_info ? t_smusso * sm_info.co_applicato : 0;
@@ -1026,7 +1082,7 @@ export function calcolaViti(inp, T, TV) {
       tipo, dian, medio, dia_disp, dpl,
       L_filettata, L_liscia,
       mat, materiale_speciale,
-      STAMPAGGIO, dati_testa,
+      STAMPAGGIO, IS_FUSTO, dati_testa,
       peso,
       T
     );
@@ -1127,10 +1183,15 @@ export function calcolaViti(inp, T, TV) {
   }
 
   // ── Rullatura ─────────────────────────────────────────────
-  let t_rulla    = calcolaTempoRullatura(dian, filet, mat, TV);
-  t_rulla        = applicaDegradoOperatore(t_rulla, qta, T);
-  const ru_c     = t_rulla * co;
-  const rull_fin = ru_c * qta < 10 ? 10 / qta : ru_c;
+  // Solo se c'è filetto da rullare (ha_rulla, invariante geometrico). Senza
+  // filetto la funzione riceverebbe filet=0 e non c'è nulla da rullare.
+  let t_rulla = 0, rull_fin = 0;
+  if (ha_rulla) {
+    t_rulla      = calcolaTempoRullatura(dian, filet, mat, TV);
+    t_rulla      = applicaDegradoOperatore(t_rulla, qta, T);
+    const ru_c   = t_rulla * co;
+    rull_fin     = ru_c * qta < 10 ? 10 / qta : ru_c;
+  }
 
   // ── Raddrizzatura ─────────────────────────────────────────
   const raddr_c   = calcolaRaddrizzatura(dian, lungh, mat, TRATTAMENTO, TV);
@@ -1176,7 +1237,7 @@ export function calcolaViti(inp, T, TV) {
       setupCosto(T.setup_secondi.testa_5931_tornitura,    co1, qta)
     : 0;
   const setup_fresa   = t_fresa > 0 ? setupCosto(S.fresatura,  co1, qta) : 0;
-  const setup_rull    = setupCosto(S.rullatura,  co1, qta);
+  const setup_rull    = ha_rulla ? setupCosto(S.rullatura,  co1, qta) : 0;
   const setup_raddr   = raddr_c > 0 ? setupCosto(S.raddrizzatura, co1, qta) : 0;
 
   // ── Totale ───────────────────────────────────────────────
@@ -1219,7 +1280,7 @@ export function calcolaViti(inp, T, TV) {
     }
   }
   if (t_fresa > 0) lines.push(`FRESA ${Math.round(t_fresa)}`);
-  lines.push(`RULLA ${Math.round(t_rulla)}`);
+  if (ha_rulla) lines.push(`RULLA ${Math.round(t_rulla)}`);
   if (raddr_c > 0) lines.push(`RADDR ${Math.round(raddr_c / 0.016)}`);
   if (!FANTINA)    lines.push(`ATAGL ${Math.round(setup_taglio_sec)}`);
   if (sm_info)     lines.push(`ASMUS ${sm_info.setup_sec}`);
@@ -1258,15 +1319,24 @@ export function calcolaViti(inp, T, TV) {
     }
   }
   if (t_fresa > 0) lines.push(`AFRES ${S_tag.fresatura}`);
-  lines.push(`ARULL ${S_tag.rullatura}`);
+  if (ha_rulla) lines.push(`ARULL ${S_tag.rullatura}`);
   if (raddr_c > 0) lines.push(`ARADD ${S_tag.raddrizzatura}`);
   lines.unshift(`\u20AC ${totale.toFixed(2)} - da mat. ${mat} \u00D8 ${dia_disp.toFixed(1)} mm, ${peso_principale_reale.toFixed(2)} kg`);
   const tempi_gestionale = lines.join('\n');
 
+  // Etichetta di sola visualizzazione (convenzione *_display come nome_display
+  // di smusso/sbavatura). Un fusto è un semilavorato, non un pezzo a norma UNI:
+  // usa la nomenclatura testa della tabella fantina_viti (TE = testa esagonale
+  // per 5737, TCE = testa cava esagonale per 5931). Per tutto il resto resta
+  // "UNI <tipo>", identica a prima.
+  const tipo_display = IS_FUSTO
+    ? (tipo === '5931' ? 'Fusto TCE' : 'Fusto TE')
+    : `UNI ${tipo}`;
+
   // ── Output ───────────────────────────────────────────────
   return {
     // Identificativi
-    tipo, mat, dian, medio, dia_disp,
+    tipo, tipo_display, mat, dian, medio, dia_disp,
 
     // Geometria
     filet, lungh_liscia, lungh_spezzone, sviluppo_testa,
@@ -1322,9 +1392,11 @@ export function calcolaViti(inp, T, TV) {
     ha_stamp:  STAMPAGGIO,
     ha_torn:   t_torn > 0,
     ha_fresa:  t_fresa > 0,
+    ha_rulla,
     ha_raddr:  raddr_c > 0,
     ha_bonifica: TRATTAMENTO,
     FANTINA,
+    FUSTO,
 
     // Diagnostica tornitura
     tornitura_info,

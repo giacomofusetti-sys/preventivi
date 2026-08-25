@@ -6,6 +6,66 @@ documentate in questo file.
 Il formato è basato su [Keep a Changelog](https://keepachangelog.com/it/1.1.0/),
 e il progetto segue [Semantic Versioning](https://semver.org/lang/it/).
 
+## [1.2.0] — 2026-08-25
+
+### Added
+- **Via di lavorazione "Fusto" nel modulo viti.** Due nuovi bottoni nel
+  toggle `lav_vite` — "Fusto liscio" e "Fusto smussato" — accanto a
+  Stampaggio / Fresa / Fantina. Il fusto è un **semilavorato**: testa
+  esagonale (5737) o cava esagonale (5931) con il **gambo al diametro
+  nominale, non filettato**, prodotto lungo e tenuto a magazzino per
+  essere tagliato e filettato in seguito su ordine (seconda fase fuori
+  scope). Vincoli di realtà produttiva: sempre **stampato** (mai
+  tornito/fresato, mai in fantina), solo **acciai al carbonio** (42CD4,
+  B16), niente filettatura → **niente rullatura**. Le due varianti sono
+  mutuamente esclusive per costruzione (vivono nello stesso `data-group`
+  `lav_vite`): la variante `smussato` attiva lo smusso (un solo smusso
+  per pezzo), la `liscio` no. Nuovo input `FUSTO` (`'no' | 'liscio' |
+  'smussato'`) in `calcolaViti`; i bottoni fusto compaiono solo per
+  tipo 5737/5931 e, se il tipo cambia in 5739/speciale mentre erano
+  selezionati, `lav_vite` torna automaticamente a Stampaggio.
+- **Campo di sola visualizzazione `tipo_display` nell'output di
+  `calcolaViti`** (convenzione `*_display` come `nome_display` di
+  smusso/sbavatura). Un fusto è un semilavorato, non un pezzo a norma
+  UNI: la card geometria mostra "Fusto TE" (testa esagonale, 5737) e
+  "Fusto TCE" (testa cava esagonale, 5931), nomenclatura coerente con
+  la tabella `fantina_viti`. Per tutti gli altri casi resta "UNI
+  <tipo>", identico a prima. Il renderer (`index.html`) si limita a
+  stampare `tipo_display`, senza logica.
+
+### Changed
+- **Rullatura ora condizionata all'invariante geometrico `ha_rulla =
+  filet > 0` in `moduli/viti.js`.** Prima la rullatura (riga `RULLA`,
+  setup `ARULL`, costo `rull_fin`, setup `setup_rull`) era emessa
+  **incondizionatamente** per ogni vite. Ora, senza filetto da rullare,
+  sparisce da calcolo, stringa gestionale e pannello. È un invariante
+  fisico legato alla geometria, **non** alla feature fusto (scritto
+  `filet > 0`, non `!IS_FUSTO`): un fusto ha `filet = 0`, ma la
+  condizione resta geometrica e non accoppia col fusto. Nel renderer i
+  quattro siti viti (griglia voci, celle tempi Rullatura + A.Rullatura,
+  barra composizione) sono gated su `R.ha_rulla`; i siti rullatura degli
+  altri moduli (dadi, prigionieri, tiranti, tiranti a occhio) sono in
+  rami di prodotto mutuamente esclusivi e restano invariati.
+
+### Internal
+- **Esclusione del ramo copiatore per il fusto in `calcolaTorniturraViti`.**
+  `is_copiatore_territory` richiede `is_mezzo_filetto` (`L_liscia > 0`),
+  sempre vero per un fusto: senza esclusione un fusto 5737/5931
+  fatturerebbe ~13s di tornitura + 1800s di setup + una riga
+  `TORN1`/`ATOR1` inesistenti. Aggiunto `IS_FUSTO` alla firma e al call
+  site, con guardia `!IS_FUSTO` nel territorio copiatore. Fuori dal
+  copiatore il ramo CN produce da sé `has_tornitura = false`
+  (A=B=C=D=E=0), senza forzature.
+- **Validazioni fail-fast del fusto in cima a `calcolaViti`**, accanto ai
+  check fantina/speciale: (1) `tipo` diverso da 5737/5931 → errore;
+  (2) materiale non al carbonio → errore, con `'altro'` intercettato
+  **prima** di `MAT_INOX.includes` (MAT_INOX contiene storicamente anche
+  `'altro'`), così superleghe e inox danno messaggi distinti; (3) barra
+  fuori dalla finestra `[dian-0.2, dian]` → errore (stessa soglia del
+  territorio copiatore, barra trafilata vicino al nominale). Geometria
+  forzata: `filet = 0` (bypassa `TF` e `filetto_override`) e `dpl =
+  dian` (gambo tutto al nominale).
+
 ## [1.1.0] — 2026-06-12
 
 ### Added
