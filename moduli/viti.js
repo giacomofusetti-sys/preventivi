@@ -1421,15 +1421,20 @@ export function calcolaViti(inp, T, TV) {
   const lines = [];
   if (!IN_FANTINA) lines.push(`TAGLI ${t_taglio}`);   // in fantina il taglio è in macchina
   if (ha_smusso)   lines.push(`SMUSS ${Math.round(t_smusso)}`);
+  // FANTINA_STAMP: ordine cronologico, la fantina prepara lo spezzone PRIMA
+  // dello stampaggio (TORN2 fantina prima di STAM2). L'eventuale TORN2 CN del
+  // ramo E (testa 5931) resta dopo, nel blocco tornitura sotto.
+  if (FANTINA_STAMP) lines.push(`TORN2 ${Math.round(t_fantina)}`);
   if (STAMPAGGIO)  lines.push(`STAM2 ${Math.round(t_stamp)}`);
   if (STAMPAGGIO && sbav_info) lines.push(`SBAVA ${Math.round(t_sbav)}`);
   // Tornitura: in fantina il ciclo unico va su TORN2 (convenzione: ATOR2
   // 7200, come i tiranti fantina). Altrimenti TORN1 sul copiatore, TORN2
   // sul CN (incl. caso ibrido che mette tutto in TORN1 perché is_copiatore=true).
-  // FANTINA_STAMP con testa 5931 inox/altro: due righe TORN2 separate
-  // (fantina + CN per E1/E2), due piazzamenti macchina distinti. Con la
-  // fantina vite finita t_torn è sempre 0, quindi il secondo blocco tace.
-  if (IN_FANTINA) {
+  // Con FANTINA_STAMP la riga fantina è già sopra (prima di STAM2); con la
+  // testa 5931 inox/altro qui segue la seconda TORN2, quella CN per E1/E2
+  // (due piazzamenti macchina distinti). Con la fantina vite finita t_torn è
+  // sempre 0, quindi il secondo blocco tace.
+  if (FANTINA) {
     lines.push(`TORN2 ${Math.round(t_fantina)}`);
   }
   if (t_torn > 0) {
@@ -1444,15 +1449,19 @@ export function calcolaViti(inp, T, TV) {
   if (raddr_c > 0) lines.push(`RADDR ${Math.round(raddr_c / 0.016)}`);
   if (!IN_FANTINA) lines.push(`ATAGL ${Math.round(setup_taglio_sec)}`);
   if (sm_info)     lines.push(`ASMUS ${sm_info.setup_sec}`);
+  // FANTINA_STAMP: setup fantina (7200) prima di ASTA2, stesso ordine
+  // cronologico delle righe tempo.
+  if (FANTINA_STAMP) lines.push(`ATOR2 ${T.setup_secondi.tornitura_fantina}`);
   if (STAMPAGGIO)  lines.push(`ASTA2 ${S_tag.stampaggio}`);
   if (STAMPAGGIO && sbav_info) lines.push(`ASBAV ${sbav_info.setup_sec}`);
   // Setup tornitura — una riga ATOR1/ATOR2 per ogni piazzamento applicato
   // nel costo (tornitura, intestazione, testa 5931). ATOR1 SOLO per il
   // copiatore (1800); ATOR2 per tutti gli altri (CN 3600, intestazione
   // 1800, testa 5931 totale 3600, fantina 7200).
-  // FANTINA_STAMP + ramo E: ATOR2 7200 fantina, più i setup del ramo E
-  // invariati rispetto alla route stampaggio (ATOR2 3600 CN + 3600 testa).
-  if (IN_FANTINA) {
+  // FANTINA_STAMP + ramo E: ATOR2 7200 fantina già sopra (prima di ASTA2),
+  // qui i setup del ramo E invariati rispetto alla route stampaggio
+  // (ATOR2 3600 CN + 3600 testa).
+  if (FANTINA) {
     // Setup fantina (7200) — unico piazzamento del ciclo continuo.
     lines.push(`ATOR2 ${T.setup_secondi.tornitura_fantina}`);
   }
