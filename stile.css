@@ -311,6 +311,22 @@ header span {
   border-right: 1px solid var(--border-bright) !important;
 }
 
+/* Variante a griglia 2 colonne (es. 6 vie di lavorazione viti): resta
+   nella larghezza della sidebar a qualunque finestra. I bottoni nascosti
+   (display:none, es. varianti fusto) non occupano celle. Testo a capo
+   dentro il bottone se la colonna è stretta. */
+.toggle-group-2col {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 4px;
+}
+.toggle-group-2col button {
+  min-width: 0;
+  white-space: normal;
+  border-right: 1px solid var(--border-bright) !important;
+}
+.toggle-group-2col button.active { border-color: var(--accent) !important; }
+
 .calc-btn {
   width: 100%;
   padding: 14px;
