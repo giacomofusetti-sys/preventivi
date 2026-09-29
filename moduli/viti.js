@@ -3,6 +3,8 @@
 // Tipi: 5737 = esagonale con gambo, 5739 = esagonale tutta filettata
 //       5931 = testa cilindrica con cava esagonale
 // Modalità: STAMPAGGIO ON = testa stampata | OFF = testa fresata/tornita
+//           FANTINA = vite finita in fantina (ciclo unico)
+//           FANTINA_STAMP = spezzone preparato in fantina, poi stampato
 // ============================================================
 
 import {
@@ -22,6 +24,7 @@ import {
   tempoTornituraBase,
   tempoSfacciatura,
   tempoMovimentazione,
+  tempoFantina,
   tempoFresaturaCava,
   tempoFresaturaTestaEsagonale,
   calcolaSmusso,
@@ -33,6 +36,19 @@ import {
 
 function lookup(table, key) {
   return table[String(key)] ?? null;
+}
+
+// Designazione del filetto per i messaggi utente, dalla chiave di parseDia:
+// metrici (numero) → "M20"; pollici frazionari → '3/4"'; codici pollici a
+// 4 cifre (intero + numeratore + denominatore a 2 cifre) → '1 1/8"', '2"'.
+function designazioneFiletto(dia) {
+  if (typeof dia === 'number') return `M${dia}`;
+  const s = String(dia);
+  if (s.includes('/')) return `${s}"`;
+  const intero = s[0];
+  const num    = Number(s[1]);
+  const den    = Number(s.slice(2));
+  return num > 0 ? `${intero} ${num}/${den}"` : `${intero}"`;
 }
 
 function tierValue(tiers, value, field = 'secondi') {
@@ -227,10 +243,56 @@ function calcolaTorniturraViti(
   tipo, dian, dia_medio, dia_disp, dia_parte_liscia,
   L_filettata, L_liscia,
   mat, materiale_speciale,
-  STAMPAGGIO, IS_FUSTO, dati_testa,
+  STAMPAGGIO, IS_FUSTO, FANTINA_STAMP, dati_testa,
   peso_grezzo,
   T
 ) {
+  const materiale_key = mat === 'altro' ? materiale_speciale : mat;
+
+  // Discriminante ramo E (testa 5931 inox/altro stampata)
+  const is5931InoxAltro =
+    tipo === '5931' &&
+    (mat === 'altro' || MAT_INOX.includes(mat)) &&
+    STAMPAGGIO;
+
+  // ─── RAMO FANTINA + STAMPAGGIO ─────────────────────────────
+  // Il gambo esce dalla fantina già tornito (tratto filettato al medio o
+  // spezzone al diametro di ricalco): niente A/B/D, niente copiatore, e le
+  // validazioni parte liscia (:245) e soglia copiatore non si applicano.
+  // Ramo esplicito in testa, NON ottenuto passando un diametro diverso: con
+  // ricalco = nominale il copiatore scatterebbe, e il CN ritornirebbe il
+  // tratto filettato. Resta solo la testa 5931 inox/altro (E1+E2) sul CN,
+  // con movimentazione, minimo 90s e piazzamenti identici al ramo CN.
+  if (FANTINA_STAMP) {
+    let E1 = 0, E2 = 0;
+    if (is5931InoxAltro) {
+      const D_testa_eff = dati_testa.dk ?? 0;       // dk_eff (= dk_nominale + 2)
+      const D_testa_fin = D_testa_eff - 2;          // diametro testa finito
+      const h_testa     = dati_testa.hc ?? 0;
+      E1 = tempoSfacciatura(D_testa_fin / 2, mat, materiale_speciale, T);
+      E2 = tempoTornituraBase(D_testa_eff, D_testa_fin, h_testa, mat, materiale_speciale, T);
+    }
+    const has_tornitura = (E1 + E2) > 0;
+    const mov = has_tornitura ? tempoMovimentazione(peso_grezzo, 1, T) : 0;
+    const tempo_min = T.tornitura_controllo.tempo_minimo_secondi;
+    const tempo_totale = has_tornitura ? Math.max(E1 + E2 + mov, tempo_min) : 0;
+    return {
+      tempo_ciclo: E1 + E2,
+      mov,
+      tempo_totale,
+      min_scattato: has_tornitura && (E1 + E2 + mov < tempo_min),
+      materiale_key,
+      componenti: { A: 0, B: 0, C: 0, D: 0, E1, E2, mov },
+      has_tornitura,
+      has_intestazione: false,
+      has_testa_5931: is5931InoxAltro,
+      ha_extensione_testa_ex: false,
+      A_include_solo_testa_esagonale: false,
+      L_liscia_eff: L_liscia,
+      is_copiatore: false,
+    };
+  }
+
   // Validazione input: la parte liscia non può eccedere significativamente
   // la barra di partenza. Tolleranza 0.3 mm per coprire la trafilatura
   // (la barra trafilata sta tipicamente 0.1-0.2 mm sotto il nominale,
@@ -272,14 +334,6 @@ function calcolaTorniturraViti(
       }
     }
   }
-
-  const materiale_key = mat === 'altro' ? materiale_speciale : mat;
-
-  // Discriminante ramo E (testa 5931 inox/altro stampata)
-  const is5931InoxAltro =
-    tipo === '5931' &&
-    (mat === 'altro' || MAT_INOX.includes(mat)) &&
-    STAMPAGGIO;
 
   // Mezzo filetto: c'è parte liscia da non tornire (5737 sempre; 5931 sopra
   // la soglia tabellata in lunghezze_filetto_5931).
@@ -756,6 +810,35 @@ function calcolaCicloFantinaViti(tipo, mat, materiale_speciale, TV, T) {
   return base * kVal;
 }
 
+// ─── FANTINA + STAMPAGGIO ─────────────────────────────────────
+// Route alternativa alla preparazione dello spezzone: invece di taglio a
+// sega + smusso Tela + copiatore, la fantina taglia, smussa e tornisce lo
+// spezzone in un unico piazzamento. A valle la catena è quella della route
+// stampaggio: stampaggio → sbavatura → eventuale testa 5931 → rullatura.
+//
+// Profilo (dai dati del pezzo, nessun input nuovo):
+//   - TF (filet ≥ lungh, invariante geometrico, non il codice tipo):
+//     ricalco dal medio; si tornisce tutto lo spezzone (sviluppo testa + lungh).
+//   - mezzo filetto, barra nominale [dian − 0,2, dian] (stessa finestra del
+//     copiatore e del fusto): ricalco dal nominale; si tornisce solo il
+//     tratto filettato al medio (L = filet).
+//   - mezzo filetto, barra maggiorata (> dian): ricalco dal nominale; si
+//     tornisce tutto lo spezzone al nominale, filettato poi al medio
+//     (L = sviluppo testa + lungh).
+// Regola generale: si tornisce ogni tratto con diametro finale < barra.
+// Barra sotto dian − 0,2 → Error (validazione nel chiamante), quindi la
+// barra non è mai più sottile del diametro di ricalco oltre la tolleranza
+// di trafilatura.
+function calcolaProfiloFantinaStamp(filet, lungh, dia_disp, dian, medio) {
+  const is_TF            = filet >= lungh;
+  const barra_maggiorata = dia_disp > dian;
+  const dia_ricalco      = is_TF ? medio : dian;
+  // Si tornisce l'intero spezzone se la barra è sopra il diametro di
+  // ricalco (TF o barra maggiorata); altrimenti solo il tratto filettato.
+  const tornisce_spezzone = is_TF || barra_maggiorata;
+  return { is_TF, barra_maggiorata, dia_ricalco, tornisce_spezzone };
+}
+
 // ─── FUNZIONE PRINCIPALE ─────────────────────────────────────
 
 export function calcolaViti(inp, T, TV) {
@@ -777,6 +860,7 @@ export function calcolaViti(inp, T, TV) {
     chiave_tipo      = 'p',
     STAMPAGGIO       = true,
     FANTINA          = false,
+    FANTINA_STAMP    = false,  // route fantina + stampaggio (richiede STAMPAGGIO)
     FUSTO            = 'no',   // 'no' | 'liscio' | 'smussato'
     TRATTAMENTO      = false,
     costo_bonifica_kg,
@@ -790,8 +874,21 @@ export function calcolaViti(inp, T, TV) {
   // del parse e di ogni altra validazione) così l'utente vede sempre questo
   // errore pertinente, anche con parametri testa speciale incompleti.
   if (FANTINA && IS_SPECIALE) throw new Error('Fantina non supportata per viti speciali');
+  if (FANTINA_STAMP && IS_SPECIALE) throw new Error(
+    'Fantina + stampaggio non supportata per viti speciali: nessuna taratura del ricalco per teste speciali.'
+  );
 
   const IS_FUSTO = FUSTO !== 'no';
+
+  // FANTINA_STAMP è una route esclusiva del toggle lav_vite: la UI rende
+  // impossibili le combinazioni sotto, ma il modulo si difende da solo.
+  if (FANTINA_STAMP && (FANTINA || IS_FUSTO || !STAMPAGGIO)) throw new Error(
+    'Fantina + stampaggio è incompatibile con Fantina, Fusto e Fresa / Tornitura.'
+  );
+
+  // Il pezzo passa in fantina (vite finita o solo spezzone): taglio e smusso
+  // avvengono in macchina, niente sega né Tela a monte.
+  const IN_FANTINA = FANTINA || FANTINA_STAMP;
 
   // ── Validazioni FUSTO (fail-fast in cima, come fantina/speciale) ──────
   // Il fusto è un semilavorato: testa (5737/5931) + gambo al diametro
@@ -848,12 +945,33 @@ export function calcolaViti(inp, T, TV) {
     `per M${dian} (${(dian - 0.2).toFixed(1)} - ${dian} mm).`
   );
 
+  // FANTINA_STAMP: la barra di partenza è un dato obbligatorio (niente
+  // fallback al nominale) e deve stare almeno nella finestra di trafilatura
+  // del nominale [dian − 0,2, …], anche nel caso TF. Sotto, la fantina non
+  // ha nulla da ricavare: se la barra è già vicina al medio (stessa
+  // tolleranza 0,5 dello smusso) la route giusta è lo stampaggio standard.
+  if (FANTINA_STAMP) {
+    if (!(parseExpr(dia_disp_raw) > 0)) throw new Error(
+      'Fantina + stampaggio: il diametro della barra di partenza è obbligatorio.'
+    );
+    if (dia_disp < dian - 0.2) {
+      if (Math.abs(dia_disp - medio) < 0.5) throw new Error(
+        'Barra già vicina al diametro medio: usa la route Stampaggio.'
+      );
+      throw new Error(
+        `Barra Ø ${dia_disp.toFixed(1)} sotto il nominale ${designazioneFiletto(dia)}: ` +
+        `per Fantina + stampaggio serve una barra di almeno ${(dian - 0.2).toFixed(1)} mm.`
+      );
+    }
+  }
+
   // ── Validazioni FANTINA (limiti macchina) ────────────────
   // Fail-fast prima del calcolo (pattern coerente col resto del modulo).
   // L'incompatibilità con le viti speciali è già gestita in cima alla
   // funzione. I limiti macchina sono opzionali (null = nessun blocco),
-  // valorizzabili in tabella quando noti.
-  if (FANTINA) {
+  // valorizzabili in tabella quando noti. Valgono per entrambe le route
+  // fantina (vite finita e fantina + stampaggio): è la stessa macchina.
+  if (IN_FANTINA) {
     const lim = TV.fantina_viti?.limiti ?? {};
     if (lim.dia_min != null && dian < lim.dia_min) throw new Error(
       `Fantina: Ø nominale (M${dian}) sotto il minimo macchina (M${lim.dia_min}).`
@@ -918,6 +1036,18 @@ export function calcolaViti(inp, T, TV) {
   // ha filet=0, ma la condizione resta geometrica e non accoppia con IS_FUSTO).
   const ha_rulla = filet > 0;
 
+  // FANTINA_STAMP: il ricalco del mezzo filetto è al nominale, quindi la
+  // parte liscia resta al nominale. Una parte liscia ridotta chiederebbe un
+  // terzo diametro in fantina, non modellato: fail-fast (stessa tolleranza
+  // 0,5 del check dpl/dian del copiatore).
+  if (FANTINA_STAMP && lungh_liscia > 0 && Math.abs(dpl - dian) >= 0.5) throw new Error(
+    `Fantina + stampaggio: parte liscia ridotta (Ø ${dpl} mm) non supportata, ` +
+    `la parte liscia resta al nominale ${designazioneFiletto(dia)}.`
+  );
+  const profilo_fs = FANTINA_STAMP
+    ? calcolaProfiloFantinaStamp(filet, lungh, dia_disp, dian, medio)
+    : null;
+
   // ── Dati testa ───────────────────────────────────────────
   let dati_testa, h_testa;
   if (IS_SPECIALE) {
@@ -954,7 +1084,13 @@ export function calcolaViti(inp, T, TV) {
   // Sviluppo testa: lunghezza di barra che "diventa" la testa dopo stampaggio.
   // Calcolato sempre (anche in FRESA, dove non si usa per lo spezzone ma resta
   // un dato informativo utile per confronti).
-  const sviluppo_testa = calcolaSviluppoTesta(tipo, dati_testa, area_tondo);
+  // FANTINA_STAMP: la testa si ricalca dallo spezzone già tornito, quindi lo
+  // sviluppo è sull'area del diametro di ricalco (medio in TF, nominale nel
+  // mezzo filetto), non della barra. Il peso resta sulla sezione della barra.
+  const area_ricalco = profilo_fs
+    ? Math.PI * (profilo_fs.dia_ricalco / 2) ** 2
+    : area_tondo;
+  const sviluppo_testa = calcolaSviluppoTesta(tipo, dati_testa, area_ricalco);
   const lungh_spezzone = STAMPAGGIO
     ? sviluppo_testa + lungh + 5
     : lungh + h_testa + 5;
@@ -986,8 +1122,9 @@ export function calcolaViti(inp, T, TV) {
   // In fantina la barra è tagliata IN macchina dentro il ciclo continuo:
   // niente taglio a monte (sega/troncatrice). Invariante coerente con
   // tempoFantina (lib/calcolo_comune.js) e con i tiranti/prigionieri.
+  // Vale per entrambe le route fantina (IN_FANTINA).
   let ta = 0, t_taglio = 0;
-  if (!FANTINA) {
+  if (!IN_FANTINA) {
     const tempo_ta_sec      = calcolaTempoTaglio(dia_disp, mat, materiale_speciale, T);
     const ta_raw            = tempo_ta_sec * co1;
     const { ta: ta_modulato } = modulaCostoTaglio(ta_raw, qta, mat, costo_kg, peso);
@@ -1001,9 +1138,10 @@ export function calcolaViti(inp, T, TV) {
   // call site (pattern coerente con sbavatura/taglio/ecc.).
   // FUSTO: lo smusso è deciso dalla variante scelta, non dal check dimensionale
   // (che sarebbe comunque falso: la barra sta al nominale, non al medio).
+  // In fantina (entrambe le route) lo smusso è fatto in macchina: niente Tela.
   const ha_smusso  = IS_FUSTO
     ? (FUSTO === 'smussato')
-    : (!FANTINA && Math.abs(dia_disp - medio) < 0.5);
+    : (!IN_FANTINA && Math.abs(dia_disp - medio) < 0.5);
   const sm_info    = ha_smusso ? calcolaSmusso(dia_disp, lungh, mat, qta, 1, co1, co2, T) : null;
   const t_smusso   = sm_info ? sm_info.tempo_ciclo_sec : 0;
   const smusso_c   = sm_info ? t_smusso * sm_info.co_applicato : 0;
@@ -1014,9 +1152,27 @@ export function calcolaViti(inp, T, TV) {
   // fresatura. Tariffa oraria co1 piatta (come la fantina dei tiranti); NON
   // si applica il degrado operatore (riservato a stampaggio/rullatura, mai
   // alle lavorazioni di tornitura/fresatura). Floor €10/lotto come le altre.
-  let t_fantina = 0, fantina_fin = 0;
+  //
+  // FANTINA_STAMP: una sola chiamata a tempoFantina (modello tiranti/
+  // prigionieri) sulla lunghezza tornita. La base per pezzo (taglio +
+  // intestatura/smusso) si conta una volta: unico piazzamento anche quando
+  // i tratti torniti sono due. Il pezzo in uscita dalla fantina è una barra
+  // tornita a tratti, come un tirante: per questo il modello è applicabile
+  // in prima approssimazione. Stessa tariffa co1 e floor della fantina viti.
+  // LIMITI NOTI (backlog, docs/FANTINA_TODO.md):
+  //   - il modello non dipende dal diametro né dalla profondità di passata:
+  //     SOTTOSTIMA le riduzioni forti (es. barra Ø24 su M20). Serve un
+  //     termine di profondità da tarare con tempi misurati;
+  //   - è tarato sui tiranti/prigionieri, dove L è l'intero pezzo tornito:
+  //     per L_tornita corte (solo tratto filettato) è fuori regime.
+  let t_fantina = 0, fantina_fin = 0, L_tornita = 0;
   if (FANTINA) {
     t_fantina = calcolaCicloFantinaViti(tipo, mat, materiale_speciale, TV, T);
+  } else if (FANTINA_STAMP) {
+    L_tornita = profilo_fs.tornisce_spezzone ? sviluppo_testa + lungh : filet;
+    t_fantina = tempoFantina(L_tornita, mat, materiale_speciale, T);
+  }
+  if (IN_FANTINA) {
     const fc  = t_fantina * co1;
     fantina_fin = fc * qta < 10 ? 10 / qta : fc;
   }
@@ -1082,7 +1238,7 @@ export function calcolaViti(inp, T, TV) {
       tipo, dian, medio, dia_disp, dpl,
       L_filettata, L_liscia,
       mat, materiale_speciale,
-      STAMPAGGIO, IS_FUSTO, dati_testa,
+      STAMPAGGIO, IS_FUSTO, FANTINA_STAMP, dati_testa,
       peso,
       T
     );
@@ -1214,9 +1370,9 @@ export function calcolaViti(inp, T, TV) {
   const S = TV.setup_secondi;
   // In fantina niente taglio a monte → niente setup taglio. Il solo
   // approntamento è quello della fantina (setup_fantina, sotto).
-  const setup_taglio  = FANTINA ? 0 : setupCosto(setup_taglio_sec, co1, qta);
+  const setup_taglio  = IN_FANTINA ? 0 : setupCosto(setup_taglio_sec, co1, qta);
   // Setup fantina: tariffa piatta co1, valore in T (comune.json) = 7200s.
-  const setup_fantina = FANTINA ? setupCosto(T.setup_secondi.tornitura_fantina, co1, qta) : 0;
+  const setup_fantina = IN_FANTINA ? setupCosto(T.setup_secondi.tornitura_fantina, co1, qta) : 0;
   const setup_smusso  = sm_info ? setupCosto(sm_info.setup_sec, co1, qta) : 0;
   const setup_stamp   = STAMPAGGIO ? setupCosto(S.stampaggio, co1, qta) : 0;
   const setup_sbav    = STAMPAGGIO && sbav_info ? setupCosto(sbav_info.setup_sec, co1, qta) : 0;
@@ -1263,16 +1419,20 @@ export function calcolaViti(inp, T, TV) {
   // ── Stringa gestionale ───────────────────────────────────
   const S_tag = TV.setup_secondi;
   const lines = [];
-  if (!FANTINA)    lines.push(`TAGLI ${t_taglio}`);   // in fantina il taglio è in macchina
+  if (!IN_FANTINA) lines.push(`TAGLI ${t_taglio}`);   // in fantina il taglio è in macchina
   if (ha_smusso)   lines.push(`SMUSS ${Math.round(t_smusso)}`);
   if (STAMPAGGIO)  lines.push(`STAM2 ${Math.round(t_stamp)}`);
   if (STAMPAGGIO && sbav_info) lines.push(`SBAVA ${Math.round(t_sbav)}`);
   // Tornitura: in fantina il ciclo unico va su TORN2 (convenzione: ATOR2
   // 7200, come i tiranti fantina). Altrimenti TORN1 sul copiatore, TORN2
   // sul CN (incl. caso ibrido che mette tutto in TORN1 perché is_copiatore=true).
-  if (FANTINA) {
+  // FANTINA_STAMP con testa 5931 inox/altro: due righe TORN2 separate
+  // (fantina + CN per E1/E2), due piazzamenti macchina distinti. Con la
+  // fantina vite finita t_torn è sempre 0, quindi il secondo blocco tace.
+  if (IN_FANTINA) {
     lines.push(`TORN2 ${Math.round(t_fantina)}`);
-  } else if (t_torn > 0) {
+  }
+  if (t_torn > 0) {
     if (tornitura_info.is_copiatore) {
       lines.push(`TORN1 ${Math.round(t_torn)}`);
     } else {
@@ -1282,7 +1442,7 @@ export function calcolaViti(inp, T, TV) {
   if (t_fresa > 0) lines.push(`FRESA ${Math.round(t_fresa)}`);
   if (ha_rulla) lines.push(`RULLA ${Math.round(t_rulla)}`);
   if (raddr_c > 0) lines.push(`RADDR ${Math.round(raddr_c / 0.016)}`);
-  if (!FANTINA)    lines.push(`ATAGL ${Math.round(setup_taglio_sec)}`);
+  if (!IN_FANTINA) lines.push(`ATAGL ${Math.round(setup_taglio_sec)}`);
   if (sm_info)     lines.push(`ASMUS ${sm_info.setup_sec}`);
   if (STAMPAGGIO)  lines.push(`ASTA2 ${S_tag.stampaggio}`);
   if (STAMPAGGIO && sbav_info) lines.push(`ASBAV ${sbav_info.setup_sec}`);
@@ -1290,10 +1450,13 @@ export function calcolaViti(inp, T, TV) {
   // nel costo (tornitura, intestazione, testa 5931). ATOR1 SOLO per il
   // copiatore (1800); ATOR2 per tutti gli altri (CN 3600, intestazione
   // 1800, testa 5931 totale 3600, fantina 7200).
-  if (FANTINA) {
+  // FANTINA_STAMP + ramo E: ATOR2 7200 fantina, più i setup del ramo E
+  // invariati rispetto alla route stampaggio (ATOR2 3600 CN + 3600 testa).
+  if (IN_FANTINA) {
     // Setup fantina (7200) — unico piazzamento del ciclo continuo.
     lines.push(`ATOR2 ${T.setup_secondi.tornitura_fantina}`);
-  } else if (t_torn > 0) {
+  }
+  if (t_torn > 0) {
     if (tornitura_info.is_copiatore) {
       // Setup copiatore (1800)
       lines.push(`ATOR1 ${T.setup_secondi.setup_copiatore}`);
@@ -1396,9 +1559,22 @@ export function calcolaViti(inp, T, TV) {
     ha_raddr:  raddr_c > 0,
     ha_bonifica: TRATTAMENTO,
     FANTINA,
+    FANTINA_STAMP,
     FUSTO,
 
     // Diagnostica tornitura
     tornitura_info,
+
+    // Profilo fantina + stampaggio (null nelle altre route)
+    fantina_stamp_info: profilo_fs
+      ? {
+          ...profilo_fs,
+          dia_barra:  dia_disp,
+          medio,
+          L_tornita,
+          tempo:      t_fantina,
+          setup_sec:  T.setup_secondi.tornitura_fantina,
+        }
+      : null,
   };
 }
