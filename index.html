@@ -39,7 +39,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Preventivi — Calcolo Costi</title>
   <!-- foglio stile esterno: tutto il CSS è in stile.css, non qui dentro -->
-  <link rel="stylesheet" href="stile.css">
+  <link rel="stylesheet" href="stile.css?v=20">
 </head>
 <body>
 
@@ -884,11 +884,11 @@
 // Ogni modulo esporta la sua funzione di calcolo principale.
 // Aggiungere un nuovo modulo = aggiungere una riga qui + un branch
 // in calcola() + la logica in renderResults().
-import { calcolaTiranti }     from './moduli/tiranti_unificato.js?v=19';
-import { calcolaDadi }        from './moduli/dadi.js?v=19';
-import { calcolaPrigionieri } from './moduli/prigionieri.js?v=19';
-import { parseDia, parseExpr, getDiametroMedio, MAT_INOX } from './lib/calcolo_comune.js?v=19';
-import { VERSION, VERSION_DATE, formatDataItaliana } from './lib/version.js?v=19';
+import { calcolaTiranti }     from './moduli/tiranti_unificato.js?v=20';
+import { calcolaDadi }        from './moduli/dadi.js?v=20';
+import { calcolaPrigionieri } from './moduli/prigionieri.js?v=20';
+import { parseDia, parseExpr, getDiametroMedio, MAT_INOX } from './lib/calcolo_comune.js?v=20';
+import { VERSION, VERSION_DATE, formatDataItaliana } from './lib/version.js?v=20';
 // tiranti_occhio.js viene importato dinamicamente in calcola()
 // per evitare che un file mancante blocchi l'intera applicazione
 
@@ -1649,7 +1649,7 @@ window.calcola = async function() {
       }, T, TD);
     } else if (prodottoCorrente === 'tiranti_occhio') {
       // ── Tiranti a Occhio — import dinamico ───────────────
-      const { calcolaTirantiOcchio } = await import('./moduli/tiranti_occhio.js?v=19');
+      const { calcolaTirantiOcchio } = await import('./moduli/tiranti_occhio.js?v=20');
       const _diam_o  = getDiametroMedio(T, parseDia(getStr('dia')), getStr('passo'));
       const _min_o   = getToggleVal('minorato') === 'ON';
       const medio_override = _min_o ? _diam_o - getNum('riduzione_medio', 0.4) : 0;
@@ -1675,7 +1675,7 @@ window.calcola = async function() {
 
     // ── Viti ─────────────────────────────────────────────
     if (prodottoCorrente === 'viti') {
-      const { calcolaViti } = await import('./moduli/viti.js?v=19');
+      const { calcolaViti } = await import('./moduli/viti.js?v=20');
       const _diam_v  = getDiametroMedio(T, parseDia(getStr('dia')), getStr('passo'));
       const _min_v   = getToggleVal('minorato') === 'ON';
       const medio_override = _min_v ? _diam_v - getNum('riduzione_medio', 0.4) : 0;

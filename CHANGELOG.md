@@ -6,6 +6,82 @@ documentate in questo file.
 Il formato è basato su [Keep a Changelog](https://keepachangelog.com/it/1.1.0/),
 e il progetto segue [Semantic Versioning](https://semver.org/lang/it/).
 
+## [1.3.0] — 2026-09-29
+
+### Added
+- **Via di lavorazione "Fantina + stampaggio" nel modulo viti.** Nuovo
+  bottone nel toggle `lav_vite`, route esclusiva scelta manualmente
+  (nessun trigger automatico). Sostituisce solo la preparazione dello
+  spezzone a monte dello stampaggio — taglio a sega, smusso Tela e
+  copiatore — con un unico passaggio in fantina che taglia, smussa e
+  tornisce; il resto della catena è quello della route Stampaggio
+  (stampaggio → sbavatura → eventuale testa 5931 → rullatura). Nuovo
+  input `FANTINA_STAMP` (con `STAMPAGGIO: true`) in `calcolaViti`.
+  Profilo ricavato dai dati del pezzo, senza nuovi input:
+  - **tutto filetto** (`filet ≥ lungh`, invariante geometrico, non il
+    codice tipo): ricalco dal diametro medio (`getDiametroMedio`), si
+    tornisce tutto lo spezzone;
+  - **mezzo filetto, barra al nominale** (`[dian − 0,2, dian]`, stessa
+    finestra di copiatore e fusto): ricalco dal nominale, si tornisce
+    solo il tratto filettato;
+  - **mezzo filetto, barra maggiorata** (`> dian`): ricalco dal
+    nominale, si tornisce tutto lo spezzone.
+  Lo sviluppo testa è calcolato sull'area del **diametro di ricalco**,
+  il peso sulla sezione della barra. Tempo con **una sola chiamata**
+  `tempoFantina(L_tornita)` (modello tiranti/prigionieri, base per pezzo
+  contata una volta), tariffa `co1` e setup 7200 s come la fantina
+  esistente. Nessuna tornitura gambo sul CN né copiatore; per le 5931
+  inox/altro restano la procedura testa (E1+E2) e la fresatura cava,
+  con i loro setup invariati. Validazioni fail-fast: barra obbligatoria,
+  barra sotto `dian − 0,2` (due messaggi: "già vicina al medio → usa
+  Stampaggio" oppure spessore minimo con la designazione del filetto),
+  viti speciali, combinazione con Fantina/Fusto/Fresa. Si applicano i
+  limiti macchina `fantina_viti.limiti`.
+- **Popup "Dettaglio tornitura" per la nuova route**, aperto dalla card
+  Fantina (stesso pannello della card Tornitura): diametro barra,
+  diametro di ricalco, d₂, profilo, lunghezza tornita, tempo e setup
+  fantina, più le sezioni CN se c'è la testa 5931 inox/altro. Avviso
+  visibile quando la barra supera il nominale o il materiale è
+  inox/altro. Con la nuova route il campo "Diametro barra di partenza"
+  è marcato obbligatorio e le card Taglio / A.Taglio sono nascoste.
+
+### Changed
+- **Ordine cronologico delle righe gestionale per la route Fantina +
+  stampaggio**: `TORN2` della fantina prima di `STAM2`, `ATOR2 7200`
+  prima di `ASTA2`; l'eventuale `TORN2` CN della testa 5931 resta dopo
+  lo stampaggio. Nessuna riga `TAGLI`/`SMUSS`/`ATAGL`/`ASMUS`. Le altre
+  route sono invariate (regressione su 43.200 combinazioni, 0
+  differenze).
+- **Gruppo "Lavorazione testa" delle viti su due colonne** (nuova
+  classe `.toggle-group-2col` in `stile.css`): con sei opzioni l'ultima
+  sbordava nell'area risultati; ora la griglia resta nella larghezza
+  della sidebar anche a finestra stretta, con testo a capo nei bottoni.
+
+### Known limitations
+- **Tempo fantina indipendente dalla profondità di passata.** Il
+  modello `tempoFantina` è lineare nella sola lunghezza: possibile
+  **sottostima su superleghe e forti riduzioni**. Esempio: 5737
+  M20×150 filetto 50 in 625 da barra Ø24 → 244 s in fantina contro
+  524 s di CN nella route Stampaggio. È inoltre tarato sui
+  tiranti/prigionieri (L = pezzo intero), quindi fuori regime per
+  lunghezze tornite corte. Backlog in `docs/FANTINA_TODO.md`.
+- **Parte liscia ridotta non gestita** con Fantina + stampaggio: il
+  ricalco del mezzo filetto è al nominale, una parte liscia ridotta
+  richiederebbe un terzo diametro in fantina. Oggi il modulo dà errore.
+
+### Internal
+- Ramo esplicito `FANTINA_STAMP` in testa a `calcolaTorniturraViti`
+  (non ottenuto passando un diametro diverso: con ricalco al nominale
+  il copiatore scatterebbe). `is5931InoxAltro` spostato sopra il ramo.
+- Nuovi helper in `moduli/viti.js`: `calcolaProfiloFantinaStamp`,
+  `designazioneFiletto` (M20, 3/4", 1 1/8" dalla chiave di `parseDia`).
+  Flag `IN_FANTINA` per le esclusioni comuni alle due route fantina
+  (taglio, smusso, setup taglio, limiti macchina). Output
+  `fantina_stamp_info` per il popup.
+- `MAT_INOX` importato in `index.html` per la condizione dell'avviso.
+- `.gitignore`: esclusi `docs/` (repo pubblico) e `.DS_Store`.
+- `?v=20` su tutti gli import di `index.html` e sul link a `stile.css`.
+
 ## [1.2.0] — 2026-08-25
 
 ### Added
